@@ -1,7 +1,7 @@
 from enum import Enum
 import os
 import uuid
-from poke_env.utils import load_parameters, log_error, log_warn, file_makedir
+from poke_env.utils import load_parameters, log_error, log_warn, file_makedir, log_info, is_none_str
 
 
 import mediapy as media
@@ -9,6 +9,7 @@ from pyboy import PyBoy
 from pyboy.utils import WindowEvent
 from matplotlib import pyplot as plt
 from skimage.transform import downscale_local_mean
+from time import perf_counter
 import numpy as np
 
 
@@ -119,7 +120,8 @@ class Emulator():
         #self.screen = self.pyboy.botsupport_manager().screen()
 
         if not self.headless:
-            self.pyboy.set_emulation_speed(self.parameters["gameboy_headless_emulation_speed"])        
+            if not is_none_str(self.parameters["gameboy_headed_emulation_speed"]):
+                self.pyboy.set_emulation_speed(int(self.parameters["gameboy_headed_emulation_speed"]))        
         
     def get_session_path(self) -> str:
         """
@@ -199,17 +201,32 @@ class Emulator():
             action (LowLevelActions): Lowest level action to perform on the emulator.
         """
         # press button then release after some steps
+        log_info(f"Running action: {action}", self.parameters)
+        start_time = perf_counter()
         self.pyboy.send_input(action)
+        end_time = perf_counter()
+        # Convert to milliseconds and seconds
+        elapsed_time_ms = (end_time - start_time) * 1000
+        elapsed_time_s = (end_time - start_time)
+        log_info(f"Action {action} took {elapsed_time_ms:.2f} ms or {elapsed_time_s:.2f} s", self.parameters)
         # disable rendering when we don't need it
         render_screen = self.save_video or not self.headless
         press_step = self.press_step
         self.pyboy.tick(press_step, render_screen)
+        log_info(f"Completed {press_step} ticks after pressing action {action}", self.parameters)
+        start_time = perf_counter()
         self.pyboy.send_input(LowLevelActions.release_actions[action])
+        mid_time = perf_counter()
         self.pyboy.tick(self.act_freq - press_step - 1, render_screen)
+        end_time = perf_counter()
+        start_to_mid_ms = (mid_time - start_time) * 1000
+        mid_to_end_ms = (end_time - mid_time) * 1000
+        log_info(f"Releasing action {action} took {start_to_mid_ms:.2f} ms, followed by {mid_to_end_ms:.2f} ms for remaining ticks", self.parameters)           
         self.pyboy.tick(1, True)
+        log_info(f"Completed total of {self.act_freq} ticks for action {action}", self.parameters)
         if self.save_video and self.fast_video:
             self.add_video_frame()
-
+    
     def start_video(self):
         if self.full_frame_writer is not None:
             self.full_frame_writer.close()
@@ -246,6 +263,27 @@ class Emulator():
         # check if session directory is empty, and if so delete it
         if os.path.exists(self.session_path) and len(os.listdir(self.session_path)) == 0:
             os.rmdir(self.session_path)
+    
+    def human_play(self, max_steps: int = None):
+        """_summary_
+        
+        Allows a human to play the emulator using keyboard inputs.
+        Args:
+            max_steps (int, optional): Maximum number of steps to play. Defaults to gameboy_hard_max_steps in configs.
+        """
+        if max_steps is None:
+            max_steps = self.parameters["gameboy_hard_max_steps"]
+        log_info("Starting human play mode. Use arrow keys and A/B/Start buttons to play. Close the window to exit.", self.parameters)
+        self.reset()
+        while True:
+            self.pyboy.tick(1, True)
+            #self.render()
+            truncated = self.step_count >= self.max_steps - 1
+            if truncated:
+                break
+        self.close()
+        
+        
     
     def save_render(self):
         render_path = os.path.join(self.session_path, "renders", f"step_{self.step_count}_id{self.instance_id}.jpeg")
