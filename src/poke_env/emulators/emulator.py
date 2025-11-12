@@ -315,7 +315,7 @@ class Emulator():
         
         
     
-    def _human_input_play(self, max_steps: int = None, init_state: str = None):
+    def _human_step_play(self, max_steps: int = None, init_state: str = None):
         """_summary_
         Primarily for debugging.         
         Allows a human to play the emulator using keyboard inputs. This routes the code through the step function. 
