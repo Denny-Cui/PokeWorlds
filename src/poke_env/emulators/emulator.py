@@ -47,7 +47,7 @@ class LowLevelActions(Enum):
         PRESS_BUTTON_START: WindowEvent.RELEASE_BUTTON_START}
 
 class Emulator():
-    def __init__(self, gb_path: str, init_state: str, parameters: dict, headless: bool = True, max_steps: int = None, save_video: bool = None, fast_video: bool = None, session_name: str = None, instance_id: str = None):
+    def __init__(self, gb_path: str, init_state: str, parameters: dict, headless: bool = True, max_steps: int = None, save_video: bool = None, session_name: str = None, instance_id: str = None):
         """_summary_
         Initializes the Pokemon Environment. 
 
@@ -58,7 +58,6 @@ class Emulator():
             headless (bool, optional): Whether to run the environment in headless mode. Defaults to True.
             max_steps (int, optional): Maximum number of steps per episode. Defaults to None.
             save_video (bool, optional): Whether to save video of the episodes. Defaults to None.
-            fast_video (bool, optional): Whether to save video in fast mode. Defaults to None.
             session_name (str, optional): Name of the session. If None, a new session name will be allocated. Defaults to None.        
         """
         assert gb_path is not None, "You must provide a path to the GameBoy ROM file."
@@ -83,10 +82,7 @@ class Emulator():
         self.max_steps = max_steps
         if save_video is None:
             save_video = self.parameters["gameboy_default_save_video"]
-        if fast_video is None:
-            fast_video = self.parameters["gameboy_default_fast_video"]
         self.save_video = save_video
-        self.fast_video = fast_video
         if session_name is None:
             session_name = allocate_new_session_name(self.parameters, session_path=self.get_session_path())
         self.session_name = session_name
@@ -289,8 +285,6 @@ class Emulator():
                 end_time = perf_counter()
             # Releasing action LowLevelActions.PRESS_ARROW_LEFT took 0.00 ms, followed by 16.13 ms for remaining ticks
             self.pyboy.tick(1, True)
-            if self.save_video and self.fast_video:
-                self.add_video_frame()
         else:
             log_warn("No action provided to run_action_on_emulator. Skipping action. You probably should only ever use this in human mode", self.parameters)
             self.pyboy.tick(self.act_freq, True)

@@ -116,18 +116,18 @@ class GameStateParser:
 
     
     
-class PokemonRedEmulator(Emulator):
+class BasicPokemonRedEmulator(Emulator):
     PAD = 20
     GLOBAL_MAP_SHAPE = (444 + PAD * 2, 436 + PAD * 2)
     MAP_ROW_OFFSET = PAD
     MAP_COL_OFFSET = PAD
 
-    def __init__(self, parameters: dict = None, init_state=None, headless: bool = False, max_steps: int = None, save_video: bool = None, fast_video: bool = None, session_name: str = None, instance_id: str = None):
+    def __init__(self, parameters: dict = None, init_state=None, headless: bool = False, max_steps: int = None, save_video: bool = None, session_name: str = None, instance_id: str = None):
         parameters = load_parameters(parameters)
         if init_state is None:
             init_state = parameters["pokemon_red_default_state"]        
         gb_path = parameters["pokemon_red_gb_path"]
-        super().__init__(gb_path, init_state, parameters, headless, max_steps, save_video, fast_video, session_name, instance_id)
+        super().__init__(gb_path, init_state, parameters, headless, max_steps, save_video, session_name, instance_id)
         self.essential_map_locations = {
             v:i for i,v in enumerate([
                 40, 0, 12, 1, 13, 51, 2, 54, 14, 59, 60, 61, 15, 3, 65
