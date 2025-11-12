@@ -1,7 +1,7 @@
 from poke_env import PokemonRedEmulator
 
 if __name__ == "__main__":
-    env = PokemonRedEmulator(parameters=None)
+    env = PokemonRedEmulator(parameters=None, headless=False)
     env.reset()
     while True:
         env.pyboy.tick(1, True)

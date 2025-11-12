@@ -561,7 +561,7 @@ wheels = [
 ]
 
 [[package]]
-name = "poke-env"
+name = "pokemon-gba-env"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
