@@ -11,9 +11,9 @@
 </h2>
 
 <p align="center">
-    <a href="https://github.com/DhananjayAshok/PokemonEnvironments/blob/main/LICENSE"><img alt="GitHub" src="https://img.shields.io/badge/license-MIT-blue"></a>
-    <a href="https://dhananjayashok.github.io/"><img alt="Documentation" src="https://img.shields.io/website/http/huggingface.co/docs/transformers/index.svg?down_color=red&down_message=offline&up_message=online"></a>
-    <a href="https://dhananjayashok.github.io/PokemonEnvironments/"><img alt="GitHub" src="https://img.shields.io/badge/documentation-pdoc-red"></a>
+    <a href="https://github.com/DhananjayAshok/PokemonEnvironments/blob/main/LICENSE" target="_blank" rel="noopener noreferrer"><img alt="GitHub" src="https://img.shields.io/badge/license-MIT-blue"></a>
+    <a href="https://dhananjayashok.github.io/" target="_blank" rel="noopener noreferrer"><img alt="Documentation" src="https://img.shields.io/website/http/huggingface.co/docs/transformers/index.svg?down_color=red&down_message=offline&up_message=online"></a>
+    <a href="https://dhananjayashok.github.io/PokemonEnvironments/" target="_blank" rel="noopener noreferrer"><img alt="GitHub" src="https://img.shields.io/badge/documentation-pdoc-red"></a>
 </p>
 
 
