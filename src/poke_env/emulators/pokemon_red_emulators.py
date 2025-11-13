@@ -110,10 +110,7 @@ class PokemonRedGameStateParser(GameStateParser):
     def get_levels(self):
         return [
             self.read_m(a) for a in [0xD18C, 0xD1B8, 0xD1E4, 0xD210, 0xD23C, 0xD268]
-        ]
-        
-    def publish_game_state(self):
-        return {}
+        ]    
 
     def get_opponent_levels(self):
         opp_base_level = 5
@@ -152,7 +149,7 @@ class PokemonRedGameStateParser(GameStateParser):
         pass
 
     def parse_step(self):
-        pass
+        breakpoint()
 
 
 

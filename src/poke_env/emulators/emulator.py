@@ -55,7 +55,7 @@ class GameStateParser(ABC):
     def __init__(self, pyboy, parameters):
         self.pyboy = pyboy
         self.parameters = parameters
-        self.parsed_variables = {}
+        self.parsed_variables = {"done": False}
 
     def clear(self):
         self.parsed_variables = {"done": False}
@@ -416,9 +416,9 @@ class Emulator(ABC):
         self.reset()
         while True:
             self.pyboy.tick(1, True)
-            state = self.step_count >= self.max_steps - 1
-            if state.parsed_variables["done"]:
+            if self.step_count >= max_steps:
                 break
+
         self.close()
         # wait for pyboy
         #sleep(1) TODO: See how to close properly in this setting. 

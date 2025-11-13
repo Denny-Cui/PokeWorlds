@@ -1,1 +1,1 @@
-from poke_env.emulators.pokemon_red_emulator import BasicPokemonRedEmulator
+from poke_env.emulators.pokemon_red_emulators import BasicPokemonRedEmulator
