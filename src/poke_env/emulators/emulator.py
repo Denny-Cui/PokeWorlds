@@ -108,14 +108,14 @@ class Emulator(ABC):
         assert parameters is not None, "You must provide a parameters dictionary."
         assert parameters != {}, "The parameters dictionary cannot be empty."
         assert headless in [True, False], "headless must be a boolean."
-        self.gb_path = gb_path
+        self._gb_path = gb_path
         self._set_init_state(init_state)
         # validate init_state exists and ends with .state
         self._parameters = parameters
-        if not os.path.exists(self.gb_path):
-            log_error(f"GameBoy ROM file {self.gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {self.gb_path}", self._parameters)
-        if not self.gb_path.endswith(".gb"):
-            log_error(f"GameBoy ROM file {self.gb_path} is not a .gb file.", self._parameters)
+        if not os.path.exists(self._gb_path):
+            log_error(f"GameBoy ROM file {self._gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {self._gb_path}", self._parameters)
+        if not self._gb_path.endswith(".gb"):
+            log_error(f"GameBoy ROM file {self._gb_path} is not a .gb file.", self._parameters)
         self.headless = headless
         """ Whether to run the environment in headless mode."""
         if max_steps is None:
@@ -165,7 +165,7 @@ class Emulator(ABC):
         head = "null" if self.headless else "SDL2"
 
         self._pyboy = PyBoy(
-            self.gb_path,
+            self._gb_path,
             window=head,
         )
         self.game_state_parser = game_state_parser_class(self._pyboy, self._parameters)
@@ -294,21 +294,21 @@ class Emulator(ABC):
             ).astype(np.uint8)
         return game_pixels_render
     
-    def step(self, action: LowLevelActions) -> bool:
+    def step(self, action: LowLevelActions = None) -> bool:
         """ 
         
         Takes a step in the environment by performing the given action on the emulator.
         If saving video, starts the video recording on the first step.
 
         Args:
-            action (LowLevelActions): Lowest level action to perform on the emulator.
+            action (LowLevelActions, optional): Lowest level action to perform on the emulator.
 
         Returns:
             bool: Whether the max_steps limit is reached.
         """
         if action is not None:
             if action not in LowLevelActions:
-                log_error(f"Invalid action {action}. Must be one of {list(LowLevelActions)}", self._parameters)
+                log_error(f"Invalid action {action}. Must be one of {list(LowLevelActions)} or None", self._parameters)
         if self.step_count >= self.max_steps:
             log_error("Step called after max_steps reached. Please reset the environment.", self._parameters)
             
@@ -338,7 +338,7 @@ class Emulator(ABC):
         """
         return self.game_state_parser
 
-    def run_action_on_emulator(self, action: LowLevelActions, profile: bool = False, render: bool = None):
+    def run_action_on_emulator(self, action: LowLevelActions = None, profile: bool = False, render: bool = None):
         """ 
         
         Performs the given action on the emulator by pressing and releasing the corresponding button.
@@ -374,7 +374,7 @@ class Emulator(ABC):
             # Releasing action LowLevelActions.PRESS_ARROW_LEFT took 0.00 ms, followed by 16.13 ms for remaining ticks
             self._pyboy.tick(1, True)
         else:
-            log_warn("No action provided to run_action_on_emulator. Skipping action. You probably should only ever use this in human mode", self._parameters)
+            log_warn("No action provided to run_action_on_emulator. Skipping action. You probably should only ever use this in debugging mode. Idk maybe wait is a command.", self._parameters)
             self._pyboy.tick(self.act_freq, True)
     
     def get_free_video_id(self) -> str:
@@ -567,7 +567,7 @@ class Emulator(ABC):
         Expects there to be a .sav file with the same path+name as the self.gb_path (but with .sav extension).
         """
         log_info("Trying to find .sav file and convert to .state file. This is a breaking operation, so the program will terminate after its completion.", self._parameters)
-        expected_sav = self.gb_path.replace(".gb", ".sav")
+        expected_sav = self._gb_path.replace(".gb", ".sav")
         if not os.path.exists(expected_sav):
             log_error(f"Expected .sav file at {expected_sav} to convert to .state file, but it does not exist.", self._parameters)
         if save_path is None or save_path == "":
@@ -577,7 +577,7 @@ class Emulator(ABC):
         shutil.copyfile(expected_sav, expected_sav.replace(".sav", ".gb.ram"))
         self.close()
         self._pyboy = PyBoy(
-            self.gb_path,
+            self._gb_path,
             window="null",
         )
         self._pyboy.set_emulation_speed(0)

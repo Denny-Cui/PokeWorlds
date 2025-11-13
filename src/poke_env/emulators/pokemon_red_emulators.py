@@ -15,6 +15,7 @@ from bidict import bidict
 event_flags_start = 0xD747
 event_flags_end = 0xD87E # expand for SS Anne # old - 0xD7F6 
 museum_ticket = (0xD754, 0)
+# TODO: Do you need these?
 
 
 class GameInfo:
@@ -31,13 +32,14 @@ class PokemonRedGameStateParser(GameStateParser):
     """
     Reads from memory addresses to form the state: https://github.com/pret/pokered/blob/symbols/pokered.sym
     """
-    PAD = 20
-    GLOBAL_MAP_SHAPE = (444 + PAD * 2, 436 + PAD * 2)
-    MAP_ROW_OFFSET = PAD
-    MAP_COL_OFFSET = PAD
+    _PAD = 20
+    _GLOBAL_MAP_SHAPE = (444 + _PAD * 2, 436 + _PAD * 2)
+    _MAP_ROW_OFFSET = _PAD
+    _MAP_COL_OFFSET = _PAD
     def __init__(self, pyboy, parameters):
         """
         Initializes the Pokemon Red game state parser.
+
         Args: 
             pyboy: An instance of the PyBoy emulator.
             parameters: A dictionary of parameters for configuration.
@@ -60,6 +62,7 @@ class PokemonRedGameStateParser(GameStateParser):
                 pop_queue.append(name)
         _pop(event_names, pop_queue)
         self.beat_opponent_events = beat_opponent_events
+        """Events related to beating specific opponents. E.g. Beat Brock"""
         tms_obtained_events = bidict()
         pop_queue = []
         for name, slot in event_names.items():
@@ -68,6 +71,7 @@ class PokemonRedGameStateParser(GameStateParser):
                 pop_queue.append(name)
         _pop(event_names, pop_queue)
         self.tms_obtained_events = tms_obtained_events
+        """Events related to obtaining specific TMs. E.g. Got Tm01"""
         hm_obtained_events = bidict()
         pop_queue = []
         for name, slot in event_names.items():
@@ -76,6 +80,7 @@ class PokemonRedGameStateParser(GameStateParser):
                 pop_queue.append(name)
         _pop(event_names, pop_queue)
         self.hm_obtained_events = hm_obtained_events
+        """Events related to obtaining specific HMs. E.g. Got Hm01"""
         passed_badge_check_events = bidict()
         pop_queue = []
         for name, slot in event_names.items():
@@ -84,7 +89,9 @@ class PokemonRedGameStateParser(GameStateParser):
                 pop_queue.append(name)
         _pop(event_names, pop_queue)
         self.passed_badge_check_events = passed_badge_check_events
+        """Events related to passing badge checks. E.g. Passed Boulder badge check. These will only be relevant to enter Victory Road."""
         self.key_items_obtained_events = bidict()
+        """Events related to obtaining key items. E.g. Got Bicycle"""
         pop_queue = []
         for name, slot in event_names.items():
             if name.startswith("Got "):
@@ -92,6 +99,7 @@ class PokemonRedGameStateParser(GameStateParser):
                 pop_queue.append(name)
         _pop(event_names, pop_queue)
         self.map_events = {"Cinnabar Gym": bidict(), "Victory Road": bidict(), "Silph Co": bidict(), "Seafoam Islands": bidict()}
+        """Events related to specific map events like unlocking gates or moving boulders."""
         for name, slot in event_names.items():
             if name.startswith("Cinnabar Gym Gate") and name.endswith("Unlocked"):
                 self.map_events["Cinnabar Gym"][name] = slot
@@ -111,17 +119,18 @@ class PokemonRedGameStateParser(GameStateParser):
 
 
         self.special_events = bidict(event_names)
+        """ All other events not categorized elsewhere."""
 
 
         self.essential_map_locations = {
             v:i for i,v in enumerate([
                 40, 0, 12, 1, 13, 51, 2, 54, 14, 59, 60, 61, 15, 3, 65
             ])
-        }
+        } # TODO: Do I need this?
         MAP_PATH = parameters["pokemon_red_map_data_path"]
         with open(MAP_PATH) as map_data:
             MAP_DATA = json.load(map_data)["regions"]
-        self.MAP_DATA = {int(e["id"]): e for e in MAP_DATA}
+        self._MAP_DATA = {int(e["id"]): e for e in MAP_DATA}
         
     def local_to_global(self, r: int, c: int, map_n: int) -> tuple[int, int]:
         """
@@ -137,16 +146,16 @@ class PokemonRedGameStateParser(GameStateParser):
             (
                 map_x,
                 map_y,
-            ) = self.MAP_DATA[map_n]["coordinates"]
-            gy = r + map_y + self.MAP_ROW_OFFSET
-            gx = c + map_x + self.MAP_COL_OFFSET
-            if 0 <= gy < self.GLOBAL_MAP_SHAPE[0] and 0 <= gx < self.GLOBAL_MAP_SHAPE[1]:
+            ) = self._MAP_DATA[map_n]["coordinates"]
+            gy = r + map_y + self._MAP_ROW_OFFSET
+            gx = c + map_x + self._MAP_COL_OFFSET
+            if 0 <= gy < self._GLOBAL_MAP_SHAPE[0] and 0 <= gx < self._GLOBAL_MAP_SHAPE[1]:
                 return gy, gx
             print(f"coord out of bounds! global: ({gx}, {gy}) game: ({r}, {c}, {map_n})")
-            return self.GLOBAL_MAP_SHAPE[0] // 2, self.GLOBAL_MAP_SHAPE[1] // 2
+            return self._GLOBAL_MAP_SHAPE[0] // 2, self._GLOBAL_MAP_SHAPE[1] // 2
         except KeyError:
             print(f"Map id {map_n} not found in map_data.json.")
-            return self.GLOBAL_MAP_SHAPE[0] // 2, self.GLOBAL_MAP_SHAPE[1] // 2
+            return self._GLOBAL_MAP_SHAPE[0] // 2, self._GLOBAL_MAP_SHAPE[1] // 2
 
     def bit_count(self, bits: int) -> int:
         """
