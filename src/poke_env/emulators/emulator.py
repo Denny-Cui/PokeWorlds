@@ -58,6 +58,60 @@ class GameStateParser(ABC):
         """
         self.parsed_variables = {"done": False}
 
+    def get_current_frame(self):
+        """
+        Reads the pyboy screen and returns a full resolution numpy array
+        
+        Returns:
+            np.ndarray: The rendered image as a numpy array.
+        """
+        screen = self._pyboy.screen.ndarray[:,:,0:1]  # (144, 160, 3)
+        return screen
+    
+    def capture_square_centered(self, current_frame: np.ndarray, center_x: int, center_y: int, box_size: int) -> np.ndarray:
+        """
+        Captures a square region from the current frame centered at (center_x, center_y) with the given box size.
+        
+        Args:
+            current_frame (np.ndarray): The current frame from the emulator.
+            center_x (int): The x-coordinate of the center of the square.
+            center_y (int): The y-coordinate of the center of the square.
+            box_size (int): The size of the square box to capture.
+        
+        Returns:
+            np.ndarray: The captured square region.
+        """
+        half_box = box_size // 2
+        start_x = max(center_x - half_box, 0)
+        end_x = min(center_x + half_box, current_frame.shape[1])
+        start_y = max(center_y - half_box, 0)
+        end_y = min(center_y + half_box, current_frame.shape[0])
+        return current_frame[start_y:end_y, start_x:end_x, :]
+    
+    def draw_square_centered(self, current_frame: np.ndarray, center_x: int, center_y: int, box_size: int, color: tuple = (0, 0, 0), thickness: int = 1) -> np.ndarray:
+        """
+        Draws a square on the current frame centered at (center_x, center_y) with the given box size.
+        
+        Args:
+            current_frame (np.ndarray): The current frame from the emulator.
+            center_x (int): The x-coordinate of the center of the square.
+            center_y (int): The y-coordinate of the center of the square.
+            box_size (int): The size of the square box to draw.
+            color (tuple, optional): The color of the square in BGR format. Defaults to (255, 0, 0) (red).
+            thickness (int, optional): The thickness of the square border. Defaults to 1.
+        
+        Returns:
+            np.ndarray: The frame with the drawn square.
+        """
+        half_box = box_size // 2
+        start_x = max(center_x - half_box, 0)
+        end_x = min(center_x + half_box, current_frame.shape[1])
+        start_y = max(center_y - half_box, 0)
+        end_y = min(center_y + half_box, current_frame.shape[0])
+        frame_with_square = current_frame.copy()
+        cv2.rectangle(frame_with_square, (start_x, start_y), (end_x, end_y), color, thickness)
+        return frame_with_square
+
     @abstractmethod
     def parse_step(self):
         """
@@ -102,16 +156,16 @@ class Emulator(ABC):
             save_video (bool, optional): Whether to save video of the episodes. Defaults to None.            
             session_name (str, optional): Name of the session. If None, a new session name will be allocated. Defaults to None.        
         """
+        assert parameters is not None, "You must provide a parameters dictionary."
+        assert parameters != {}, "The parameters dictionary cannot be empty."
+        self._parameters = parameters
         assert gb_path is not None, "You must provide a path to the GameBoy ROM file."
         assert isinstance(game_state_parser_class, type) and issubclass(game_state_parser_class, GameStateParser), "You must provide a valid GameStateParser subclass."
         assert init_state is not None, "You must provide an initial state file to load."
-        assert parameters is not None, "You must provide a parameters dictionary."
-        assert parameters != {}, "The parameters dictionary cannot be empty."
         assert headless in [True, False], "headless must be a boolean."
         self._gb_path = gb_path
         self._set_init_state(init_state)
         # validate init_state exists and ends with .state
-        self._parameters = parameters
         if not os.path.exists(self._gb_path):
             log_error(f"GameBoy ROM file {self._gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {self._gb_path}", self._parameters)
         if not self._gb_path.endswith(".gb"):
