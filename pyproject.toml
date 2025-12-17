@@ -15,5 +15,6 @@ dependencies = [
     "pyboy==2.4.0",
     "pyyaml>=6.0.3",
     "scikit-image>=0.25.2",
+    "tqdm>=4.67.1",
     "wheel>=0.45.1",
 ]

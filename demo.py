@@ -11,7 +11,7 @@ def main(variant, init_state, play_mode):
     if play_mode == "human":
         env.human_play()
     else:
-        raise NotImplementedError("Only human play mode is implemented in this demo.")
+        env.random_play()
 
 if __name__ == "__main__":
     main()

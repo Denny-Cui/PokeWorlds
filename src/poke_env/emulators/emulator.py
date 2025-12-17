@@ -17,6 +17,7 @@ from pyboy.utils import WindowEvent
 from matplotlib import pyplot as plt
 from skimage.transform import downscale_local_mean
 import numpy as np
+from tqdm import tqdm
 
 
 class LowLevelActions(Enum):
@@ -31,14 +32,15 @@ class LowLevelActions(Enum):
     PRESS_BUTTON_B = WindowEvent.PRESS_BUTTON_B
     PRESS_BUTTON_START = WindowEvent.PRESS_BUTTON_START
     
+class ReleaseActions(Enum):
     release_actions = {
-        PRESS_ARROW_DOWN: WindowEvent.RELEASE_ARROW_DOWN,
-        PRESS_ARROW_LEFT: WindowEvent.RELEASE_ARROW_LEFT,
-        PRESS_ARROW_RIGHT: WindowEvent.RELEASE_ARROW_RIGHT,
-        PRESS_ARROW_UP: WindowEvent.RELEASE_ARROW_UP,
-        PRESS_BUTTON_A: WindowEvent.RELEASE_BUTTON_A,
-        PRESS_BUTTON_B: WindowEvent.RELEASE_BUTTON_B,
-        PRESS_BUTTON_START: WindowEvent.RELEASE_BUTTON_START}
+        LowLevelActions.PRESS_ARROW_DOWN: WindowEvent.RELEASE_ARROW_DOWN,
+        LowLevelActions.PRESS_ARROW_LEFT: WindowEvent.RELEASE_ARROW_LEFT,
+        LowLevelActions.PRESS_ARROW_RIGHT: WindowEvent.RELEASE_ARROW_RIGHT,
+        LowLevelActions.PRESS_ARROW_UP: WindowEvent.RELEASE_ARROW_UP,
+        LowLevelActions.PRESS_BUTTON_A: WindowEvent.RELEASE_BUTTON_A,
+        LowLevelActions.PRESS_BUTTON_B: WindowEvent.RELEASE_BUTTON_B,
+        LowLevelActions.PRESS_BUTTON_START: WindowEvent.RELEASE_BUTTON_START}
 
 
 class NamedScreenRegion:
@@ -718,7 +720,6 @@ class Emulator():
 
         if self.check_if_done():
             self.game_state_parser.parsed_variables["done"] = True
-        print(self.game_state_parser)
 
         self.step_count += 1
 
@@ -768,7 +769,7 @@ class Emulator():
                 frames.append(self.get_current_frame(reduce_res=False))
             if profile:
                 start_time = perf_counter()
-            self._pyboy.send_input(LowLevelActions.release_actions.value[action.value])
+            self._pyboy.send_input(ReleaseActions.release_actions.value[action])
             if profile:
                 mid_time = perf_counter()
             self._pyboy.tick(self.act_freq - press_step - 1, render_screen)
@@ -893,6 +894,25 @@ class Emulator():
         self.close()
         # wait for pyboy
         #sleep(1) TODO: See how to close properly in this setting. 
+
+    def random_play(self, max_steps: int = None):
+        """ 
+        Allows the emulator to play itself using random actions.
+        Args:
+            max_steps (int, optional): Maximum number of steps to play. Defaults to gameboy_hard_max_steps in configs.
+        """
+        if max_steps is None:
+            max_steps = self._parameters["gameboy_random_play_max_steps"]
+        log_info("Starting random play mode.", self._parameters)
+        self.reset()
+        pbar = tqdm(total=max_steps, desc="Random Play Steps")
+        while self.step_count < max_steps:
+            action = np.random.choice(list(LowLevelActions))
+            self.step(action)
+            pbar.update(1)
+        pbar.close()
+        self.close()
+        log_info("Random play mode ended.", self._parameters)
 
     def _dev_play(self, max_steps: int = None):
         """
