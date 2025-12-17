@@ -1,5 +1,5 @@
 """
-Pokemon Red specific emulator and game state parser implementations.
+Pokemon specific game state parser implementations for both PokemonRed and PokemonCrystal.
 While this code base started from: Borrowing heavily from https://github.com/PWhiddy/PokemonRedExperiments/ (v2) and was initially read from memory states https://github.com/thatguy11325/pokemonred_puffer/blob/main/pokemonred_puffer/global_map.py, this is no longer the case as we have moved to visual based state parsing.
 This decision was primarily made to facilitate easier extension to other games and rom hacks in the future, as well as to avoid reliance on specific memory addresses which may vary between different versions of the game.
 
@@ -8,19 +8,81 @@ However, the code base supports reading from memory addresses to extract game st
 See the MemoryBasedPokemonRedGameStateParser class for examples of how to read game state information from memory addresses.
 """
 
+from poke_env.utils import log_warn, log_info, log_error, load_parameters, verify_parameters
+from poke_env.emulators.emulator import Emulator, GameStateParser, NamedScreenRegion
 
-
-from poke_env.utils import log_warn, log_info, log_error, load_parameters
-from poke_env.emulators.emulator import Emulator, NamedScreenRegion
-from poke_env.emulators.pokemon_emulator import PokemonGameStateParser
-from abc import ABC
-from typing import Set
+from typing import Set, List, Type, Dict, Optional
 import os
+from abc import ABC, abstractmethod
+from pyboy import PyBoy
 
 import json
 import numpy as np
 from bidict import bidict
 
+class PokemonGameStateParser(GameStateParser, ABC):
+    """
+    Reads from memory addresses to form the state
+    """
+    def __init__(self, pyboy: PyBoy, parameters: dict, named_screen_regions: Optional[list[NamedScreenRegion]] = None):
+        """
+        Initializes the PokemonGameStateParser.
+        Args:
+            pyboy (PyBoy): The PyBoy emulator instance.
+            parameters (dict): Configuration parameters for the emulator.
+            named_screen_regions (Optional[list[NamedScreenRegion]]): List of named screen regions to monitor.
+        """
+        verify_parameters(parameters)
+        super().__init__(pyboy, parameters, named_screen_regions)
+
+    @abstractmethod
+    def is_in_dialogue(self) -> bool:
+        """
+        Determines if the player is currently in a dialogue state or reading text from a sign, interacting with an object etc.
+        Essentially anything that causes text to appear at the bottom of the screen that isn't a battle, pc or menu.
+
+        Returns:
+            bool: True if in dialogue, False otherwise.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_menu_open(self) -> bool:
+        """
+        Determines if the menu is currently open.
+
+        Returns:
+            bool: True if the menu is open, False otherwise.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_in_battle(self) -> bool:
+        """
+        Determines if the player is currently in a battle.
+
+        Returns:
+            bool: True if in battle, False otherwise.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_pokedex_open(self) -> bool:
+        """
+        Determines if the Pokedex is currently open.
+        Returns:
+            bool: True if the Pokedex is open, False otherwise.
+        """
+        # for pokemon Red, is at last entry if the screen does not change on a down input. Same for Crystal
+        raise NotImplementedError
+
+    def is_bag_open(self) -> bool:
+        """
+        Determines if the bag is currently open.
+        Returns:
+            bool: True if the bag is open, False otherwise.
+        """
+        raise NotImplementedError
 
 class BasePokemonRedGameStateParser(PokemonGameStateParser, ABC):
     """
@@ -30,6 +92,7 @@ class BasePokemonRedGameStateParser(PokemonGameStateParser, ABC):
     _REGIONS = [("dialogue_bottom_right", 151, 135, 10, 10), 
                 ("menu_top_right", 152, 1, 6, 6),
                 ]
+    base = "pokemon_red"
 
     def __init__(self, pyboy, variant, parameters):
         """
@@ -39,12 +102,18 @@ class BasePokemonRedGameStateParser(PokemonGameStateParser, ABC):
             pyboy: An instance of the PyBoy emulator.
             parameters: A dictionary of parameters for configuration.
         """
-        captures_dir = parameters[f"{variant}_rom_data_path"] + "/captures/"
+        verify_parameters(parameters)
+        self.variant = variant
+        if f"{variant}_rom_data_path" not in parameters:
+            log_error(f"ROM data path not found for variant: {variant}. Add {variant}_rom_data_path to the config files. See configs/pokemon_red_vars.yaml for an example", parameters)
+        self.rom_data_path = parameters[f"{variant}_rom_data_path"]
+        """ Path to the ROM data directory for the specific Pokemon variant."""
+        captures_dir = self.rom_data_path + "/captures/"
         regions = []
         for region_name, x, y, w, h in self._REGIONS:
             region = NamedScreenRegion(region_name, x, y, w, h, parameters=parameters, target_path=os.path.join(captures_dir, region_name))
             regions.append(region)
-        super().__init__(variant=variant, pyboy=pyboy, parameters=parameters, named_screen_regions=regions)
+        super().__init__(pyboy=pyboy, parameters=parameters, named_screen_regions=regions)
     
     def get_screen_top_left(self, current_frame: np.ndarray) -> np.ndarray:
         """
@@ -82,30 +151,16 @@ class BasePokemonRedGameStateParser(PokemonGameStateParser, ABC):
     def is_pokedex_open(self) -> bool:
         return False
     
-
+    def __repr__(self):
+        return f"PokemonRedBase(variant={self.variant})"
 
 class PokemonRedGameStateParser(BasePokemonRedGameStateParser):
     def __init__(self, pyboy, parameters):
         super().__init__(pyboy, variant="pokemon_red", parameters=parameters)
 
-    
-# TODO: What is this adding here.     
-class BasicPokemonRedEmulator(Emulator):
-    def __init__(self, parameters: dict = None, init_state=None, headless: bool = False, max_steps: int = None, save_video: bool = None, session_name: str = None, instance_id: str = None):
-        parameters = load_parameters(parameters)
-        if init_state is None:
-            init_state = parameters["pokemon_red_rom_data_path"] + "/states/default.state"
-        gb_path = parameters["pokemon_red_rom_data_path"] + "/PokemonRed.gb"
-        game_state_parser_class = PokemonRedGameStateParser
-        super().__init__(gb_path, game_state_parser_class, init_state, parameters, headless, max_steps, save_video, session_name, instance_id)
-    
-    def get_env_variant(self) -> str:
-        """        
-        Returns a string identifier for the particular environment variant being used.
-        
-        :return: string name identifier of the particular env e.g. PokemonRed
-        """
-        return "pokemon_red"
+class PokemonBrownGameStateParser(BasePokemonRedGameStateParser):
+    def __init__(self, pyboy, parameters):
+        super().__init__(pyboy, variant="pokemon_brown", parameters=parameters)
 
 
 """

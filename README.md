@@ -93,14 +93,14 @@ You may want to create your own initial states to start the emulation from.
 First, start with mGBA and save the game in the state you want to restore from. This will make a ROMNAME.sav file. Then run:
 
 ```bash
-python tests/gameboy/save_state.py
+python dev/gameboy/save_state.py
 ```
 
 This will save the state to `tmp.state`
 
 Alternatively, run the pyboy simulator with:
 ```bash 
-python tests/gameboy/dev.py
+python dev/dev_play.py
 ```
 
 This will run the game with the option to enter dev mode. If you want to save a particular state, go to [the gameboy configs](configs/gameboy_vars.yaml) *while* playing the game (at the state you want to save), change the `gameboy_dev_play_stop` parameter to `true` and then check the terminal. You will get a message with the possible dev actions. 
@@ -109,7 +109,14 @@ This will run the game with the option to enter dev mode. If you want to save a 
 * `c`: captures the screen in a particular [named region]() LINK TO DOCS at the current game frame (useful for creating reference images of particular states e.g. menu/pc open, dialogues that trigger on particular milestones or events etc.) WRITE A README WITH EXAMPLES ON BOTH OF THESE
 
 
-
+### Adding a new ROM Hack
+1. Create a `$variant_rom_data_path` parameter in the [configs](configs) (either as a new file or in an existing one, see [Pokémon Brown](configs/pokemon_brown_vars.yaml) for an example)
+2. Obtain the ROM hack and place it in the desired path under the [ROM data folder](rom_data). 
+3. Go to the [parsers](src/poke_env/emulators/pokemon/parsers.py) and add the required ROM hack. See the `PokemonBrownGameStateParser` as an example. 
+4. Go to the [registry](src/poke_env/emulators/pokemon/__init__.py) and add the ROM hack to `VARIANT_TO_GB_NAME`, `_VARIANT_TO_BASE_MAP`, `_VARIANT_TO_PARSER`
+5. Run `python dev/create_first_state.py --variant <variant_name>`. This will create a default state. You will not be able to run the `Emulator` on this ROM before doing this. 
+6. Run `python dev/dev_play.py` (with the [`gameboy_dev_play_stop` parameter](configs/gameboy_vars.yaml) set to `false`) and proceed through the game until you reach a satisfactory default starting state. Then, open the [config file](configs/gameboy_vars.yaml) and set `gameboy_dev_play_stop` to `true` and save the file. This will trigger a dev mode and ask you for a terminal input. Enter `s <rom_data_path>/states/default.state` and you will set that as the new default state.
+7. TODO: WALK THROUGH HOW TO DO SCREEN CAPTURES PROPERLY. 
 
 
 ## Citation

@@ -19,16 +19,6 @@ from skimage.transform import downscale_local_mean
 import numpy as np
 
 
-# TODO: Think about design for this.
-class GameInfo:
-    def __init__(self, parameters):
-        self.data = {}
-        self.parameters = parameters
-        
-    
-    def reset(self):
-        self.data = {}
-
 class LowLevelActions(Enum):
     """
     Enum for low-level actions that can be performed on the GameBoy emulator and their associated release actions.
@@ -433,13 +423,24 @@ class GameStateParser(ABC):
         return f"{start}\n{body}"
     
 
+# TODO: Think about design for this.
+class GameInfo(ABC):
+    def __init__(self, parameters):
+        self.data = {}
+        self.parameters = parameters        
+    
+    def reset(self):
+        self.data = {}
 
-class Emulator(ABC):
-    def __init__(self, gb_path: str, game_state_parser_class: Type[GameStateParser], init_state: str, parameters: dict, headless: bool = True, max_steps: int = None, save_video: bool = None, session_name: str = None, instance_id: str = None):
+
+
+class Emulator():
+    def __init__(self, name: str, gb_path: str, game_state_parser_class: Type[GameStateParser], init_state: str, parameters: dict, headless: bool = True, max_steps: int = None, save_video: bool = None, session_name: str = None, instance_id: str = None):
         """
         Start the GameBoy emulator with the given ROM file and initial state.
 
         Args:
+            name (str): Name of the emulator instance.
             gb_path (str): Path to the GameBoy ROM file.
             game_state_parser_class (Type[GameStateParser]): A class that inherits from GameStateParser to parse game state variables.
             init_state (str): Path to the initial state file to load.
@@ -451,17 +452,25 @@ class Emulator(ABC):
         """
         verify_parameters(parameters)
         self._parameters = parameters
-        assert gb_path is not None, "You must provide a path to the GameBoy ROM file."
-        assert isinstance(game_state_parser_class, type) and issubclass(game_state_parser_class, GameStateParser), "You must provide a valid GameStateParser subclass."
-        assert init_state is not None, "You must provide an initial state file to load."
-        assert headless in [True, False], "headless must be a boolean."
+        if name is None or name == "":
+            log_error("You must provide a name for the emulator instance.", self._parameters)
+        if gb_path is None:
+            log_error("You must provide a path to the GameBoy ROM file.", self._parameters)
+        if not issubclass(game_state_parser_class, GameStateParser):
+            log_error("game_state_parser_class must be a subclass of GameStateParser.", self._parameters)
+        if init_state is None:
+            log_error("You must provide an initial state file to load.", self._parameters)
+        if headless not in [True, False]:
+            log_error("headless must be a boolean.", self._parameters)
+        self.name = name
+        """ Name of the emulator (does not need to be unique across instances, e.g. 'PokemonRed'). """
         self._gb_path = gb_path
         self._set_init_state(init_state)
         # validate init_state exists and ends with .state
         if not os.path.exists(self._gb_path):
             log_error(f"GameBoy ROM file {self._gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {self._gb_path}", self._parameters)
-        if not self._gb_path.endswith(".gb"):
-            log_error(f"GameBoy ROM file {self._gb_path} is not a .gb file.", self._parameters)
+        if not self._gb_path.endswith(".gb") and not self._gb_path.endswith(".gbc"):
+            log_error(f"GameBoy ROM file {self._gb_path} is not a .gb or .gbc file.", self._parameters)
         self.headless = headless
         """ Whether to run the environment in headless mode."""
         if max_steps is None:
@@ -526,6 +535,32 @@ class Emulator(ABC):
             if not is_none_str(self._parameters["gameboy_headed_emulation_speed"]):
                 self._pyboy.set_emulation_speed(int(self._parameters["gameboy_headed_emulation_speed"]))        
             
+    @staticmethod
+    def create_first_state(gb_path, state_path):
+        """
+        Creates a basic state for the emulator. This can be used to create an initial, default state file for a new game.
+
+        Warning: This method uses parameter free logging, so if you override the log_file with a command prompt argument, it will be ignored here.
+        """
+        # error out if gb_path does not exist or is not a .gb or .gbc file
+        if not os.path.exists(gb_path):
+            log_error(f"GameBoy ROM file {gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {gb_path}")
+        if not gb_path.endswith(".gb") and not gb_path.endswith(".gbc"):
+            log_error(f"GameBoy ROM file {gb_path} is not a .gb or .gbc file.")
+        if not state_path.endswith(".state"):
+            state_path = state_path + ".state"
+        if os.path.exists(state_path):
+            log_error(f"State file {state_path} already exists. Will not overwrite...")
+        file_makedir(state_path)
+        pyboy = PyBoy(
+            gb_path,
+            window="null",
+        )
+        with open(state_path, "wb") as f:
+            pyboy.save_state(f)
+        pyboy.stop()
+        log_info(f"Created initial state file at {state_path}")
+    
     def _allocate_new_session_name(self) -> str:
         """
         Allocates a new session name based on existing sessions in the session directory.
@@ -1075,14 +1110,13 @@ class Emulator(ABC):
             os.remove(save_destination)
         sys.exit(0)
             
-    @abstractmethod
     def get_env_variant(self) -> str:
         """        
         Returns a string identifier for the particular environment variant being used.
         
         :return: string name identifier of the particular env e.g. PokemonRed
         """
-        raise NotImplementedError
+        return self.name
     
 
 def bytes_to_padded_hex_string(integer_value):

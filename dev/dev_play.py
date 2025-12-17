@@ -7,7 +7,7 @@ import click
 @click.option("--init_state", type=str, default=None, help="Name of the initial state file")
 def main(variant, init_state):
     env = get_pokemon_emulator(variant=variant, init_state_name=init_state, headless=False)
-    env.human_play()
+    env._dev_play()
 
 if __name__ == "__main__":
     main()
