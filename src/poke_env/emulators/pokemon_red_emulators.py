@@ -647,10 +647,6 @@ class PokemonRedGameStateParser(GameStateParser):
         #self._pyboy.memory[0xD8C4] = 0
         
 
-
-
-    
-
     
     
 class BasicPokemonRedEmulator(Emulator):

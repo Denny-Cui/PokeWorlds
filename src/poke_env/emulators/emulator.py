@@ -1,6 +1,6 @@
 from enum import Enum
 from abc import ABC, abstractmethod
-from typing import Type
+from typing import Type, Optional
 
 
 import os
@@ -614,24 +614,32 @@ class Emulator(ABC):
             self._pyboy.save_state(f)
         log_info(f"Saved state to {state_path}", self._parameters)
 
-    def _sav_to_state(self, save_path: str):
+    def _sav_to_state(self, sav_file: Optional[str], state_file: str):
         """
         Loads a .sav file into the emulator and saves the corresponding .state file. 
         Use this if you want to manually create .sav files and convert them to .state files for use as initial states.
 
         Args:
-            save_path (str): Path to save the .state file
-        Expects there to be a .sav file with the same path+name as the self.gb_path (but with .sav extension).
+            save_file (str or None): Path to the .sav file to load. If None, looks for a .sav file in the same directory as the ROM with the same base name.
+            state_file (str): Path to save the .state file
         """
         log_info("Trying to find .sav file and convert to .state file. This is a breaking operation, so the program will terminate after its completion.", self._parameters)
-        expected_sav = self._gb_path.replace(".gb", ".sav")
+        if sav_file is not None:
+            expected_sav = sav_file
+        else:
+            expected_sav = self._gb_path.replace(".gb", ".sav")
         if not os.path.exists(expected_sav):
             log_error(f"Expected .sav file at {expected_sav} to convert to .state file, but it does not exist.", self._parameters)
-        if save_path is None or save_path == "":
-            log_error("You must provide a save_path to save the .state file.", self._parameters)
-        file_makedir(save_path)
-        # copy the .sav file to a .gb.ram file
-        shutil.copyfile(expected_sav, expected_sav.replace(".sav", ".gb.ram"))
+        if state_file is None or state_file == "":
+            log_error("You must provide a state_file to save the .state file.", self._parameters)
+        if not state_file.endswith(".state"):
+            state_file = state_file + ".state"
+        if os.path.exists(state_file):
+            log_error(f"state_file {state_file} already exists. Please provide a new path to avoid overwriting.", self._parameters)
+        file_makedir(state_file)
+        # copy the .sav file to self._gb_path.gb.ram file
+        save_destination = self._gb_path.replace(".gb", ".gb.ram")
+        shutil.copyfile(expected_sav, save_destination)
         self.close()
         self._pyboy = PyBoy(
             self._gb_path,
@@ -645,9 +653,12 @@ class Emulator(ABC):
         self._pyboy.tick(1000, False) # wait for file select
         self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=True) # press A to confirm load
         self._pyboy.tick(5000, False) # wait for game to load
-        self.save_state(save_path)
+        self.save_state(state_file)
         self._pyboy.stop(save=False)
-        log_info("Exiting now to avoid issues.", self._parameters)
+        log_info("State saved successfully. Exiting now to avoid issues ...", self._parameters)
+        # remove the .gb.ram file
+        if os.path.exists(save_destination):
+            os.remove(save_destination)
         sys.exit(0)
             
     @abstractmethod
