@@ -120,8 +120,8 @@ class NamedScreenRegion:
         Compares the given reference image to the target image using Absolute Error (AE).
         Args:
             reference (np.ndarray): The reference image to compare.
-            strict_shape (bool, optional): Whether to error out if the array shapes do not match. Defaults to True.
-            epsilon (float, optional): The threshold for considering a match. Defaults to 0.01.
+            strict_shape (bool, optional): Whether to error out if the array shapes do not match. 
+            epsilon (float, optional): The threshold for considering a match. 
         Returns:
             bool: True if the MSE is below the epsilon threshold, False otherwise.
         """
@@ -315,8 +315,8 @@ class GameStateParser(ABC):
             start_y (int): The starting y-coordinate of the rectangle.
             width (int): The width of the rectangle.
             height (int): The height of the rectangle.
-            color (tuple, optional): The color of the rectangle in BGR format. Defaults to (255, 0, 0) (red).
-            thickness (int, optional): The thickness of the rectangle border. Defaults to 1.
+            color (tuple, optional): The color of the rectangle in BGR format.
+            thickness (int, optional): The thickness of the rectangle border. 
 
         Returns:
             np.ndarray: The frame with the drawn rectangle.
@@ -341,8 +341,8 @@ class GameStateParser(ABC):
             center_x (int): The x-coordinate of the center of the square.
             center_y (int): The y-coordinate of the center of the square.
             box_size (int): The size of the square box to draw.
-            color (tuple, optional): The color of the square in BGR format. Defaults to (255, 0, 0) (red).
-            thickness (int, optional): The thickness of the square border. Defaults to 1.
+            color (tuple, optional): The color of the square in BGR format. 
+            thickness (int, optional): The thickness of the square border.
         
         Returns:
             np.ndarray: The frame with the drawn square.
@@ -373,6 +373,22 @@ class GameStateParser(ABC):
         x, y, w, h = region.start_x, region.start_y, region.width, region.height
         return self.capture_box(current_frame, x, y, w, h)
     
+    def named_region_matches_target(self, current_frame: np.ndarray, name: str) -> bool:
+        """
+        Compares a named region from the current frame to its target image using Absolute Error (AE).
+
+        Args:
+            current_frame (np.ndarray): The current frame from the emulator.
+            name (str): The name of the region to compare.
+        Returns:
+            bool: True if the region matches the target image, False otherwise.
+        """
+        if name not in self.named_screen_regions:
+            log_error(f"Named screen region {name} not found.", self._parameters)
+        region = self.named_screen_regions[name]
+        captured_region = self.capture_named_region(current_frame, name)
+        return region.matches_target(captured_region)
+
     def draw_named_region(self, current_frame: np.ndarray, name: str, color: tuple = (0, 0, 0), thickness: int = 1) -> np.ndarray:
         """
         Draws a named region on the current frame.
@@ -380,8 +396,8 @@ class GameStateParser(ABC):
         Args:
             current_frame (np.ndarray): The current frame from the emulator.
             name (str): The name of the region to draw.
-            color (tuple, optional): The color of the rectangle in BGR format. Defaults to (255, 0, 0) (red).
-            thickness (int, optional): The thickness of the rectangle border. Defaults to 1.
+            color (tuple, optional): The color of the rectangle in BGR format. 
+            thickness (int, optional): The thickness of the rectangle border.
 
         Returns:
             np.ndarray: The frame with the drawn rectangle.
@@ -391,14 +407,13 @@ class GameStateParser(ABC):
         region = self.named_screen_regions[name]
         x, y, w, h = region.start_x, region.start_y, region.width, region.height
         return self.draw_box(current_frame, x, y, w, h, color, thickness)
-
     
     def draw_grid_overlay(self, current_frame: np.ndarray, grid_skip: int=20) -> np.ndarray:
         """
         Draws a grid overlay on the current frame for easier region identification.
         Args:
             current_frame (np.ndarray): The current frame from the emulator.
-            grid_skip (int, optional): The number of pixels between grid lines. Defaults to 20.
+            grid_skip (int, optional): The number of pixels between grid lines. 
         Returns:
             np.ndarray: The frame with the grid overlay.            
         """
@@ -445,10 +460,10 @@ class Emulator():
             game_state_parser_class (Type[GameStateParser]): A class that inherits from GameStateParser to parse game state variables.
             init_state (str): Path to the initial state file to load.
             parameters (dict): Dictionary of parameters for the environment.
-            headless (bool, optional): Whether to run the environment in headless mode. Defaults to True.
-            max_steps (int, optional): Maximum number of steps per episode. Defaults to None.
-            save_video (bool, optional): Whether to save video of the episodes. Defaults to None.            
-            session_name (str, optional): Name of the session. If None, a new session name will be allocated. Defaults to None.        
+            headless (bool, optional): Whether to run the environment in headless mode. 
+            max_steps (int, optional): Maximum number of steps per episode. 
+            save_video (bool, optional): Whether to save video of the episodes.          
+            session_name (str, optional): Name of the session. If None, a new session name will be allocated.   
         """
         verify_parameters(parameters)
         self._parameters = parameters
@@ -642,11 +657,8 @@ class Emulator():
         Resets the environment to the initial state. Optionally loads a new initial state file and sets a random seed.
 
         Args:
-            new_init_state (str, optional): Path to a new initial state file to load. Defaults to None.
-            seed (int, optional): Sets a random seed for the environment. Defaults to None. TODO: implement seeding.
-
-        Returns:
-            _type_: _description_
+            new_init_state (str, optional): Path to a new initial state file to load. 
+            seed (int, optional): Sets a random seed for the environment. TODO: implement seeding.
         """
         self.seed = seed # TODO: implement seeding
         # validate the new_init_state if provided
@@ -728,8 +740,8 @@ class Emulator():
 
         Args:
             action (LowLevelActions): Lowest level action to perform on the emulator.
-            profile (bool, optional): Whether to profile the action execution time. Defaults to False.
-            render (bool, optional): Whether to render the emulator screen during action execution. Defaults to None.
+            profile (bool, optional): Whether to profile the action execution time. 
+            render (bool, optional): Whether to render the emulator screen during action execution. 
         Returns:
             Optional[np.ndarray]: The stack of frames that passed while performing the action, if rendering is enabled. Is of shape [n_frames (variable perhaps idk), height, width, channels]. Otherwise, None.
         """
@@ -798,7 +810,7 @@ class Emulator():
         """ 
         Starts recording video of the emulator's screen.
         Args:
-            video_id (str, optional): Name of the video file to save. If None, a new unique name will be generated. Defaults to None.
+            video_id (str, optional): Name of the video file to save. If None, a new unique name will be generated. 
         """
         if video_id is not None:
             if not isinstance(video_id, str):

@@ -76,7 +76,7 @@ By default, this project assumes that you can store emulator outputs (logs, scre
 
 Check that setup is fine by running:
 ```bash
-python tests/demo.py
+python demo.py
 ```
 This should open up a GameBoy window where you can play the Pokemon Red game. 
 
