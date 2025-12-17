@@ -90,12 +90,13 @@ This should open up a GameBoy window where you can play the Pokemon Red game.
 ## Development
 You may want to create your own initial states to start the emulation from. 
 
-First, start with mGBA and save the game. This will make a ROMNAME.sav file. Then run:
+First, start with mGBA and save the game in the state you want to restore from. This will make a ROMNAME.sav file. Then run:
 
 ```bash
-python tests/gameboy/save_state.py --sav_file <None/path_to_.sav> --state_file /path/to/state.state
+python tests/gameboy/save_state.py
 ```
 
+This will save the state to `tmp.state`
 
 
 
