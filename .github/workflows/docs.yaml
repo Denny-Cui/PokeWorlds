@@ -38,7 +38,6 @@ jobs:
       # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
       - run: |
           mkdir -p docs/assets
-          ls 
           cp assets/blackicon.png docs/assets/
           pdoc src/poke_env -o docs -d google -n --logo "assets/blackicon.png"
 
