@@ -1,14 +1,15 @@
 <p align="center">
   <picture>
-    <img alt="Pokémon Environments" src="assets/blackicon.png"   width="500" height="400" style="max-width: 100%;">
+    <img alt="Pokémon Environments" src="assets/logo_tilt.png" width="350px" style="max-width: 100%;">
   </picture>
-  <br/>
-  <br/>
+  <center>
+
+  **Building Intelligent and General Pokémon Agents**
+
+  </center>
 </p>
 
-<h2 align="center">
-    <p>Gym Environments and Testbeds for Pokémon</p>
-</h2>
+
 
 <p align="center">
     <a href="https://github.com/DhananjayAshok/PokemonEnvironments/blob/main/LICENSE" target="_blank" rel="noopener noreferrer"><img alt="GitHub" src="https://img.shields.io/badge/license-MIT-blue"></a>
@@ -17,10 +18,42 @@
 </p>
 
 
+<img src="assets/logo.png" width="70px"> is an AI research framework for training and evaluating generally capable agents in the world of Pokémon, complete with flexible Python simulators and unified environment wrappers around Gen I and Gen II Pokémon games. 
 
-This repo is under development
 
-## Installation
+Challenge your agents to explore, build general skills and master one of the most iconic game universes ever created.
+
+# Core Features
+
+**Lightweight Environment Parsing:**
+We provides simple mechanisms to determine the basic state of the agent and identify specific event triggers that occur in the game, allowing one to form descriptive state spaces and track a broad range of metrics over playthroughs. 
+
+**Abstracted Action Space and Low Level Controllers:**
+While all Pokémon games can be played with joystick inputs and a few buttons, not all inputs are meaningful at all times (e.g. when in dialogue, the agent cannot perform any action until the conversation is complete, temporarily reducing the meaningful action space to a single button.)
+
+
+Another major hurdle to progress is the difficulty of learning how abstract actions (e.g. "Use the Flamethrower attack") correspond to low level game console inputs (e.g. Click 'B' until you are in the 'Battle' Menu, navigate to the 'Fight' button in the menu with the arrow keys and click 'A', then navigate to 'Flamethrower' with the arrow keys and finally click 'A'.)
+
+<img src="assets/logo.png" width="70"> allows language-capable agents to play the game without any awareness of the buttons, and perform actions purely by verbalising its intent (e.g. "Open the bag"). Our low-level controllers then process the request and convert it into the required sequence of button inputs, providing a layer of abstraction. 
+
+
+**General and "Unleaked" Test Environments:**
+<img src="assets/logo.png" width="70"> not only supports classic titles like PokémonRed and PokémonCrystal, but also includes multiple fan-made variants such as [PokémonPrism](https://rainbowdevs.com/title/prism/), that place the agent in completely new regions, sometimes with  fan-made Pokémon ([Fakémon](https://en.wikipedia.org/wiki/Fakemon)). The research value of these fan-made games is considerable:
+
+* Fan-made games are an ideal environment to test the *generalization* capabilities of an agent trained in the original games. To perform well in these unseen environments, agents must learn transferrable skills like battle competence and maze navigation, as opposed to memorizing the solutions to the original games.
+* Unlike the original Pokémon games, fan-made games are scarcely documented and so models trained on internet-scale corpora (e.g. Large Language Models) are unlikely to have already acquired a rich base of knowledge regarding the game areas or particular Fakémon. While good performance in PokémonRed may be a result of the backbone model's data being contaminated with walkthroughs and internet guides, the same concern is far less valid for more obscure fan-made games.
+
+# Table of Contents
+
+- [Installation](#Installation)
+- [Quickstart](#Quickstart)
+- [Developer Tools](#Development)
+  - [Custom Starting States](#I-want-to-create-my-own-starting-states)
+  - [Adding New ROMs](#I-want-to-add-a-new-ROM-Hack)
+  - [Reward or State Space Engineering](#Custom-Reward-or-State)
+- [Our Paper](#Check-Out-Our-Paper)
+
+# Installation
 
 The installation consists of four steps:
 1. Environment Setup
@@ -28,7 +61,7 @@ The installation consists of four steps:
 3. (Optional) Storage Directory Configuration
 4. Final test
 
-#### Environment Setup
+## Environment Setup
 Create and activate a virtual environment with [uv](https://docs.astral.sh/uv/), a fast Rust-based Python package and project manager.
 
 ```bash
@@ -53,7 +86,7 @@ uv pip install -e .
 ```
 
 You can now `import poke_env` from anywhere.
-#### ROM Setup
+## ROM Setup
 
 Next, you must legally acquire ROMs for Pokémon from Nintendo (perhaps by dumping the ROM file from your own catridge). We discourage any attempts to use this repository with unofficialy downloaded ROMs. The following base game ROMs are supported by this repository:
 * Pokémon Red (save as `PokemonRed.gb`)
@@ -69,10 +102,10 @@ Once you have a ROM (`.gb` or `.gbc` file), place it in the appropriate path. Fo
 
 
 
-#### Storage Directory Configuration
+## Storage Directory Configuration
 By default, this project assumes that you can store emulator outputs (logs, screenshots, video captures etc.) in the `storage` folder under the root directory of the project. If you wish to set a different location for storage, edit the appropriate configuration setting in the [config file](configs/private_vars.yaml).
 
-#### Test
+## Test
 
 Check that setup is fine by running:
 ```bash
@@ -86,13 +119,11 @@ python demo.py --play_mode random
 ```
 
 
-## Quickstart
+# Quickstart
 
 
-## Core Features
 
-
-## Development
+# Development
 This section goes into details on how you would implement new features in this repo. 
 
 ### I want to create my own starting states
@@ -181,12 +212,14 @@ You'll get a message letting you know what's left. You can finish them all off n
 
 Using this process I'm able to set up all but one capture in [under 10 minutes](https://drive.google.com/file/d/1KkZZe3ON-0EWiBs_EhrAHc9D7lsQmCxW/view?usp=sharing) (the video cuts off with only `pokedex_info_height_text` unassigned because it needs to be manually repositioned as an override region). 
 
-### I want to deepen the state / observation space or give a precise reward
-Perhaps you want to engineer the system a little more, like [the initial creators of this framework](https://www.youtube.com/watch?v=DcYLT37ImBY&feature=youtu.be) did. This repo tries to avoid reliance on reading from memory states etc., but certainly supports it at a deep level. See the [memory reader](src/poke_env/emulators/pokemon/parsers.py) state parser to get a sense of how you should go about this. 
+### Custom Rewards or States
+
+
+Perhaps you want to I want to deepen the state / observation space or give a precise reward. It's absolutely possible to engineer the system a little more, like [the initial creators of this framework](https://www.youtube.com/watch?v=DcYLT37ImBY&feature=youtu.be) did. This repo tries to avoid reliance on reading from memory states etc., but supports it at a deep level. See the [memory reader](src/poke_env/emulators/pokemon/parsers.py) state parser to get a sense of how you should go about this. 
 
 
 
-## Citation
+# Citation
 
 ```bibtex
 ```
