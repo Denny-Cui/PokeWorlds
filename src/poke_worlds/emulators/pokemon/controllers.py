@@ -20,7 +20,6 @@ class PokemonController:
     # Try to Buy x Items
     # 
     pass
-    # TODO: See if you can find a way to draw the local coordinate system on your map. To help the VLM specify pathfinding coordinates. 
 """
 Action Spaces: 
 Open World, No Window open:

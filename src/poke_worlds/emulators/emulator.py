@@ -580,7 +580,7 @@ class Emulator():
         self.step_count = 0
         """ Number of steps taken in the current episode. """
         self._reduce_video_resolution = parameters["gameboy_reduce_video_resolution"]
-        pokemon_frame_size = (160, 144) # TODO: confirm this is universal if you want other GB games. 
+        pokemon_frame_size = (160, 144) # Confirm this is universal if you want other GB games. 
         if self._reduce_video_resolution:
             self.output_shape = (pokemon_frame_size[0]//2, pokemon_frame_size[1]//2)
         else:
@@ -796,7 +796,7 @@ class Emulator():
 
         self.step_count += 1
         self.state_tracker.step()
-        return self.check_if_done()
+        return frames, self.check_if_done()
 
     def get_state_parser(self) -> StateParser:
         """
@@ -807,7 +807,7 @@ class Emulator():
         """
         return self.state_parser
 
-    def run_action_on_emulator(self, action: LowLevelActions = None, profile: bool = False, render: bool = None) -> Optional[np.ndarray]:
+    def run_action_on_emulator(self, action: LowLevelActions = None, profile: bool = False, render: bool = True) -> Optional[np.ndarray]:
         """ 
         
         Performs the given action on the emulator by pressing and releasing the corresponding button.
@@ -817,7 +817,7 @@ class Emulator():
             profile (bool, optional): Whether to profile the action execution time. 
             render (bool, optional): Whether to render the emulator screen during action execution. 
         Returns:
-            Optional[np.ndarray]: The stack of frames that passed while performing the action, if rendering is enabled. Is of shape [n_frames (variable perhaps idk), height, width, channels]. Otherwise, None.
+            Optional[np.ndarray]: The stack of frames that passed while performing the action, if rendering is enabled. Is of shape [n_frames (3 right now), height, width, channels]. Otherwise, None.
         """
         #log_info(f"Running action: {action}", self.parameters)        
         frames = None
@@ -854,7 +854,7 @@ class Emulator():
             self._pyboy.tick(1, True)
             if render:
                 frames.append(self.get_current_frame(reduce_res=False))
-                frames = np.concatenate(frames, axis=2)  # concatenate along channel axis TODO: check this
+                frames = np.stack(frames, axis=0)
         else:
             log_warn("No action provided to run_action_on_emulator. Skipping action. You probably should only ever use this in debugging mode. Idk maybe wait is a command.", self._parameters)
             self._pyboy.tick(self.act_freq, True)
@@ -976,7 +976,7 @@ class Emulator():
         pbar = tqdm(total=max_steps, desc="Random Play Steps")
         while self.step_count < max_steps:
             action = np.random.choice(list(LowLevelActions))
-            done = self.step(action)
+            frames, done = self.step(action)
             pbar.update(1)
             if done:
                 break
@@ -1174,11 +1174,11 @@ class Emulator():
         )
         self._pyboy.set_emulation_speed(0)
         self._pyboy.tick(10000, False) # get to opening menu
-        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=True) # press A to get past opening menu
+        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=False) # press A to get past opening menu
         self._pyboy.tick(1000, False) # wait for load
-        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=True) # press A to load game
+        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=False) # press A to load game
         self._pyboy.tick(1000, False) # wait for file select
-        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=True) # press A to confirm load
+        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=False) # press A to confirm load
         self._pyboy.tick(5000, False) # wait for game to load
         self.save_state(state_file)
         self._pyboy.stop(save=False)
