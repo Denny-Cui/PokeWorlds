@@ -83,7 +83,7 @@ uv pip install -e .
 You can now `import poke_worlds` from anywhere.
 ## ROM Setup
 
-Next, you must legally acquire ROMs for Pokémon from Nintendo (perhaps by dumping the ROM file from your own catridge). We discourage any attempts to use this repository with unofficialy downloaded ROMs. The following base game ROMs are supported by this repository:
+Next, you must legally acquire ROMs for Pokémon from Nintendo (perhaps by dumping the ROM file from your own catridge). Despite how easy they are to obtain, we discourage any attempts to use this repository with unofficialy downloaded ROMs. The following base game ROMs are supported by this repository:
 * Pokémon Red (save as `PokemonRed.gb`)
 * Pokémon Crystal (save as `PokemonCrystal.gbc`)
 
