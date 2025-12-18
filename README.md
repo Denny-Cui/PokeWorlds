@@ -151,7 +151,7 @@ You will know that you have filled out all required regions when you can run `py
 **Setup Speedrun Guide:**
 I've documented the fastest workflow I have found to capturing all the screens for a ROM properly. 
 
-Start by just playing through the game and establishing save states for the following:
+Start by just playing through the game (super high `gameboy_headed_emulation_speed`) and establishing save states for the following:
 1. `initial`: Right out of the intro screen with options set to fastest / least animation
 2. `starter`: Right before the player needs to make a choice of starter
 3. `pokedex`: Not too long after the player obtains the Pokedex, but anywhere you like. 
