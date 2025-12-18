@@ -6,8 +6,8 @@ This decision was primarily made to facilitate easier extension to other games a
 However, the code base supports reading from memory addresses to extract game state information, which can be useful for incorporating domain knowledge into reward structures or other aspects of the environment. See the MemoryBasedPokemonRedStateParser class for examples of how to read game state information from memory addresses.
 """
 
-from poke_env.utils import log_warn, log_info, log_error, load_parameters, verify_parameters
-from poke_env.emulators.emulator import StateParser, NamedScreenRegion
+from poke_worlds.utils import log_warn, log_info, log_error, load_parameters, verify_parameters
+from poke_worlds.emulators.emulator import StateParser, NamedScreenRegion
 
 from typing import Set, List, Type, Dict, Optional, Tuple
 import os

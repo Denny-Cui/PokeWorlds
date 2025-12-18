@@ -1,6 +1,6 @@
 import os
 import yaml
-from poke_env.utils.fundamental import get_logger
+from poke_worlds.utils.fundamental import get_logger
 
 
 def load_yaml(yaml_path: str) -> dict:

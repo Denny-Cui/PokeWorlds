@@ -1,7 +1,7 @@
-from poke_env.utils import load_parameters, log_error, verify_parameters
-from poke_env.emulators.emulator import Emulator
-from poke_env.emulators.pokemon.parsers import PokemonRedStateParser, PokemonBrownStateParser, PokemonCrystalStateParser, PokemonStarBeastsStateParser, PokemonPrismStateParser, PokemonFoolsGoldStateParser
-from poke_env.emulators.pokemon.trackers import EmptyTracker
+from poke_worlds.utils import load_parameters, log_error, verify_parameters
+from poke_worlds.emulators.emulator import Emulator
+from poke_worlds.emulators.pokemon.parsers import PokemonRedStateParser, PokemonBrownStateParser, PokemonCrystalStateParser, PokemonStarBeastsStateParser, PokemonPrismStateParser, PokemonFoolsGoldStateParser
+from poke_worlds.emulators.pokemon.trackers import EmptyTracker
 from typing import Optional
 
 VARIANT_TO_GB_NAME = {

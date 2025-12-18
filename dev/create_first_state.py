@@ -1,7 +1,7 @@
-from poke_env.emulators.emulator import Emulator
-from poke_env import AVAILABLE_POKEMON_VARIANTS
-from poke_env.emulators.pokemon import VARIANT_TO_GB_NAME
-from poke_env.utils import load_parameters, log_error
+from poke_worlds.emulators.emulator import Emulator
+from poke_worlds import AVAILABLE_POKEMON_VARIANTS
+from poke_worlds.emulators.pokemon import VARIANT_TO_GB_NAME
+from poke_worlds.utils import load_parameters, log_error
 import click
 
 @click.command()

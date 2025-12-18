@@ -618,7 +618,7 @@ wheels = [
 ]
 
 [[package]]
-name = "pokemon-gba-env"
+name = "poke-worlds"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

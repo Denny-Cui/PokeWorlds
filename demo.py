@@ -1,4 +1,4 @@
-from poke_env import get_pokemon_emulator, AVAILABLE_POKEMON_VARIANTS
+from poke_worlds import get_pokemon_emulator, AVAILABLE_POKEMON_VARIANTS
 import click
 
 

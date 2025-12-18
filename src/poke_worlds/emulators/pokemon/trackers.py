@@ -1,6 +1,6 @@
-from poke_env.utils import log_info
-from poke_env.emulators.emulator import StateTracker, StateParser
-from poke_env.emulators.pokemon.parsers import PokemonStateParser
+from poke_worlds.utils import log_info
+from poke_worlds.emulators.emulator import StateTracker, StateParser
+from poke_worlds.emulators.pokemon.parsers import PokemonStateParser
 
 class EmptyTracker(StateTracker):
     """ A tracker that does nothing. Used as a placeholder and for debugging. """

@@ -1,7 +1,7 @@
 [project]
-name = "pokemon-gba-env"
+name = "poke-worlds"
 version = "0.1.0"
-description = "A wrapper with emulation, state parsing and low-level control modules for Pokemon Red"
+description = "Emulation, state parsing, low-level control and Gym environments for Gen I and Gen II Pokémon games"
 readme = "README.md"
 requires-python = ">=3.12.2"
 dependencies = [

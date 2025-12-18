@@ -8,7 +8,7 @@ from time import perf_counter
 import sys
 import shutil
 import uuid
-from poke_env.utils import load_parameters, log_error, log_warn, file_makedir, log_info, is_none_str, nested_dict_to_str, verify_parameters
+from poke_worlds.utils import load_parameters, log_error, log_warn, file_makedir, log_info, is_none_str, nested_dict_to_str, verify_parameters
 
 
 import cv2
