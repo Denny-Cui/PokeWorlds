@@ -1,5 +1,5 @@
 """
-Documentation for the ![PokéWorlds](assets/logo.png) package. 
+Documentation for the ![PokéWorlds](https://dhananjayashok.github.io/PokeWorlds/assets/logo_tilt.png) package. 
 
 ### Navigating the Documentation
 This page and some of the nested links will look a bit empty, but rest assured, the documentation is there. You just need to look for it a little. 
