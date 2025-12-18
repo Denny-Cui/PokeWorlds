@@ -93,28 +93,39 @@ python demo.py --play_mode random
 
 
 ## Development
-You may want to create your own initial states to start the emulation from. 
+This section goes into details on how you would implement new features in this repo. 
 
-First, start with mGBA and save the game in the state you want to restore from. This will make a ROMNAME.sav file. Then run:
+### I want to create my own starting states
+Easy. The only question is whether you want to save an mGBA state (perhaps you use cheats to lazily put the agent in a very specific state) or save a PyBoy state directly (i.e. you start from an existing state and play to the new state).
+
+**From mGBA state:**
+
+First, start with mGBA and save the game (go to the start menu and save) in the state you want to restore from. This will make a `variant_ROMNAME.sav` file in the same directory as the rom (which should be in rom_data/variant/). Then run:
 
 ```bash
-python dev/gameboy/save_state.py
+python dev/save_state.py --variant <variant> --state_name <name>
 ```
 
-This will save the state to `tmp.state`
+This will save the state to `rom_data/<variant>/states/name.state` and allows you to load it by specifying it as a state name. 
 
-Alternatively, run the pyboy simulator with:
+
+To get to the state from PyBoy, first make sure the `gameboy_dev_play_stop` parameter is [configured](configs/gameboy_vars.yaml) to `false`. Then, run:
 ```bash 
-python dev/dev_play.py
+python dev/dev_play.py --variant <variant> --init_state <optional_starting_state>
 ```
 
-This will run the game with the option to enter dev mode. If you want to save a particular state, go to [the gameboy configs](configs/gameboy_vars.yaml) *while* playing the game (at the state you want to save), change the `gameboy_dev_play_stop` parameter to `true` and then check the terminal. You will get a message with the possible dev actions. 
+This will run the game with the option to enter dev mode. Play the game like you usually would, until you reach the state you want to save. Then, go to [the gameboy configs](configs/gameboy_vars.yaml) *while* playing the game (at the state you want to save), change the `gameboy_dev_play_stop` parameter to `true` (save the configs file) and then check the terminal. You will get a message with the possible dev actions. The one you're looking for is `s <name>`, which saves the state.
 
-* `s`: saves the state (useful for creating fixed starting points)
-* `c`: captures the screen in a particular [named region](src/poke_env/emulators/emulator.py) at the current game frame (useful for creating reference images of particular states e.g. menu/pc open, dialogues that trigger on particular milestones or events etc.) WRITE A README WITH EXAMPLES ON BOTH OF THESE
+Regardless of how you did it, you can test that your state save worked with:
+```bash
+python demo.py --variant <variant> --init_state <name>
+```
 
+### I want to add a new ROM Hack
+Setting up a new ROM Hack is an easy process that doesn't take more than 10 minutes once you've understood how. Please do reach out to me if you have any questions, and we can work to merge the new ROM into the repo together. 
 
-### Adding a new ROM Hack
+**Initial Steps:**
+
 0. Set the repo to `debug` mode by editing the [config file](configs/project_vars.yaml)
 1. Create a `$variant_rom_data_path` parameter in the [configs](configs) (either as a new file or in an existing one, see [Pokémon Brown](configs/pokemon_brown_vars.yaml) for an example)
 2. Obtain the ROM hack and place it in the desired path under the [ROM data folder](rom_data). 
@@ -125,7 +136,7 @@ This will run the game with the option to enter dev mode. If you want to save a 
 
 I have provided an [example](https://drive.google.com/file/d/1fsMjkOjpbyeLLNxP3JVaj6uVXycwSAVC/view?usp=sharing) video for this process.
 
-#### Capturing Screens
+**Capturing Screens:**
 The above steps will let you play the game in `debug` mode, but to properly set it up, you need to sync the screen captures by capturing the game's frame at the right moment. This repo uses screen captures and comparison of screen renders to determine state (e.g. menu open, in battle). In Pokémon, the screen markers occur in regular places, and the ROM hacks don't change this much either, making it a reliable way to check for events / flags. 
 
 For the basic regions, run in dev play mode, stop the game at the flag and run `c <region_name>` to save the screen region at that point. The exact screens vary with the base game. The [base classes](src/poke_env/emulators/pokemon/parsers.py) make it clearer what to capture for each named region. 
@@ -135,6 +146,12 @@ I have provided an [example](https://drive.google.com/file/d/1EEpoxHAnNwdSMSYcc9
 If the capture doesn't look right and needs to be shifted, you can use `override_regions`. Follow the example of `battle_enemy_hp_text` for [StarBeasts](src/poke_env/emulators/pokemon/parsers.py). 
 
 You will know that you have filled out all required regions when you can run `python demo.py --variant <variant_name>` without debug mode. 
+
+
+* `c`: captures the screen in a particular [named region](src/poke_env/emulators/emulator.py) at the current game frame (useful for creating reference images of particular states e.g. menu/pc open, dialogues that trigger on particular milestones or events etc.) WRITE A README WITH EXAMPLES ON BOTH OF THESE
+
+
+
 
 ## Citation
 
