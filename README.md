@@ -125,7 +125,7 @@ python demo.py --variant <variant> --init_state <name>
 ### I want to add a new ROM Hack
 Setting up a new ROM Hack is an easy process that doesn't take more than 10 minutes once you've understood how. Please do reach out to me if you have any questions, and we can work to merge the new ROM into the repo together. 
 
-**Initial Steps:**
+#### Initial Steps:
 
 0. Set the repo to `debug` mode by editing the [config file](configs/project_vars.yaml)
 1. Create a `$variant_rom_data_path` parameter in the [configs](configs) (either as a new file or in an existing one, see [Pokémon Brown](configs/pokemon_brown_vars.yaml) for an example)
@@ -137,7 +137,7 @@ Setting up a new ROM Hack is an easy process that doesn't take more than 10 minu
 
 I have provided an [example](https://drive.google.com/file/d/1fsMjkOjpbyeLLNxP3JVaj6uVXycwSAVC/view?usp=sharing) video for this process.
 
-**Capturing Screens:**
+#### Capturing Screens:
 The above steps will let you play the game in `debug` mode, but to properly set it up, you need to sync the screen captures by capturing the game's frame at the right moment. This repo uses screen captures and comparison of screen renders to determine state (e.g. menu open, in battle). In Pokémon, the screen markers occur in regular places, and the ROM hacks don't change this much either, making it a reliable way to check for events / flags. 
 
 For the basic regions, run in dev play mode, stop the game at the flag and run `c <region_name>` to save the screen region at that point. The exact screens vary with the base game. The [base classes](src/poke_env/emulators/pokemon/parsers.py) make it clearer what to capture for each named region. 
@@ -148,9 +148,40 @@ If the capture doesn't look right and needs to be shifted, you can use `override
 
 You will know that you have filled out all required regions when you can run `python demo.py --variant <variant_name>` without debug mode. 
 
+**Setup Speedrun Guide:**
+I've documented the fastest workflow I have found to capturing all the screens for a ROM properly. 
 
-* `c`: captures the screen in a particular [named region](src/poke_env/emulators/emulator.py) at the current game frame (useful for creating reference images of particular states e.g. menu/pc open, dialogues that trigger on particular milestones or events etc.) WRITE A README WITH EXAMPLES ON BOTH OF THESE
+Start by just playing through the game and establishing save states for the following:
+1. `initial`: Right out of the intro screen with options set to fastest / least animation
+2. `starter`: Right before the player needs to make a choice of starter
+3. `pokedex`: Not too long after the player obtains the Pokedex, but anywhere you like. 
 
+Then, start with:
+```
+python dev/dev_play.py --variant <variant> --init_state initial
+```
+You can tick off the following captures:
+* `dialogue_bottom_right`: usually theres something you can interact with in your starting room
+* `menu_top_right`: open the start menu
+* `pc_top_left`: there is often a PC in your room
+* `player_card_middle`: open your player card
+* `map_bottom_right`: usually there's a map around you
+
+Then, switch out to the start choice state with `l starter`. Use this state to capture:
+* `dialogue_choice_bottom_right`: confirmation message for starter
+* `name_entity_top_left`: give the starter a nickname
+* `battle_enemy_hp_text`: either a rival battle or just your first pokemon battle
+* `battle_player_hp_text`: same
+* `pokemon_list_hp_text`: can do once you've got the starter
+
+Then honestly you probably want to exit with `e` and start again at the `pokedex` state with:
+```bash
+python dev/dev_play.py --variant <variant> --init_state pokedex
+```
+You'll get a message letting you know what's left. You can finish them all off now. If any of the captures weren't clean and good, you should leave them for the end and override their named screen regions. 
+
+### I want to deepen the state / observation space or give a precise reward
+Perhaps you want to engineer the system a little more, like [the initial creators of this framework](https://www.youtube.com/watch?v=DcYLT37ImBY&feature=youtu.be) did. This repo tries to avoid reliance on reading from memory states etc., but certainly supports it at a deep level. See the [memory reader](src/poke_env/emulators/pokemon/parsers.py) state parser to get a sense of how you should go about this. 
 
 
 
