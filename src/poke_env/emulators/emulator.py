@@ -974,14 +974,15 @@ class Emulator():
         if self.headless:
             log_error("Human play mode requires headless=False. Change the initialization", self._parameters)
         self.reset()
+        valid_regions = list(self.state_parser.named_screen_regions.keys())
+        unassigned_regions = [name for name in valid_regions if self.state_parser.named_screen_regions[name].target is None]
+        log_info(f"Unassigned regions (target array not set) are: {unassigned_regions}", self._parameters)
         while True:
             self._parameters = load_parameters()
             if not self._parameters["gameboy_dev_play_stop"]:
                 self._pyboy.tick(1, True)
                 self.state_tracker.step()
             else:
-                valid_regions = list(self.state_parser.named_screen_regions.keys())
-                unassigned_regions = [name for name in valid_regions if self.state_parser.named_screen_regions[name].target_path is None]
                 dev_instructions = f"""
                 In development mode.
                 Enter 'e' to close the emulator.
@@ -992,7 +993,7 @@ class Emulator():
                 Enter 'd <None / region_name>' to draw a named region and display the current screen with the region drawn.
                 Enter 'b' to enter a breakpoint.
                 Valid region names are: {valid_regions}
-                Currently unassigned regions (no target_path set) are: {unassigned_regions}
+                Initially unassigned regions (target array not set) were: {unassigned_regions}\n\t Note: This list does not update as you assign targets during this session.
                 Current State: 
                 {str(self.state_tracker)}
                 """

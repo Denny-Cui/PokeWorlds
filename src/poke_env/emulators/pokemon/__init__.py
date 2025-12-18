@@ -1,28 +1,28 @@
 from poke_env.utils import load_parameters, log_error, verify_parameters
 from poke_env.emulators.emulator import Emulator
-from poke_env.emulators.pokemon.parsers import PokemonRedStateParser, PokemonBrownStateParser, PokemonCrystalStateParser
+from poke_env.emulators.pokemon.parsers import PokemonRedStateParser, PokemonBrownStateParser, PokemonCrystalStateParser, PokemonStarBeastsStateParser
 from poke_env.emulators.pokemon.trackers import EmptyTracker
 from typing import Optional
 
 VARIANT_TO_GB_NAME = {
     "pokemon_red": "PokemonRed.gb",
     "pokemon_brown": "PokemonBrown.gb",
+    "pokemon_starbeasts": "PokemonStarBeasts.gb",
     "pokemon_crystal": "PokemonCrystal.gbc",
     "pokemon_fools_gold": "PokemonFoolsGold.gbc",
     "pokemon_prism": "PokemonPrism.gbc",
     "pokemon_quarantine_crystal": "PokemonQuarantineCrystal.gbc",
-    "pokemon_starbeasts": "PokemonStarBeasts.gbc",
 }
 """ Expected save name for each variant. Save the file to <project_root>/<variant_name>_rom_data/<gb_name>"""
 
 _VARIANT_TO_BASE_MAP = {
     "pokemon_red": "pokemon_red", 
     "pokemon_brown": "pokemon_red",
+    "pokemon_starbeasts": "pokemon_red",
     "pokemon_crystal": "pokemon_crystal",
     "pokemon_fools_gold": "pokemon_crystal",
     "pokemon_prism": "pokemon_crystal",
     "pokemon_quarantine_crystal": "pokemon_crystal",
-    "pokemon_starbeasts": "pokemon_crystal",
 }
 """ Mapping of variant names to base game types."""
 
@@ -30,10 +30,10 @@ _VARIANT_TO_PARSER = {
     "pokemon_red": PokemonRedStateParser,
     "pokemon_brown": PokemonBrownStateParser,
     "pokemon_crystal": PokemonCrystalStateParser, 
+    "pokemon_starbeasts": PokemonStarBeastsStateParser,
     "pokemon_fools_gold": None,  # To be implemented
     "pokemon_prism": None,  # To be implemented
     "pokemon_quarantine_crystal": None,  # To be implemented
-    "pokemon_starbeasts": None,  # To be implemented
 }
 """ Mapping of variant names to their corresponding StateParser classes."""
 
@@ -42,10 +42,10 @@ _VARIANT_TO_TRACKER = {
     "pokemon_red": EmptyTracker,
     "pokemon_brown": EmptyTracker,
     "pokemon_crystal": EmptyTracker,
+    "pokemon_starbeasts": EmptyTracker,  # Empty is simple placeholder for now
     "pokemon_fools_gold": None,  # To be implemented
     "pokemon_prism": None,  # To be implemented
     "pokemon_quarantine_crystal": None,  # To be implemented
-    "pokemon_starbeasts": None,  # To be implemented
 }
 """ Mapping of variant names to their corresponding StateTracker classes. """
 

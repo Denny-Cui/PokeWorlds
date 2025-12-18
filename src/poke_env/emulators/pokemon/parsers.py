@@ -34,6 +34,26 @@ class AgentState(Enum):
     IN_MENU = 2
     IN_BATTLE = 3
 
+def _get_proper_regions(override_regions: List[Tuple[str, int, int, int, int]], base_regions: List[Tuple[str, int, int, int, int]]) -> List[Tuple[str, int, int, int, int]]:
+    """
+    Merges base regions with override regions, giving precedence to override regions.
+    Args:
+        override_regions (List[Tuple[str, int, int, int, int]]): List of override region tuples.
+        base_regions (List[Tuple[str, int, int, int, int]]): List of base region tuples.
+
+    Returns:
+        List[Tuple[str, int, int, int, int]]: Merged list of region tuples.
+    """
+    if len(override_regions) == 0:
+        return base_regions
+    proper_regions = override_regions.copy()
+    override_names = [region[0] for region in override_regions]
+    for region in base_regions:
+        if region[0] in override_names:
+            continue
+        proper_regions.append(region)
+    return proper_regions
+
 class PokemonStateParser(StateParser, ABC):
     """
     Base class for Pokemon game state parsers. Uses visual screen regions to parse game state.
@@ -52,7 +72,17 @@ class PokemonStateParser(StateParser, ABC):
                 ("player_card_middle", 56, 70, 6, 6),
                 ("map_bottom_right", 140, 130, 10, 10),
     ]
-    """ List of common named screen regions for Pokemon games. """
+    """ List of common named screen regions for Pokemon games. 
+    dialogue_bottom_right: Bottom right of dialogue box when interacting with NPCs, signs, etc. Speak to an NPC to capture this.
+    menu_top_right: Top right of the screen when the player start menu is open. Open the start menu to capture this.
+    pc_top_left: Top left of the screen when the PC is open. Open the PC to capture this.
+    battle_enemy_hp_text: Region showing the text 'HP' for the enemy Pokémon in battle. Engage in a battle to capture this.
+    battle_player_hp_text: Region showing the text 'HP' for the player's Pokémon in battle. Engage in a battle to capture this.
+    dialogue_choice_bottom_right: Bottom right of the choice dialogue box when answering choice questions (e.g. Yes/No prompts). Trigger a choice dialogue to capture this (e.g. confirmation of starter choice)
+    name_entity_top_left: Top left of the screen when naming a character or Pokémon. Catch a pokemon and give it a nickname to capture this.
+    player_card_middle: Middle of the player card screen. Go to this from start menu -> player name
+    map_bottom_right: Bottom right of the map screen when the town map is open.  Open the town map to capture this.
+    """
 
     def __init__(self, variant: str, pyboy: PyBoy, parameters: dict, additional_named_screen_region_details: List[Tuple[str, int, int, int, int]] = []):
         """
@@ -64,7 +94,7 @@ class PokemonStateParser(StateParser, ABC):
             additional_named_screen_region_details (List[Tuple[str, int, int, int, int]]): Parameters associated with additional named screen regions to include.
         """
         verify_parameters(parameters)
-        additional_named_screen_region_details.extend(self.COMMON_REGIONS)
+        regions = _get_proper_regions(override_regions=additional_named_screen_region_details, base_regions=self.COMMON_REGIONS)
         self.variant = variant
         if f"{variant}_rom_data_path" not in parameters:
             log_error(f"ROM data path not found for variant: {variant}. Add {variant}_rom_data_path to the config files. See configs/pokemon_red_vars.yaml for an example", parameters)
@@ -72,7 +102,7 @@ class PokemonStateParser(StateParser, ABC):
         """ Path to the ROM data directory for the specific Pokemon variant."""
         captures_dir = self.rom_data_path + "/captures/"
         named_screen_regions = []
-        for region_name, x, y, w, h in additional_named_screen_region_details:
+        for region_name, x, y, w, h in regions:
             region = NamedScreenRegion(region_name, x, y, w, h, parameters=parameters, target_path=os.path.join(captures_dir, region_name))
             named_screen_regions.append(region)
         super().__init__(pyboy, parameters, named_screen_regions)
@@ -86,6 +116,17 @@ class PokemonStateParser(StateParser, ABC):
 
         Returns:
             bool: True if the Pokedex is open, False otherwise.
+        """
+        raise NotImplementedError
+    
+    @staticmethod
+    def is_in_pokemon_menu(self, current_screen: np.ndarray) -> bool:
+        """
+        Determines if the Pokemon menu is currently open.
+        Args:
+            current_screen (np.ndarray): The current screen frame from the emulator.
+        Returns:
+            bool: True if the Pokemon menu is open, False otherwise.
         """
         raise NotImplementedError
 
@@ -122,6 +163,8 @@ class PokemonStateParser(StateParser, ABC):
             if self.is_in_battle(current_screen):
                 return False
         if self.is_in_pokedex(current_screen):
+            return True
+        if self.is_in_pokemon_menu(current_screen):
             return True
         for region_name in any_match_regions:
             if self.named_region_matches_target(current_screen, region_name):
@@ -174,18 +217,28 @@ class BasePokemonRedStateParser(PokemonStateParser, ABC):
     """
     Game state parser for all PokemonRed-based games.
     """
-    _REGIONS = [
+    REGIONS = [
                 ("pokedex_top_left", 7, 6, 12, 6),
                 ("pokedex_info_mid_left", 6, 71, 6, 6),
                 ("pokemon_list_hp_text", 32, 9, 10, 5),
-                ("pokemon_stats_hp_text", 88, 24, 10, 5)
+                ("pokemon_stats_line", 66, 55, 5, 5)
             ]
+    """ Additional named screen regions specific to Pokemon Red games.
+    pokedex_top_left: Top left of the screen when the Pokedex is open. Open the Pokedex to capture this.
+    pokedex_info_mid_left: Middle left of the screen when viewing a Pokémon's info in the Pokedex. Open a Pokémon's info in the Pokedex to capture this.
+    pokemon_list_hp_text: Region showing the text 'HP' for the player's Pokémon in the Pokémon list. Open the Pokémon list from the start menu to capture this.
+    pokemon_stats_line: A line in the Pokémon stats screen. Open a Pokémon's stats from the start menu -> pokemon menu to capture this.
+    """
 
-    def __init__(self, pyboy: PyBoy, variant: str, parameters: dict):
-        super().__init__(variant=variant, pyboy=pyboy, parameters=parameters, additional_named_screen_region_details=self._REGIONS)
+    def __init__(self, pyboy: PyBoy, variant: str, parameters: dict, override_regions: List[Tuple[str, int, int, int, int]] = []):
+        self.REGIONS = _get_proper_regions(override_regions=override_regions, base_regions=self.REGIONS)
+        super().__init__(variant=variant, pyboy=pyboy, parameters=parameters, additional_named_screen_region_details=self.REGIONS)
 
     def is_in_pokedex(self, current_screen: np.ndarray) -> bool:
         return self.named_region_matches_target(current_screen, "pokedex_top_left") or self.named_region_matches_target(current_screen, "pokedex_info_mid_left")
+    
+    def is_in_pokemon_menu(self, current_screen: np.ndarray) -> bool:
+        return self.named_region_matches_target(current_screen, "pokemon_list_hp_text") or self.named_region_matches_target(current_screen, "pokemon_stats_line")
     
     def __repr__(self):
         return f"<PokemonRedParser(variant={self.variant})>"
@@ -198,7 +251,7 @@ class BasePokemonCrystalStateParser(PokemonStateParser, ABC):
     TODO: The map screenshot for crystal assumes a Jhoto map. Must do a similar process for Kanto. To add Kanto we should add another named screen region called map_bottom_right_kanto with same boundary as player_card_middle and then recapture it.
     Without this fix, the is_in_menu check may fail when in Kanto as the map_bottom_right region will not match.
     """
-    _REGIONS = [
+    REGIONS = [
         ("pokemon_list_hp_text", 87, 16, 10, 5),
         ("pokedex_seen_text", 3, 88, 5, 5),
         ("pokedex_info_height_text", 69, 57, 5, 5),
@@ -206,9 +259,18 @@ class BasePokemonCrystalStateParser(PokemonStateParser, ABC):
         ("pokemon_stats_lvl_text", 113, 0, 5, 5),
         ("bag_text", 18, 0, 6, 6),
     ]
+    """ Additional named screen regions specific to Pokemon Crystal games.
+    pokemon_list_hp_text: Region showing the text 'HP' for the player's Pokémon in the Pokémon list. Open the Pokémon list from the start menu to capture this.
+    pokedex_seen_text: Region showing the 'SEEN' text in the Pokedex. Open the Pokedex to capture this.
+    pokedex_info_height_text: Region showing the 'HEIGHT' text in the Pokedex info screen. Open a Pokémon's info in the Pokedex to capture this.
+    pokegear_top_left: Top left of the screen when the Pokegear is open. Open the Pokegear to capture this.
+    pokemon_stats_lvl_text: Region showing the 'LV' text in the Pokémon stats screen. Open a Pokémon's stats from the start menu -> pokemon menu to capture this.
+    bag_text: Top left of the screen when the Bag is open. Open the Bag to capture this.
+    """
 
-    def __init__(self, pyboy: PyBoy, variant: str, parameters: dict):
-        super().__init__(variant=variant, pyboy=pyboy, parameters=parameters, additional_named_screen_region_details=self._REGIONS)
+    def __init__(self, pyboy: PyBoy, variant: str, parameters: dict, override_regions: List[Tuple[str, int, int, int, int]] = []):
+        self.REGIONS = _get_proper_regions(override_regions=override_regions, base_regions=self.REGIONS)
+        super().__init__(variant=variant, pyboy=pyboy, parameters=parameters, additional_named_screen_region_details=self.REGIONS)
 
 
     def is_in_bag(self, current_screen: np.ndarray) -> bool:
@@ -225,6 +287,9 @@ class BasePokemonCrystalStateParser(PokemonStateParser, ABC):
 
     def is_in_pokedex(self, current_screen):
         return self.named_region_matches_target(current_screen, "pokedex_seen_text") or self.named_region_matches_target(current_screen, "pokedex_info_height_text")
+    
+    def is_in_pokemon_menu(self, current_screen: np.ndarray) -> bool:
+        return self.named_region_matches_target(current_screen, "pokemon_stats_lvl_text") or self.named_region_matches_target(current_screen, "pokemon_list_hp_text")
     
     def is_in_menu(self, current_screen: np.ndarray, trust_previous: bool = False) -> bool:
         # This technically mistakenly also flags when someone calls you on the pokegear, but that's probably fine for now. 
@@ -258,6 +323,14 @@ class PokemonBrownStateParser(BasePokemonRedStateParser):
     def __init__(self, pyboy, parameters):
         super().__init__(pyboy, variant="pokemon_brown", parameters=parameters)
 
+class PokemonStarBeastsStateParser(BasePokemonRedStateParser):
+    def __init__(self, pyboy, parameters):
+        override_regions = [
+            ("pokemon_list_hp_text", 33, 10, 4, 4),
+            ("battle_enemy_hp_text", 6, 15, 5, 5),
+            ("battle_player_hp_text", 88, 72, 5, 5)
+        ]
+        super().__init__(pyboy, variant="pokemon_starbeasts", parameters=parameters, override_regions=override_regions)
 
 class PokemonCrystalStateParser(BasePokemonCrystalStateParser):
     def __init__(self, pyboy, parameters):

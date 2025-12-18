@@ -115,28 +115,26 @@ This will run the game with the option to enter dev mode. If you want to save a 
 
 
 ### Adding a new ROM Hack
+0. Set the repo to `debug` mode by editing the [config file](configs/project_vars.yaml)
 1. Create a `$variant_rom_data_path` parameter in the [configs](configs) (either as a new file or in an existing one, see [Pokémon Brown](configs/pokemon_brown_vars.yaml) for an example)
 2. Obtain the ROM hack and place it in the desired path under the [ROM data folder](rom_data). 
 3. Go to the [parsers](src/poke_env/emulators/pokemon/parsers.py) and add the required ROM hack. See the `PokemonBrownGameStateParser` as an example. 
 4. Go to the [registry](src/poke_env/emulators/pokemon/__init__.py) and add the ROM hack to `VARIANT_TO_GB_NAME`, `_VARIANT_TO_BASE_MAP`, `_VARIANT_TO_PARSER`
 5. Run `python dev/create_first_state.py --variant <variant_name>`. This will create a default state. You will not be able to run the `Emulator` on this ROM before doing this. 
-6. Run `python dev/dev_play.py` (with the [`gameboy_dev_play_stop` parameter](configs/gameboy_vars.yaml) set to `false`) and proceed through the game until you reach a satisfactory default starting state. Then, open the [config file](configs/gameboy_vars.yaml) and set `gameboy_dev_play_stop` to `true` and save the file. This will trigger a dev mode and ask you for a terminal input. Enter `s <rom_data_path>/states/default.state` and you will set that as the new default state.
+6. Run `python dev/dev_play.py --variant <variant_name>` (with the [`gameboy_dev_play_stop` parameter](configs/gameboy_vars.yaml) set to `false`) and proceed through the game until you reach a satisfactory default starting state. Then, open the [config file](configs/gameboy_vars.yaml) and set `gameboy_dev_play_stop` to `true` and save the file. This will trigger a dev mode and ask you for a terminal input. Enter `s default` and you will set that as the new default state. Enter `s initial` as well to save it properly. 
+
+I have provided an [example](https://drive.google.com/file/d/1fsMjkOjpbyeLLNxP3JVaj6uVXycwSAVC/view?usp=sharing) video for this process.
 
 #### Capturing Screens
-This repo uses screen captures and comparison of screen renders to determine state (e.g. menu open, in battle). In Pokémon, the screen markers occur in regular places, and the ROM hacks don't change this much either, making it a reliable way to check for events / flags. For the basic regions, run in dev play mode, stop the game at the flag and run `c <region_name>` to save the screen region at that point. The exact screens vary with the base game
+The above steps will let you play the game in `debug` mode, but to properly set it up, you need to sync the screen captures by capturing the game's frame at the right moment. This repo uses screen captures and comparison of screen renders to determine state (e.g. menu open, in battle). In Pokémon, the screen markers occur in regular places, and the ROM hacks don't change this much either, making it a reliable way to check for events / flags. 
 
-##### Common:
-* `dialogue_bottom_right`: Speak to someone or interact with an object. When the popup appears, capture. 
-* `menu_top_right`: Open the menu and capture. 
-* `battle_enemy_hp_text`/`battle_player_hp_text`: Get into a battle and capture 
-* `dialogue_choice_bottom_right`: Get into a situation where the dialogue asks you to choose between options (e.g. confirmation of Yes/No when picking starter Pokémon). Capture that. 
+For the basic regions, run in dev play mode, stop the game at the flag and run `c <region_name>` to save the screen region at that point. The exact screens vary with the base game. The [base classes](src/poke_env/emulators/pokemon/parsers.py) make it clearer what to capture for each named region. 
 
-#### Known Bugs / Missing Features:
-* the map screenshot for crystal assumes a Jhoto map. Must do a similar process for Kanto. To add Kanto we should add another named screen region called map_bottom_right_kanto with same boundary as player_card_middle and then recapture it. 
+I have provided an [example](https://drive.google.com/file/d/1EEpoxHAnNwdSMSYcc93xrQCcLzbtVCyX/view?usp=sharing) video for this too. 
 
-##### Pokémon Red Base:
+If the capture doesn't look right and needs to be shifted, you can use `override_regions`. Follow the example of `battle_enemy_hp_text` for [StarBeasts](src/poke_env/emulators/pokemon/parsers.py). 
 
-##### Pokémon Crystal Base:
+You will know that you have filled out all required regions when you can run `python demo.py --variant <variant_name>` without debug mode. 
 
 ## Citation
 
