@@ -102,15 +102,15 @@ By default, this project assumes that you can store emulator outputs (logs, scre
 
 ## Test
 
-Check that setup is fine by running:
+Check that setup is fine by running (requires a screen to render):
 ```bash
 python demo.py
 ```
 This should open up a GameBoy window where you can play the Pokemon Red game. 
 
-To see how a random agent does, try:
+To try a headless test / see how a random agent does, try:
 ```bash
-python demo.py --play_mode random
+python demo.py --play_mode random # To run the random agent with the screen, go into this file and set `headless=False`
 ```
 
 
