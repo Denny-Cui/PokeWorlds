@@ -31,12 +31,11 @@ The installation consists of four steps:
 #### Environment Setup
 Create and activate a virtual environment with [uv](https://docs.astral.sh/uv/), a fast Rust-based Python package and project manager.
 
-
-
 ```bash
 uv venv /path/to/env --python=3.12
 ```
-Then, source the environment
+
+This may be a pre-existing environment for another project. Then, source the environment
 * On Windows:
 ```powershell
 /path/to/env/Scripts/Activate
@@ -46,12 +45,14 @@ Then, source the environment
 source /path/to/env/bin/activate
 ```
 
-Then, clone the repo and set up dependencies:
+Then, clone the repo and install it as a `pip` package:
 ```
 git clone https://github.com/DhananjayAshok/PokemonEnvironments
 cd PokemonEnvironments
-uv sync --active
+uv pip install -e .
 ```
+
+You can now `import poke_env` from anywhere.
 #### ROM Setup
 
 Next, you must legally acquire ROMs for Pokémon from Nintendo (perhaps by dumping the ROM file from your own catridge). We discourage any attempts to use this repository with unofficialy downloaded ROMs. The following base game ROMs are supported by this repository:

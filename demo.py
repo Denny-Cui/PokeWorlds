@@ -7,7 +7,10 @@ import click
 @click.option("--init_state", type=str, default=None, help="Name of the initial state file")
 @click.option("--play_mode", type=click.Choice(["human", "random"]), default="human", help="Play mode: 'human' for manual play, 'random' for random actions.")
 def main(variant, init_state, play_mode):
-    env = get_pokemon_emulator(variant=variant, init_state_name=init_state, headless=False)
+    headless = None
+    if play_mode == "human":
+        headless = False
+    env = get_pokemon_emulator(variant=variant, init_state_name=init_state, headless=headless)
     if play_mode == "human":
         env.human_play()
     else:
