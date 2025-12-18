@@ -181,3 +181,4 @@ rom_data/*/*.gbc
 rom_data/*/*.gb.ram
 rom_data/*/*.sav
 rom_data/*/*.gb.state
+rom_data/*/*.gbc.state
