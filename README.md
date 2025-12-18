@@ -50,7 +50,7 @@ Another major hurdle to progress is the difficulty of learning how abstract acti
 - [Developer Tools](#Development)
   - [Custom Starting States](#I-want-to-create-my-own-starting-states)
   - [Adding New ROMs](#I-want-to-add-a-new-ROM-Hack)
-  - [Reward or State Space Engineering](#Custom-Reward-or-State)
+  - [Reward or State Space Engineering](#Custom-Rewards-or-States)
 - [Our Paper](#Check-Out-Our-Paper)
 
 # Installation
