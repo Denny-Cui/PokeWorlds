@@ -87,7 +87,7 @@ Next, you must legally acquire ROMs for Pokémon from Nintendo (perhaps by dumpi
 * Pokémon Red (save as `PokemonRed.gb`)
 * Pokémon Crystal (save as `PokemonCrystal.gbc`)
 
-Additionally, our testing environment uses several Pokémon ROM patches / hacks that alter the game in some way. These can be obtained by acquiring the original ROM and applying a "patch" to it. After patching the original ROM, you will be left with a `.gb` or `.gbc` file. We support:
+Additionally, our testing environment uses several Pokémon ROM patches / hacks that alter the game in some way. The official way to acquire these can be obtained is by applying a "patch" to the original ROM. After patching the original ROM, you will be left with a `.gb` or `.gbc` file. Once again, despite their widespread availability, we do not advise you to download the pre-patched ROMs. We support:
 * [Pokémon Brown](https://rainbowdevs.com/title/brown/) (save as `PokemonBrown.gbc`)
 * [Pokémon Prism](https://rainbowdevs.com/title/prism/) (save as `PokemonPrism.gbc`)
 * [Pokémon Fool's Gold](https://www.pokecommunity.com/threads/pok%C3%A9mon-fools-gold-a-hack-of-crystal-where-everything-is-familiar-yet-different.433723/) (save as `PokemonFoolsGold.gbc`)
