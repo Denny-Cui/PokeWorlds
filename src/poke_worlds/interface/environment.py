@@ -6,7 +6,7 @@ from poke_worlds.utils import load_parameters, log_error, log_info, log_warn
 
 from poke_worlds.emulation.emulator import Emulator
 from poke_worlds.emulation.tracker import StateTracker
-from poke_worlds.interface.controller import Controller
+from poke_worlds.interface.controller import Controller, LowLevelController
 
 import numpy as np
 import gymnasium as gym
@@ -31,7 +31,7 @@ class Environment(gym.Env, ABC):
         """
         if not hasattr(self, "_parameters"):
             raise ValueError("Environment must have a '_parameters' attribute.")
-        required_attributes = ["_emulator", "_controller", "observation_space", "action_space"]
+        required_attributes = ["_emulator", "_controller", "observation_space"]
         for attr in required_attributes:
             if not hasattr(self, attr):
                 log_error(f"Environment requires attribute '{attr}' to be set. Implement this in the subclass __init__", self._parameters)
@@ -41,6 +41,7 @@ class Environment(gym.Env, ABC):
             log_error(f"Environment requires a StateTracker of type {self.REQUIRED_TRACKER.NAME}, but got {type(self._emulator.state_tracker).NAME}", self._parameters)
         if not issubclass(type(self._controller), self.REQUIRED_CONTROLLER):
             log_error(f"Environment requires a Controller of type {self.REQUIRED_CONTROLLER.NAME}, but got {type(self._controller).NAME}", self._parameters)
+        self.action_space = gym.spaces.Discrete(len(self._controller.get_actions()))
         self._controller.assign_emulator(self._emulator)
 
     
@@ -129,3 +130,26 @@ class Environment(gym.Env, ABC):
         terminated = self.determine_terminated(current_state)
         reward = self.determine_reward(start_state, action, transition_states, action_success)
         return observation, reward, terminated, truncated, current_state
+    
+
+class DummyEnvironment(Environment):
+    """ A dummy environment that does nothing special. """
+
+    REQUIRED_CONTROLLER = Controller
+
+    def __init__(self, emulator: Emulator, controller: Controller, parameters: Optional[dict]=None):
+        self._parameters = load_parameters(parameters)
+        self._emulator = emulator
+        self._controller = controller
+        screen_shape = self._emulator.screen_shape
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=screen_shape, dtype=np.uint8)
+        super().__init__()
+
+    def get_observation(self) -> gym.spaces.Space:
+        return self._emulator.get_current_frame()
+    
+    def determine_reward(self, start_state: Dict[str, Dict[str, Any]], action: gym.spaces.Space, transition_states: List[Dict[str, Dict[str, Any]]], action_success: bool) -> float:
+        return 0.0
+    
+    def determine_terminated(self, state):
+        return 0.0

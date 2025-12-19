@@ -135,6 +135,8 @@ class Emulator():
         """ Number of steps taken in the current episode. """
         self._reduce_video_resolution = parameters["gameboy_reduce_video_resolution"]
         pokemon_frame_size = (160, 144) # Confirm this is universal if you want other GB games. 
+        self.screen_shape = (pokemon_frame_size[0], pokemon_frame_size[1], 1)
+        """ Resolution of the rendered game screen """
         if self._reduce_video_resolution:
             self.output_shape = (pokemon_frame_size[0]//2, pokemon_frame_size[1]//2)
         else:

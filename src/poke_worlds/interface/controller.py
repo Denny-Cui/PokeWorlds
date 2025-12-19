@@ -104,21 +104,37 @@ class Controller(ABC):
             return None, None
         return self._execute_action(action)
 
-class RandomController(Controller):
-    """ An example controller that performs random Low Level actions. """
+
+class LowLevelController(Controller):
+    """ A controller that allows agents to directly execute low level actions on the emulator. """
+    HighLevelActions = LowLevelActions
+
+    def _get_valid_actions(self) -> List[LowLevelActions]:
+        return list(LowLevelActions)
+    
+    def _execute_action(self, action: LowLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], bool]:
+        all_reports = []
+        success = False
+        _, done = self._emulator.step(action)
+        report = self._state_tracker.report()
+        all_reports.append(report)
+        success = True
+        return all_reports, success
+
+
+class RestrictedRandomController(Controller):
+    """ An example controller that randomly performs only game related Low Level actions. """
     class HighLevelActions(Enum):
         """  Splits high level actions into two categories: movement and buttons """
         RANDOM_MOVEMENT = 0
         """ Perform a random movement action. """
         RANDOM_BUTTON_PRESS = 1
         """ Perform a random button press action. """
-        RANDOM_START_PRESS = 2
-        """ Perform a random start/select button press action. """
 
-    def _get_valid_actions(self) -> List[Controller.HighLevelActions]:
-        return [self.HighLevelActions.RANDOM_MOVEMENT, self.HighLevelActions.RANDOM_BUTTON_PRESS] # Start is never valid
+    def _get_valid_actions(self) -> List[HighLevelActions]:
+        return list(self.HighLevelActions)
     
-    def _execute_action(self, action: Controller.HighLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], bool]:
+    def _execute_action(self, action: HighLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], bool]:
         all_reports = []
         success = False
         low_level_choices = []

@@ -108,15 +108,26 @@ By default, this project assumes that you can store emulator outputs (logs, scre
 
 Check that setup is fine by running (requires a screen to render):
 ```bash
-python demo.py
+python demos/emulator.py
 ```
 This should open up a GameBoy window where you can play the Pokemon Red game. 
 
 To try a headless test / see how a random agent does, try:
 ```bash
-python demo.py --play_mode random --save_video True
+python demos/emulator.py --play_mode random --save_video True
 ```
 The video gets saved to the `sessions` folder of your `storage_dir` directory.
+
+To see / test an example of the Gym Environment wrappers, you can run:
+```bash
+python demos/environment.py --play_mode random --headless False
+```
+This agent seems to open the menus a lot. We can avoid this by abstracting away the action space to a higher level:
+```bash
+python demos/environment.py --play_mode restricted_random --headless False
+```
+
+
 
 
 # Quickstart
@@ -149,7 +160,7 @@ This will run the game with the option to enter dev mode. Play the game like you
 
 Regardless of how you did it, you can test that your state save worked with:
 ```bash
-python demo.py --variant <variant> --init_state <name>
+python demos/emulator --variant <variant> --init_state <name>
 ```
 
 ### I want to track fine-grained details
@@ -188,7 +199,7 @@ I have provided an [example](https://drive.google.com/file/d/1EEpoxHAnNwdSMSYcc9
 
 If the capture doesn't look right and needs to be shifted, you can use `override_regions`. Follow the example of `battle_enemy_hp_text` for [StarBeasts](src/poke_worlds/emulation/pokemon/parsers.py). 
 
-You will know that you have filled out all required regions when you can run `python demo.py --variant <variant_name>` without debug mode. 
+You will know that you have filled out all required regions when you can run `python demos/emulator.py --variant <variant_name>` without debug mode. 
 
 **Setup Speedrun Guide:**
 I've documented the fastest workflow I have found to capturing all the screens for a ROM properly. 
