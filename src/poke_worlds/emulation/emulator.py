@@ -49,7 +49,7 @@ class ReleaseActions(Enum):
 
 
 class Emulator():
-    def __init__(self, name: str, gb_path: str, state_parser_class: Type[StateParser], state_tracker_class: Type[StateTracker], init_state: str, parameters: dict, headless: bool = True, max_steps: int = None, save_video: bool = None, session_name: str = None, instance_id: str = None):
+    def __init__(self, name: str, gb_path: str, state_parser_class: Type[StateParser], state_tracker_class: Type[StateTracker], init_state: str, parameters: dict, *, headless: bool = True, max_steps: int = None, save_video: bool = None, session_name: str = None, instance_id: str = None):
         """
         Start the GameBoy emulator with the given ROM file and initial state.
 
@@ -357,7 +357,7 @@ class Emulator():
         """
         return self.state_parser
 
-    def run_action_on_emulator(self, action: LowLevelActions = None, profile: bool = False, render: bool = True) -> Optional[np.ndarray]:
+    def run_action_on_emulator(self, action: LowLevelActions = None, *, profile: bool = False, render: bool = True) -> Optional[np.ndarray]:
         """ 
         
         Performs the given action on the emulator by pressing and releasing the corresponding button.
@@ -736,7 +736,7 @@ class Emulator():
                 break
         tracker = self.close()
         log_info("Human play mode ended.", self._parameters)
-        log_dict(tracker.report_final(), self._parameters)
+        log_dict(tracker.report_final(), parameters=self._parameters)
 
     def save_state(self, state_path: str):
         """

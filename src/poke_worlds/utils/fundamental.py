@@ -31,7 +31,7 @@ def get_logger(level: int = logging.INFO, filename: str = None, add_console: boo
         logger.propagate = False
     return logger
 
-def meta_dict_to_str(meta_dict: dict, print_mode: bool = False, n_indents: int = 1, skip_write_timestamp: bool = True):
+def meta_dict_to_str(meta_dict: dict, *, print_mode: bool = False, n_indents: int = 1, skip_write_timestamp: bool = True):
     """
     Converts a metadata dictionary to a string representation.
     Args:

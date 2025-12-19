@@ -105,7 +105,7 @@ class MetricGroup(ABC):
         Logs the current metrics report with MetricGroup's name. Primarily for debugging.
         """
         log_info(f"Metric({self.NAME}):\n")
-        log_dict(self.report(), self._parameters) 
+        log_dict(self.report(), parameters=self._parameters) 
 
 
 class CoreMetrics(MetricGroup):

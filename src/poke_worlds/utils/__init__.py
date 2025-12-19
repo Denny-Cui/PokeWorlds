@@ -24,7 +24,7 @@ def is_none_str(s):
     return isna(s)
 
 
-def nested_dict_to_str(nested_dict, indent=0, indent_char="  "):
+def nested_dict_to_str(nested_dict, *, indent=0, indent_char="  "):
     """
     Converts a nested dictionary to a formatted string representation.
     Example Usage: 

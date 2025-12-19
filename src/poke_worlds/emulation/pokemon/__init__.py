@@ -111,7 +111,7 @@ class PokemonEmulator(Emulator):
 
 
 
-def get_pokemon_emulator(game_variant: str, parameters: Optional[dict] = None, init_state_name: str = None, tracker_variant: str = "default", **kwargs) -> Emulator:
+def get_pokemon_emulator(game_variant: str, *, parameters: Optional[dict] = None, init_state_name: str = None, tracker_variant: str = "default", **kwargs) -> Emulator:
     """ 
     Factory method to get a Pokemon emulator instance based on the specified variant.
     Args:

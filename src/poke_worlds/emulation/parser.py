@@ -14,7 +14,7 @@ class NamedScreenRegion:
     """
     Saves a reference to a named screen region (always a rectangle) for easy access.
     """
-    def __init__(self, name: str, start_x: int, start_y: int, width: int, height: int, parameters: dict, target_path: Optional[str] = None, multi_target_paths: Optional[Dict[str, str]] = None):
+    def __init__(self, name: str, start_x: int, start_y: int, width: int, height: int, parameters: dict, *, target_path: Optional[str] = None, multi_target_paths: Optional[Dict[str, str]] = None):
         """
         Initializes a named screen region.
 
