@@ -22,8 +22,11 @@ Challenge your agents to explore, build general skills and master one of the mos
 
 # Core Features
 
+**Gym Interface For Pokémon Games:**
+<img src="assets/logo.png" width="70px"> bridges the gap between the GameBoyAdvanced [emulator](https://docs.pyboy.dk/) and the standard Reinforcement Learning [Gym](https://gymnasium.farama.org/) API. Users can quickly develop agents to play through the game, and test them in a variety of scenarios across multiple game versions. 
+
 **Lightweight Environment Parsing:**
-We provides simple mechanisms to determine the basic state of the agent and identify specific event triggers that occur in the game, allowing one to form descriptive state spaces and track a broad range of metrics over playthroughs. 
+<img src="assets/logo.png" width="70px"> provides simple mechanisms to determine the basic state of the agent and identify specific event triggers that occur in the game, allowing one to form descriptive state spaces and track a broad range of metrics over playthroughs. 
 
 **Abstracted Action Space and Low Level Controllers:**
 While all Pokémon games can be played with joystick inputs and a few buttons, not all inputs are meaningful at all times (e.g. when in dialogue, the agent cannot perform any action until the conversation is complete, temporarily reducing the meaningful action space to a single button.)
@@ -110,7 +113,7 @@ Check that setup is fine by running (requires a screen to render):
 ```bash
 python demos/emulator.py
 ```
-This should open up a GameBoy window where you can play the Pokemon Red game. 
+This should open up a GameBoy window where you can play the Pokémon Red game. 
 
 To try a headless test / see how a random agent does, try:
 ```bash
@@ -118,24 +121,42 @@ python demos/emulator.py --play_mode random --save_video True
 ```
 The video gets saved to the `sessions` folder of your `storage_dir` directory.
 
-To see / test an example of the Gym Environment wrappers, you can run:
-```bash
-python demos/environment.py --play_mode random --headless False
-```
-This agent seems to open the menus a lot. We can avoid this by abstracting away the action space to a higher level:
-```bash
-python demos/environment.py --play_mode restricted_random --headless False
-```
-
-
-
 
 # Quickstart
 
+It doesn't take much to get started in <img src="assets/logo.png" width="70">. Below is a simple [example](demos/environment.py) of an agent that takes random actions in Pokémon Red:
+```python
+import numpy as np
+from poke_worlds import get_pokemon_emulator, LowLevelController, RestrictedRandomController, DummyEnvironment
+
+# Get the Pokémon Red emulator
+emulator = get_pokemon_emulator(game_variant="pokemon_red", headless=True) # set headless=False to see the screen
+
+# Get a basic controller that performs joystick actions
+controller = LowLevelController()
+
+# Instantiate the Gym Environment
+environment = DummyEnvironment(emulator=emulator, controller=controller)
+
+# Run an episode in the environment
+done = False
+while not done:
+  # Pick a random action from the available options
+  valid_actions = controller.get_valid_actions()
+  action = np.random.choice(valid_actions)
+  # Make a step with the action
+  observation, reward, terminated, truncated, info = environment.step(action)
+  done = terminated or truncated
+environment.close()
+print(f"Done with episode:")
+print(environment.get_final_info())
+```
+
+This agent seems to open the menus a lot. We can avoid this by abstracting away the action space to a higher level. To do this, simply switch the `LowLevelController` for the `RestrictedRandomController`. 
 
 
 # Development
-This section goes into details on how you would implement new features in <img src="assets/logo.png" width="70">. 
+This section goes into details on how you would implement new features or test tasks in <img src="assets/logo.png" width="70">. 
 
 ### I want to create my own starting states
 Easy. The only question is whether you want to save an mGBA state (perhaps you use cheats to lazily put the agent in a very specific state) or save a PyBoy state directly (i.e. you start from an existing state and play to the new state).

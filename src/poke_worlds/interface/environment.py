@@ -62,6 +62,15 @@ class Environment(gym.Env, ABC):
         """
         return self._emulator.state_tracker.report()
 
+    def get_final_info(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Returns the final state information from the emulator when all episodes are done.
+        Will involve summaries over all episodes played.
+        Returns:
+            info (dict): The final state information from the state tracker.
+        """
+        return self._emulator.state_tracker.report_final()
+    
     def reset(self, *, seed: Optional[int] = None, options: Optional[dict] = None):
         """
         Resets the environment and emulator to the initial state.
