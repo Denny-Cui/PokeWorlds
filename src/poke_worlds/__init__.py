@@ -8,6 +8,7 @@ There are two ways to navigate the documentation:
 2. **Search Functionality**: Use the search bar at the top of the sidebar to quickly find specific classes, methods, or keywords within the documentation.
 
 ### Package Structure
+* The `interface` submodule contains the highest level APIs in this project, including the Gym-Style API implementations. If you wish to simply use this repository to train the best agents, look no further than the `get_pokemon_environment` method. See the `interface` submodule documentation for more details.
 * The `emulation` submodule is the "root" or "core" of this project and handles all of the emulation logic. If you are interested in understanding how the code emulates the games, creates state spaces, implements the low level action controller etc., this is where you should start. See the `emulation` submodule documentation for more details.
 
 
