@@ -287,6 +287,7 @@ specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_p
         """
         for metric_group in self.metrics.values():
             metric_group.reset()
+        self.step()
 
     def step(self, recent_frames: Optional[np.ndarray] = None):
         """
@@ -331,6 +332,8 @@ specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_p
         Returns:
             Dict[str, Dict[str, Any]]: A nested dictionary containing the final metrics.
         """
+        if self.final_metrics is None:
+            return {}
         return self.final_metrics
 
     def _get_specific_metric(self, metrics_dict, key: Tuple[str, str]) -> Dict[str, Any]:

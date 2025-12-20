@@ -1,7 +1,7 @@
 from poke_worlds.utils import load_parameters, log_error, verify_parameters
 from poke_worlds.emulation.emulator import Emulator, LowLevelActions
 from poke_worlds.emulation.tracker import StateTracker
-from poke_worlds.emulation.pokemon.parsers import PokemonStateParser, PokemonRedStateParser, PokemonBrownStateParser, PokemonCrystalStateParser, PokemonStarBeastsStateParser, PokemonPrismStateParser, PokemonFoolsGoldStateParser
+from poke_worlds.emulation.pokemon.parsers import PokemonStateParser, MemoryBasedPokemonRedStateParser, PokemonBrownStateParser, PokemonCrystalStateParser, PokemonStarBeastsStateParser, PokemonPrismStateParser, PokemonFoolsGoldStateParser
 from poke_worlds.emulation.pokemon.trackers import CorePokemonMetrics, CorePokemonTracker, PokemonRedStarterTracker
 from typing import Optional, Union, Type
 
@@ -25,15 +25,20 @@ _VARIANT_TO_BASE_MAP = {
 }
 """ Mapping of variant names to base game types."""
 
-_VARIANT_TO_PARSER = {
-    "pokemon_red": PokemonRedStateParser,
+_VARIANT_TO_STRONGEST_PARSER = {
+    "pokemon_red": MemoryBasedPokemonRedStateParser,
     "pokemon_brown": PokemonBrownStateParser,
     "pokemon_crystal": PokemonCrystalStateParser, 
     "pokemon_starbeasts": PokemonStarBeastsStateParser,
-    "pokemon_fools_gold": PokemonFoolsGoldStateParser,  # To be implemented
-    "pokemon_prism": PokemonPrismStateParser,  # To be implemented
+    "pokemon_fools_gold": PokemonFoolsGoldStateParser,
+    "pokemon_prism": PokemonPrismStateParser,
 }
-""" Mapping of variant names to their corresponding StateParser classes."""
+""" 
+Mapping of variant names to their corresponding StateParser classes. 
+Unless you have a very good reason, you should always use the STRONGEST possible parser for a given variant. 
+The parser itself does not affect performance, as for it to perform a read / screen comparison operation, it must be called upon by the state tracker. 
+This means there is never a reason to use a weaker parser. 
+"""
 
 
 _VARIANT_TO_TRACKER = {
@@ -133,7 +138,7 @@ def get_pokemon_emulator(game_variant: str, *, parameters: Optional[dict] = None
         init_state = parameters[f"{game_variant}_rom_data_path"] + "/states/" + init_state
     else:
         init_state = parameters[f"{game_variant}_rom_data_path"] + "/states/default.state"
-    state_parser_class = _VARIANT_TO_PARSER[game_variant]
+    state_parser_class = _VARIANT_TO_STRONGEST_PARSER[game_variant]
     if state_parser_class is None:
         log_error(f"StateParser for variant '{game_variant}' is not yet implemented.", parameters)
     if state_tracker_class is None:

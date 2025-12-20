@@ -43,12 +43,21 @@ def meta_dict_to_str(meta_dict: dict, *, print_mode: bool = False, n_indents: in
         str: String representation of the metadata dictionary.
     """
     keys = list(meta_dict.keys())
+    # error out if None is a key
+    if None in keys:
+        raise ValueError("None cannot be a key in meta_dict")
     keys.sort()
     meta_str = ""
     for key in keys:
         if print_mode:
             indent = '\t' * n_indents
-            meta_str += f"{indent}{key}: {meta_dict[key]}\n"
+            element = meta_dict[key]
+            element_str = None
+            if isinstance(element, dict):
+                element_str = "\n" + meta_dict_to_str(element, print_mode=True, n_indents=n_indents + 1)
+            else:
+                element_str = str(element)
+            meta_str += f"{indent}{key}: {element_str}\n"
         else:
             if skip_write_timestamp and key == "write_timestamp":
                 continue

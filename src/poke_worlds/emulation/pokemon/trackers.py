@@ -1,6 +1,6 @@
 from poke_worlds.utils import log_info
 from poke_worlds.emulation.tracker import MetricGroup, StateTracker
-from poke_worlds.emulation.pokemon.parsers import PokemonStateParser, AgentState, PokemonRedStateParser
+from poke_worlds.emulation.pokemon.parsers import PokemonStateParser, AgentState, MemoryBasedPokemonRedStateParser, PokemonRedStateParser
 from typing import Optional, Type
 import numpy as np
 
@@ -154,6 +154,7 @@ class PokemonRedStarter(MetricGroup):
         }
         for choice in self.starters_chosen:
             starter_choices[choice] += 1
+        starter_choices["None"] = starter_choices.pop(None)
         self.starter_choices = starter_choices
 
     def report_final(self):
@@ -163,6 +164,98 @@ class PokemonRedStarter(MetricGroup):
         return self.starter_choices
             
 
+class PokemonRedLocation(MetricGroup):
+    """
+    Reads from memory states to determine the player's current location in Pokemon Red.
+    """
+    NAME = "pokemon_red_location"
+    REQUIRED_PARSER = MemoryBasedPokemonRedStateParser
+
+    def start(self):
+        self.total_n_walk_steps = []
+        self.total_n_of_unique_locations = []
+        super().start()
+
+    def reset(self, first = False):
+        if not first:
+            self.total_n_of_unique_locations.append(len(self.unique_locations))
+            self.total_n_walk_steps.append(self.n_walk_steps)
+        else:
+            self.direction = None
+            self.current_local_location = None
+            self.current_global_location = None
+            self.has_moved = False
+            self.n_walk_steps = 0
+            self.unique_locations = set()
+
+
+    def step(self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]):
+        self.state_parser: MemoryBasedPokemonRedStateParser
+        self.direction = self.state_parser.get_facing_direction()
+        current_local_position = self.state_parser.get_local_coords()
+        current_global_position = self.state_parser.get_global_coords()
+        x, y, map_number = current_local_position
+        map_name = self.state_parser.get_map_name(map_number)
+        if self.current_local_location is None:
+            self.current_local_location = (x, y, map_name)
+            self.current_global_location = current_global_position
+            self.unique_locations.add(map_name)
+        else:
+            if self.current_local_location[0] != x or self.current_local_location[1] != y or self.current_local_location[2] != map_name:
+                self.has_moved = True
+                if map_name == self.current_local_location[2]:
+                    initial_coord = np.array(self.current_local_location[0:2])
+                    new_coord = np.array(current_local_position[0:2])
+                    manhattan_distance = np.sum(np.abs(initial_coord - new_coord))
+                    self.n_walk_steps += manhattan_distance
+                else:
+                    # use global coords to estimate distance moved
+                    initial_coord = np.array(self.current_global_location)
+                    new_coord = np.array(current_global_position)
+                    manhattan_distance = np.sum(np.abs(initial_coord - new_coord))
+                    self.n_walk_steps += manhattan_distance
+                    self.unique_locations.add(map_name)
+            else:
+                self.has_moved = False
+            self.current_global_location = current_global_position
+            self.current_local_location = (x, y, map_number)
+
+    def report(self) -> dict:
+        """
+        Reports the current location metrics:
+        - direction: The direction the player is facing
+        - has_moved: Whether the player has moved since the last step
+        - current_global_location: (x, y)
+        - current_local_location: (x, y, map_name)
+        - n_walk_steps: Number of walk steps taken in the current episode
+        - unique_locations: List of unique locations visited in the current episode
+        - n_of_unique_locations: Number of unique locations visited in the current episode
+
+        Returns:
+            dict: A dictionary containing the current location metrics.
+        """
+        return {
+            "direction": self.direction,
+            "has_moved": self.has_moved,
+            "current_global_location": self.current_global_location,
+            "current_local_location": self.current_local_location,
+            "n_walk_steps": self.n_walk_steps,
+            "unique_locations": list(self.unique_locations),
+            "n_of_unique_locations": len(self.unique_locations)
+        }
+    
+    def report_final(self):
+        return {
+            "mean_n_walk_steps_per_episode": float(np.mean(self.total_n_walk_steps)),
+            "mean_n_unique_locations_per_episode": float(np.mean(self.total_n_of_unique_locations)),
+            "std_n_walk_steps_per_episode": float(np.std(self.total_n_walk_steps)),
+            "std_n_unique_locations_per_episode": float(np.std(self.total_n_of_unique_locations)),
+            "max_n_walk_steps_per_episode": int(np.max(self.total_n_walk_steps)),
+            "max_n_unique_locations_per_episode": int(np.max(self.total_n_of_unique_locations)),
+        }
+    
+    def close(self):
+        pass
     
 
 class CorePokemonTracker(StateTracker):
@@ -180,4 +273,4 @@ class PokemonRedStarterTracker(CorePokemonTracker):
     """
     def start(self):
         super().start()
-        self.metric_classes.extend([PokemonRedStarter])
+        self.metric_classes.extend([PokemonRedStarter, PokemonRedLocation])

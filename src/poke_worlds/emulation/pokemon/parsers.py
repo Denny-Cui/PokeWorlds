@@ -7,6 +7,10 @@ However, the code base supports reading from memory addresses to extract game st
 
 WARNING: The screen capture mechanisms of the parsers rely on a SPECIFIC FRAME being used in the game. This is not a concern with Gen I games, but Gen II games have options for frames. All states and captures in this repo assume a particular choice of frame, and often it is NOT the default Frame 1. 
 Ensure that your agents DO NOT change the frame settings in the game, or the state parsing will fail.
+
+CORE DESIGN PRINCIPLE: Never branch the parser subclasses for a given variant. The inheritance tree for a parser after the game variant parser should always be a tree with only one child per layer. 
+This is to ensure that we don't double effort, any capability added to a parser will always be valid for that game variant. 
+If this principle is followed, any state tracker can always use the STRONGEST parser for a given variant without concern for missing functionality.
 """
 
 from poke_worlds.emulation.parser import NamedScreenRegion
@@ -424,7 +428,7 @@ The below code shows how to add domain information into the game state parser an
 
 This is not actually used in any of the current environments, but is left here to show that if you want to bake in more domain knowledge and create explicit reward schedules etc., you can read the information required to do so in this class. 
 """
-class MemoryBasedPokemonRedStateParser(BasePokemonRedStateParser):
+class MemoryBasedPokemonRedStateParser(PokemonRedStateParser):
     """
     Game state parser for Pokemon Red. Uses memory addresses to parse game state.
     Can be used to reproduce https://github.com/PWhiddy/PokemonRedExperiments/ (v2) and facilitates reward engineering based on memory states.
@@ -531,6 +535,19 @@ class MemoryBasedPokemonRedStateParser(BasePokemonRedStateParser):
             MAP_DATA = json.load(map_data)["regions"]
         self._MAP_DATA = {int(e["id"]): e for e in MAP_DATA}
         
+    def get_map_name(self, map_n: int) -> Optional[str]:
+        """
+        Gets the name of the map given its identifier.
+        Args:
+            map_n (int): Map identifier.
+        Returns:
+            Optional[str]: Name of the map if found, None otherwise.
+        """
+        try:
+            return self._MAP_DATA[map_n]["name"]
+        except KeyError:
+            return None
+    
     def local_to_global(self, r: int, c: int, map_n: int) -> Tuple[int, int]:
         """
         Converts local map coordinates to global map coordinates.
@@ -565,6 +582,22 @@ class MemoryBasedPokemonRedStateParser(BasePokemonRedStateParser):
             Set[str]: A set of names of defeated opponents.       
         """
         return self.get_raised_flags(self.defeated_opponent_events)
+    
+    def get_facing_direction(self) -> Tuple[int, int]:
+        """
+        Gets the direction the player is facing.
+        Returns:
+            (int, int): Tuple representing the direction vector (dy, dx).
+        """
+        direction = self.read_m(0xD52A)
+        if direction == 1:
+            return (0, 1)  # Right
+        elif direction == 2:
+            return (0, -1)  # Left
+        elif direction == 4:
+            return (1, 0)  # Down
+        else:
+            return (-1, 0)  # Up
     
     def get_local_coords(self) -> Tuple[int, int, int]:
         """
