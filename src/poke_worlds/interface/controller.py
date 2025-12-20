@@ -3,7 +3,7 @@ from typing import Any, Dict, Tuple, List, Optional, Type
 from enum import Enum
 from poke_worlds.utils import verify_parameters, log_info, log_warn, log_error, load_parameters, get_lowest_level_subclass
 from poke_worlds.emulation.emulator import Emulator, LowLevelActions
-from poke_worlds.interface.action import HighLevelAction, LowLevelAction, RandomPlayAction
+from poke_worlds.interface.action import HighLevelAction, LowLevelAction, RandomPlayAction, LowLevelPlayAction
 
 import numpy as np
 from gymnasium.spaces import OneOf, Space
@@ -33,7 +33,7 @@ class Controller(ABC):
         if seed is not None:
             self.seed(seed)
     
-    def seed(self, seed: int):
+    def seed(self, seed: Optional[int]= None):
         """
         Sets the random seed for the controller and its actions.
         Args:
@@ -43,7 +43,10 @@ class Controller(ABC):
         self.action_space.seed(seed)
         seed_value = seed
         for action in self.actions:
-            seed_value = seed + 1 # Simple way to get different seeds for each action
+            if isinstance(seed, int):
+                seed_value = seed + 1 # Simple way to get different seeds for each action
+            else:
+                seed_value = None
             action.seed(seed_value)
 
     def unassign_emulator(self):
@@ -209,6 +212,13 @@ class LowLevelController(Controller):
     """ A controller that executes low level actions directly on the emulator. """
     ACTIONS = [LowLevelAction]
     """ A HighLevelAction subclass that directly maps to low level actions. """
+
+
+class LowLevelPlayController(Controller):
+    """ A controller that executes low level actions directly, but no menu button presses. """
+    ACTIONS = [LowLevelPlayAction]
+    """ A HighLevelAction subclass that directly maps to low level actions, but no menu button presses. """
+
 
 class RandomPlayController(Controller):
     """ A controller that performs random play on the emulator using low level actions. """

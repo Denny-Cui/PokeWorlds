@@ -220,7 +220,9 @@ class Environment(gym.Env, ABC):
 
     def render(self) -> Optional[np.ndarray]:
         """
-        Gets the current screen from the emulator and renders it. Mostly pointless, and is only here for Gym compatibility.
+        Gets the current screen from the emulator and renders it. 
+
+        Use this method only if you want to generally run the emulator in headless mode but still want to see the screen occasionally.
 
         Do not call this method if the emulator is not headless, you should already have a PyBoy interactive window open in that case.
 
@@ -264,7 +266,7 @@ class DummyEnvironment(Environment):
         self._emulator = emulator
         self._controller = controller
         screen_shape = self._emulator.screen_shape
-        self.observation_space = gym.spaces.Box(low=0, high=255, shape=screen_shape, dtype=np.uint8)
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(screen_shape[1], screen_shape[0], 1), dtype=np.uint8)
         """ The observation space is the raw pixel values of the emulator's screen. """
         super().__init__()
 

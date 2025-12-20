@@ -1,15 +1,38 @@
-from poke_worlds import get_pokemon_emulator, AVAILABLE_POKEMON_VARIANTS, get_pokemon_environment, RandomPlayController
-import click
-from tqdm import tqdm
+from poke_worlds import get_pokemon_environment, LowLevelPlayController
+import gymnasium as gym
+from gymnasium.spaces import Discrete, OneOf
+import numpy as np
 
 
+class OneOfToDiscreteWrapper(gym.ActionWrapper):
+    def __init__(self, env):
+        super().__init__(env)
+        # Calculate total actions across all sub-spaces
+        # Example: OneOf([Discrete(2), Discrete(3)]) -> total 5
+        self.sub_spaces = env.action_space.spaces
+        self.total_actions = sum(s.n for s in self.sub_spaces)
+        self.action_space = Discrete(self.total_actions)
 
-env = get_pokemon_environment(game_variant="pokemon_red", 
-                                        environment_variant="charmander_enthusiast", controller=RandomPlayController(), max_steps=500, headless=False)
+    def action(self, action):
+        # Map the single integer back to (choice, sub_action)
+        offset = 0
+        for i, space in enumerate(self.sub_spaces):
+            if action < offset + space.n:
+                return (i, action - offset)
+            offset += space.n
+        return (0, 0) # Fallback
+
+
+original_env = get_pokemon_environment(game_variant="pokemon_red", controller=LowLevelPlayController(),
+                                        environment_variant="charmander_enthusiast", max_steps=500, headless=True)
+env = OneOfToDiscreteWrapper(original_env)
+
 
 
 from stable_baselines3 import DQN
 from stable_baselines3.common.evaluation import evaluate_policy
+
+
 
 
 # Instantiate the agent
@@ -38,4 +61,4 @@ obs = vec_env.reset()
 for i in range(1000):
     action, _states = model.predict(obs, deterministic=True)
     obs, rewards, dones, info = vec_env.step(action)
-    vec_env.render("human")
+    vec_env.render()

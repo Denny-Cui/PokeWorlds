@@ -117,9 +117,14 @@ This should open up a GameBoy window where you can play the Pokémon Red game.
 
 To try a headless test / see how a random agent does, try:
 ```bash
-python demos/emulator.py --play_mode random --save_video True
+python demos/emulator.py --play_mode random --save_video True # You can see this in headed mode with --headless False
 ```
 The video gets saved to the `sessions` folder of your `storage_dir` directory.
+
+You can also test the Gym compatible environment version of this with:
+```bash
+python demos/environment.py --play_mode random # run with --render True to see the screen
+```
 
 
 # Quickstart

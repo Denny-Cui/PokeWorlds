@@ -20,7 +20,7 @@ class HighLevelAction(ABC):
         self._parameters = parameters
         self._rng = np.random.default_rng(seed)
     
-    def seed(self, seed: int):
+    def seed(self, seed: Optional[int] = None):
         """
         Sets the random seed for the high level action.
         Args:
@@ -215,6 +215,39 @@ class LowLevelAction(HighLevelAction):
         return [{"action": action} for action in LowLevelActions]
      
     
+class LowLevelPlayAction(HighLevelAction):
+    """ A HighLevelAction subclass that directly maps to low level actions, except no menu button presses. """
+
+    def __init__(self, parameters: dict, seed: Optional[int] = None):
+        self.allowed_actions = [LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_RIGHT, LowLevelActions.PRESS_ARROW_LEFT, LowLevelActions.PRESS_BUTTON_A, LowLevelActions.PRESS_BUTTON_B]
+        super().__init__(parameters, seed=seed)
+
+    def get_action_space(self):
+        """
+        Returns the Gym defined Space that characterizes the low level play action's parameter space.
+        """
+        return Discrete(len(self.allowed_actions))
+    
+    def space_to_parameters(self, space_action: Space) -> Dict[str, Any]:
+        action = self.allowed_actions[space_action]
+        return {"action": action}
+    
+    def parameters_to_space(self, action: LowLevelActions) -> Space:
+        if action is None or action not in self.allowed_actions:
+            log_error("LowLevelPlayAction requires a 'action' parameter that is not a menu button press.", self._parameters)
+        return self.allowed_actions.index(action)
+    
+    def _execute(self, action: LowLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], bool]:
+        self._emulator.step(action)
+        state_report = self._state_tracker.report()
+        return [state_report], True  # Low level actions are always successful in this context.
+    
+    def is_valid(self, action: LowLevelActions) -> bool:
+        return action in self.allowed_actions
+
+    def get_all_valid_parameters(self) -> List[Dict[str, Any]]:
+        return [{"action": action} for action in self.allowed_actions]
+
 
 class RandomPlayAction(HighLevelAction):
     """ Execution either moves or presses A """
