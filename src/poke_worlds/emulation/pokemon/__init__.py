@@ -1,8 +1,9 @@
 from poke_worlds.utils import load_parameters, log_error, verify_parameters
 from poke_worlds.emulation.emulator import Emulator, LowLevelActions
+from poke_worlds.emulation.tracker import StateTracker
 from poke_worlds.emulation.pokemon.parsers import PokemonStateParser, PokemonRedStateParser, PokemonBrownStateParser, PokemonCrystalStateParser, PokemonStarBeastsStateParser, PokemonPrismStateParser, PokemonFoolsGoldStateParser
 from poke_worlds.emulation.pokemon.trackers import CorePokemonMetrics, CorePokemonTracker, PokemonRedStarterTracker
-from typing import Optional
+from typing import Optional, Union, Type
 
 VARIANT_TO_GB_NAME = {
     "pokemon_red": "PokemonRed.gb",
@@ -111,14 +112,14 @@ class PokemonEmulator(Emulator):
 
 
 
-def get_pokemon_emulator(game_variant: str, *, parameters: Optional[dict] = None, init_state_name: str = None, tracker_variant: str = "default", **kwargs) -> Emulator:
+def get_pokemon_emulator(game_variant: str, *, parameters: Optional[dict] = None, init_state: str = None, state_tracker_class: Union[str, Type[StateTracker]] = "default", **kwargs) -> Emulator:
     """ 
     Factory method to get a Pokemon emulator instance based on the specified variant.
     Args:
         game_variant (str): The variant of the Pokemon game (e.g., "pokemon_red", "pokemon_crystal").
         parameters (dict, optional): Additional parameters for emulator configuration.
         init_state_name (str, optional): Name of the initial state file to load (without path).
-        tracker_variant (str): The variant of the state tracker to use.
+        state_tracker_class (Union[str, Type[StateTracker]]): The variant of the state tracker to use.
         **kwargs: Additional keyword arguments to pass to the Emulator constructor (e.g. headless)
     Returns:
         Emulator: An instance of the Emulator class configured for the specified variant.
@@ -126,19 +127,19 @@ def get_pokemon_emulator(game_variant: str, *, parameters: Optional[dict] = None
     parameters = load_parameters(parameters)
     game_variant = infer_variant(game_variant, parameters=parameters)
     gb_path = parameters[f"{game_variant}_rom_data_path"] + "/" + VARIANT_TO_GB_NAME[game_variant]
-    init_state = None
-    if init_state_name is not None:
-        if not init_state_name.endswith(".state"):
-            init_state_name = init_state_name + ".state"
-        init_state = parameters[f"{game_variant}_rom_data_path"] + "/states/" + init_state_name
+    if init_state is not None:
+        if not init_state.endswith(".state"):
+            init_state = init_state + ".state"
+        init_state = parameters[f"{game_variant}_rom_data_path"] + "/states/" + init_state
     else:
         init_state = parameters[f"{game_variant}_rom_data_path"] + "/states/default.state"
     state_parser_class = _VARIANT_TO_PARSER[game_variant]
     if state_parser_class is None:
         log_error(f"StateParser for variant '{game_variant}' is not yet implemented.", parameters)
-    state_tracker_class = _VARIANT_TO_TRACKER[game_variant][tracker_variant]
     if state_tracker_class is None:
-        log_error(f"StateTracker for variant '{game_variant}' is not yet implemented.", parameters)
+        log_error(f"state_tracker_class cannot be None", parameters)
+    if isinstance(state_tracker_class, str):
+        state_tracker_class = _VARIANT_TO_TRACKER[game_variant][state_tracker_class]
     emulator = PokemonEmulator(name=game_variant, gb_path=gb_path,
                         state_parser_class=state_parser_class, state_tracker_class=state_tracker_class,
                         init_state=init_state, parameters=parameters, **kwargs)

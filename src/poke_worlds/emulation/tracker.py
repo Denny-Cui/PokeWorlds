@@ -366,4 +366,5 @@ specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_p
         return self._get_specific_metric(self.final_metrics, key)
 
     def __repr__(self) -> str:
-        return f"<StateTracker(name={self.name}, session_name={self.session_name}, instance_id={self.instance_id})>"
+        metric_names = [mg.NAME for mg in self.metrics.values()]
+        return f"<StateTracker(name={self.name}, session_name={self.session_name}, instance_id={self.instance_id}), metrics=({', '.join(metric_names)})>"

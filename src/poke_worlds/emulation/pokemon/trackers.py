@@ -99,7 +99,7 @@ class PokemonRedStarter(MetricGroup):
     """
     Have some more specific metrics for Pokemon Red.
     """
-    NAME = "PokemonRedStarter"
+    NAME = "pokemon_red_starter"
     REQUIRED_PARSER = PokemonRedStateParser
     def start(self):
         self.starters_chosen = []

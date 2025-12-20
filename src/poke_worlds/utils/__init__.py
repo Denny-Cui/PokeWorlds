@@ -3,6 +3,7 @@ from poke_worlds.utils.parameter_handling import load_parameters
 from poke_worlds.utils.log_handling import log_error, log_info, log_warn, log_dict
 from poke_worlds.utils.fundamental import file_makedir
 from pandas import isna
+from typing import Type, List
 
 def is_none_str(s):
     """
@@ -65,3 +66,16 @@ def verify_parameters(parameters: dict):
         raise ValueError("Parameters must be a dictionary.")
     if len(parameters) == 0:
         raise ValueError("Parameters dictionary cannot be empty.")
+    
+
+def get_lowest_level_subclass(class_list: List[Type]) -> Type:
+    """
+    Given a list of classes, returns the class that is the lowest level subclass in the inheritance hierarchy.
+    """
+    lowest_level_tracker = None
+    for cls in class_list:
+        if lowest_level_tracker is None:
+            lowest_level_tracker = cls
+        elif issubclass(cls, lowest_level_tracker):
+            lowest_level_tracker = cls
+    return lowest_level_tracker

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Tuple, List, Optional
+from typing import Any, Dict, Tuple, List, Optional, Type
 from enum import Enum
-from poke_worlds.utils import verify_parameters, log_info, log_warn, log_error, load_parameters
+from poke_worlds.utils import verify_parameters, log_info, log_warn, log_error, load_parameters, get_lowest_level_subclass
 from poke_worlds.emulation.emulator import Emulator, LowLevelActions
 from poke_worlds.interface.action import HighLevelAction, LowLevelAction, RandomPlayAction
 
@@ -15,34 +15,23 @@ class Controller(ABC):
     Handles conversion between high level actions and Gym action spaces.
     
     """
-    ACTIONS = [HighLevelAction]
+    ACTIONS: List[Type[HighLevelAction]] = [HighLevelAction]
     """ A list of HighLevelAction classes that define the possible high level actions. 
     This is (almost) always, the only part that must be customized in subclasses.
     """
     def __init__(self, parameters: Optional[dict] = None, seed: Optional[int] = None):
         self._parameters = load_parameters(parameters)
-        self.actions = [action(self._parameters) for action in self.ACTIONS]
+        self.actions: List[HighLevelAction] = [action(self._parameters) for action in self.ACTIONS]
         """ A list of instantiated high level actions. """
+        self.REQUIRED_STATE_TRACKER = get_lowest_level_subclass(
+            [action.REQUIRED_STATE_TRACKER for action in self.actions]
+        )
+        """ The required state tracker class inferred from the high level actions. """
         self.action_space = OneOf([action.get_action_space() for action in self.actions])
         """ The Gym action Space consisting of a choice over all high level action spaces. """
         self.unassign_emulator()
         if seed is not None:
-            self.set_seed(seed)
-
-    
-    def _infer_required_tracker(self):
-        """
-        Infers the required state tracker class from the controller's high level actions.
-        """
-        lowest_level_tracker = None
-        for action in self.actions:
-            if lowest_level_tracker is None:
-                lowest_level_tracker = action.REQUIRED_STATE_TRACKER
-            else:
-                if issubclass(action.REQUIRED_STATE_TRACKER, lowest_level_tracker):
-                    lowest_level_tracker = action.REQUIRED_STATE_TRACKER
-        self.REQUIRED_STATE_TRACKER = lowest_level_tracker
-
+            self.seed(seed)
     
     def seed(self, seed: int):
         """

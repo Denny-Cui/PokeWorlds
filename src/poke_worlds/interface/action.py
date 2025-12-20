@@ -12,7 +12,7 @@ from gymnasium.spaces import Space, Discrete
 
 class HighLevelAction(ABC):
     """ Abstract base class for high level actions. """
-    REQUIRED_TRACKER = StateTracker
+    REQUIRED_STATE_TRACKER = StateTracker
     """ The state tracker that tracks the minimal state information required for the action to function. """
 
     def __init__(self, parameters: dict, seed: Optional[int] = None):
@@ -38,9 +38,9 @@ class HighLevelAction(ABC):
             log_error(f"HighLevelAction requires an Emulator instance, but got {type(emulator)}", self._parameters)
         self._emulator = emulator
         self._state_tracker = emulator.state_tracker
-        if not issubclass(type(self._state_tracker), self.REQUIRED_TRACKER):
-            log_error(f"HighLevelAction requires a StateTracker of type {self.REQUIRED_TRACKER.NAME}, but got {type(self._state_tracker).NAME}", self._parameters)
-    
+        if not issubclass(type(self._state_tracker), self.REQUIRED_STATE_TRACKER):
+            log_error(f"HighLevelAction requires a StateTracker of type {self.REQUIRED_STATE_TRACKER.NAME}, but got {type(self._state_tracker).NAME}", self._parameters)
+
     def unassign_emulator(self):
         """
         Clears the reference to the emulator instance.

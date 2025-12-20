@@ -1,7 +1,7 @@
 from abc import abstractmethod, ABC
 from typing import Optional, Type, Dict, Any, List, Tuple
 
-from poke_worlds.utils import load_parameters, log_error, log_info, log_warn
+from poke_worlds.utils import load_parameters, log_error, log_info, log_warn, get_lowest_level_subclass, verify_parameters
 
 
 from poke_worlds.emulation import Emulator, StateTracker
@@ -11,15 +11,53 @@ from poke_worlds.interface.action import HighLevelAction
 import numpy as np
 import gymnasium as gym
 
+
+
 class Environment(gym.Env, ABC):
     """ Base class for environments interfacing with the emulator. """
 
     REQUIRED_EMULATOR = Emulator
     """ The highest level emulator that the environment can interface with. """
 
-    REQUIRED_TRACKER = StateTracker
+    REQUIRED_STATE_TRACKER = StateTracker
     """ The state tracker that tracks the minimal state information required for the environment to function. """
+    
+    @staticmethod
+    def override_emulator_kwargs(emulator_kwargs: dict) -> dict:
+        """
+        Override default emulator keyword arguments for this environment.
 
+        Override this method in subclasses to modify the default emulator keyword arguments.
+
+        You may want to use safe_override_state_tracker_class to ensure compatibility of state tracker classes.
+
+        Args:
+            emulator_kwargs (dict): Incoming emulator keyword arguments.
+        Returns:
+            dict: The overridden emulator keyword arguments.
+        """
+        return emulator_kwargs
+
+    @staticmethod
+    def safe_override_state_tracker_class(incoming_state_tracker_class: Type[StateTracker], required_state_tracker_class: Type[StateTracker]) -> Type[StateTracker]:
+        """
+        Safely overrides the state tracker class for the environment.
+
+        Use this in override_emulator_kwargs to ensure that the lowest level state tracker class is chosen.
+        
+        Args:
+            incoming_state_tracker_class (Type[StateTracker]): The incoming state tracker class.
+            required_state_tracker_class (Type[StateTracker]): Usually the required state tracker class for the environment.
+        Returns:
+            Type[StateTracker]: The chosen state tracker class.
+        """
+        if issubclass(incoming_state_tracker_class, required_state_tracker_class):
+            return incoming_state_tracker_class
+        elif issubclass(required_state_tracker_class, incoming_state_tracker_class):
+            return required_state_tracker_class
+        else:
+            return incoming_state_tracker_class # Don't know which one to pick, so just go with the incoming one.
+    
     def __init__(self):
         """
         Ensures that the environment has the required attributes.
@@ -34,14 +72,15 @@ class Environment(gym.Env, ABC):
                 log_error(f"Environment requires attribute '{attr}' to be set. Implement this in the subclass __init__", self._parameters)
         if not issubclass(type(self._emulator), self.REQUIRED_EMULATOR):
             log_error(f"Environment requires an Emulator of type {self.REQUIRED_EMULATOR.NAME}, but got {type(self._emulator).NAME}", self._parameters)
-        if not issubclass(type(self._emulator.state_tracker), self.REQUIRED_TRACKER):
-            log_error(f"Environment requires a StateTracker of type {self.REQUIRED_TRACKER.NAME}, but got {type(self._emulator.state_tracker).NAME}", self._parameters)
+        self.REQUIRED_STATE_TRACKER = get_lowest_level_subclass([self.REQUIRED_STATE_TRACKER, self._controller.REQUIRED_STATE_TRACKER])
+        if not issubclass(type(self._emulator.state_tracker), self.REQUIRED_STATE_TRACKER):
+            log_error(f"Environment requires a StateTracker of type {self.REQUIRED_STATE_TRACKER.NAME}, but got {type(self._emulator.state_tracker).NAME}", self._parameters)
         self._controller.assign_emulator(self._emulator)
         self.action_space = self._controller.get_action_space()
         """ The Gym action Space provided by the controller. """
         self.actions = self._controller.actions
         """ A list of HighLevelActions provided by the controller. """
-        
+            
     @abstractmethod
     def get_observation(self) -> gym.spaces.Space:
         """
@@ -134,8 +173,8 @@ class Environment(gym.Env, ABC):
         truncated = self._emulator.check_if_done()
         observation = self.get_observation()
         current_state = self.get_info()
-        terminated = self.determine_terminated(current_state)
         reward = self.determine_reward(start_state, action, transition_states, action_success)
+        terminated = self.determine_terminated(current_state)
         return observation, reward, terminated, truncated, current_state
 
     def step_high_level_action(self, action: HighLevelAction, **kwargs) -> Tuple[gym.spaces.Space, float, bool, bool, Dict[str, Dict[str, Any]]]:
