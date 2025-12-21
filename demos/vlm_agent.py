@@ -25,17 +25,17 @@ First, think about what is happening in the current frame, then decide on the be
 
 You should format your action output as follows:
 Input: frame image
-Think: (your reasoning about the current situation)
+Think: (your reasoning about the current situation). Should be extremely brief.
 <action>(one of UP, DOWN, LEFT, RIGHT, A, B)</action>
     """
     def __init__(self, env):
         self.model = Qwen3VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen3-VL-4B-Thinking",
+            "Qwen/Qwen3-VL-4B-Instruct",
             dtype=torch.bfloat16,
             attn_implementation="flash_attention_2",
             device_map="auto",
         )
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen3-VL-4B-Thinking")
+        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen3-VL-4B-Instruct")
         self.env = env
         self.actions = self.env.actions
 

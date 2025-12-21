@@ -85,8 +85,8 @@ class Environment(gym.Env, ABC):
         self._controller.assign_emulator(self._emulator)
         self.action_space = self._controller.get_action_space()
         """ The Gym action Space provided by the controller. """
-        self.actions = self._controller.actions
-        """ A list of HighLevelActions provided by the controller. """
+        self.actions = self._controller.ACTIONS
+        """ A list of HighLevelAction Types provided by the controller. """
         self.render_mode = "human"
         """ The render mode of the environment. Supports 'human' and 'rgb_array', but strongly assumes 'human' as can just read the emulator screen from `get_info` """ 
         self.window = None

@@ -189,12 +189,12 @@ class Controller(ABC):
         executing_action = self.actions[action_index]
         return executing_action.execute_space_action(space_action)
     
-    def execute(self, action: HighLevelAction, **kwargs) -> Tuple[Optional[List[Dict[str, Dict[str, Any]]]], Optional[bool]]:
+    def execute(self, action: Type[HighLevelAction], **kwargs) -> Tuple[Optional[List[Dict[str, Dict[str, Any]]]], Optional[bool]]:
         """
         Executes the specified high level action on the emulator after checking for validity.
 
         Args:
-            action (HighLevelAction): The high level action to execute.
+            action (HighLevelAction): The high level action class to execute.
             **kwargs: Additional arguments required for the specific high level action.
 
         Returns:
@@ -204,7 +204,7 @@ class Controller(ABC):
             bool: Whether the action was successful or not. (Is often an estimate.)
         """
         if action not in self.ACTIONS:
-            log_error("Action not recognized by controller.", self._parameters)
+            log_error("Action not recognized by controller. Are you passing in an instance of the action class?", self._parameters)
         return action.execute(**kwargs)
     
 
