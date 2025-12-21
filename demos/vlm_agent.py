@@ -81,8 +81,8 @@ Think: (your reasoning about the current situation). Should be extremely brief.
         )
         return output_text[0]
     
-    def act(self, current_frame):
-        output_text = self.infer(current_frame)
+    def act(self, current_frame, info):
+        output_text = self.infer(current_frame, info)
         # parse the output text into an action here:
         action_c = self.actions[0] # there's only one action here. 
         kwargs = {} # "action key needs to map to a low level action"
