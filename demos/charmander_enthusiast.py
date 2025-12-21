@@ -5,6 +5,9 @@ import numpy as np
 
 num_cpu = 4  # Number of processes to use
 batch_size = 64
+exploration_fraction = 0.75
+gamma = 0.999
+total_timesteps = int(2e5)
 render = False # Whether to render the environment at test time
 
 
@@ -39,7 +42,7 @@ def make_env(rank, seed=0):
     """
     def _init():
         original_env = get_pokemon_environment(game_variant="pokemon_red", controller=LowLevelPlayController(),
-                                                environment_variant="charmander_enthusiast", max_steps=500, headless=True)
+                                                environment_variant="charmander_enthusiast", max_steps=100, headless=True)
         original_env.seed(seed + rank) # Doesn't matter here, its deterministic
         ind_env = OneOfToDiscreteWrapper(original_env)
         return ind_env
@@ -70,9 +73,9 @@ if __name__ == "__main__":
     env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
     # Instantiate the agent
-    model = DQN("MultiInputPolicy", env, verbose=1, gamma=0.999, batch_size=batch_size)
+    model = DQN("MultiInputPolicy", env, verbose=1, gamma=gamma, exploration_fraction=exploration_fraction, batch_size=batch_size)
     # Train the agent and display a progress bar
-    model.learn(total_timesteps=int(2e5), progress_bar=True, callback=CallbackList(callbacks))
+    model.learn(total_timesteps=total_timesteps, progress_bar=True, callback=CallbackList(callbacks))
     # Save the agent
     model.save("charmander_enthusiast_agent")
     del model  # delete trained model to demonstrate loading
@@ -81,13 +84,13 @@ if __name__ == "__main__":
     # NOTE: if you have loading issue, you can pass `print_system_info=True`
     # to compare the system on which the model was trained vs the current one
     # model = DQN.load("dqn_lunar", env=env, print_system_info=True)
-    model = PPO.load("charmander_enthusiast_agent", env=env)
+    model = DQN.load("charmander_enthusiast_agent", env=env)
 
     # Evaluate the agent
     # NOTE: If you use wrappers with your environment that modify rewards,
     #       this will be reflected here. To evaluate with original rewards,
     #       wrap environment in a "Monitor" wrapper before other wrappers.
-    mean_reward, std_reward = evaluate_policy(model, model.get_env(), n_eval_episodes=10)
+    mean_reward, std_reward = evaluate_policy(model, model.get_env(), n_eval_episodes=50)
     print(f"Reward: {mean_reward} +/- {std_reward}")
 
     # Enjoy trained agent
