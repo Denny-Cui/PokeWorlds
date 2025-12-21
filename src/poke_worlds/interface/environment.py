@@ -253,7 +253,14 @@ class Environment(gym.Env, ABC):
         else:
             log_error(f"Unsupported render mode: {self.render_mode}", self._parameters)
 
+    def seed(self, seed: Optional[int] = None):
+        """
+        Seeds the environment's random number generator and the controller's RNG.
 
+        Args:
+            seed (int, optional): The seed value.
+        """
+        self._controller.seed(seed)
 
 
 class DummyEnvironment(Environment):

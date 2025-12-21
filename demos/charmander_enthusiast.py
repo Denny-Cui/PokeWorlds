@@ -3,6 +3,8 @@ import gymnasium as gym
 from gymnasium.spaces import Discrete, OneOf
 import numpy as np
 
+num_cpu = 4  # Number of processes to use
+
 
 class OneOfToDiscreteWrapper(gym.ActionWrapper):
     def __init__(self, env):
@@ -23,20 +25,32 @@ class OneOfToDiscreteWrapper(gym.ActionWrapper):
         return (0, 0) # Fallback
 
 
-original_env = get_pokemon_environment(game_variant="pokemon_red", controller=LowLevelPlayController(),
-                                        environment_variant="charmander_enthusiast", max_steps=500, headless=True)
-env = OneOfToDiscreteWrapper(original_env)
-
+def make_env(rank, seed=0):
+    """
+    Utility function for multiprocessed env.
+    
+    :param env_id: (str) the environment ID
+    :param num_env: (int) the number of environment you wish to have in subprocesses
+    :param seed: (int) the inital seed for RNG
+    :param rank: (int) index of the subprocess
+    """
+    def _init():
+        original_env = get_pokemon_environment(game_variant="pokemon_red", controller=LowLevelPlayController(),
+                                                environment_variant="charmander_enthusiast", max_steps=500, headless=True)
+        original_env.seed(seed + rank) # Doesn't matter here, its deterministic
+        ind_env = OneOfToDiscreteWrapper(original_env)
+        return ind_env
+    return _init
 
 
 from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.evaluation import evaluate_policy
+from stable_baselines3.common.vec_env import SubprocVecEnv
 
-
-
+env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
 # Instantiate the agent
-model = PPO("MultiInputPolicy", env, verbose=1)
+model = PPO("MultiInputPolicy", env, verbose=1, gamma=0.999, )
 # Train the agent and display a progress bar
 model.learn(total_timesteps=int(2e5), progress_bar=True)
 # Save the agent
