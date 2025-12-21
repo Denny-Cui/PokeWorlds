@@ -61,7 +61,7 @@ Think: (your reasoning about the current situation)
             return_tensors="pt"
         )   
         inputs = inputs.to(self.model.device)
-        generated_ids = self.model.generate(**inputs, max_new_tokens=128, stop_strings=["</action>"], tokenizer=self.processor.tokenizer)
+        generated_ids = self.model.generate(**inputs, max_new_tokens=256, stop_strings=["</action>"], tokenizer=self.processor.tokenizer)
         generated_ids_trimmed = [
             out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
         ]
@@ -110,7 +110,7 @@ pbar = tqdm(total=max_steps)
 observation, state = environment.reset()
 while steps < max_steps:
     action, kwargs = vl.act(observation)
-    observation, reward, terminated, truncated, info = environment.step_high_level_action(action)
+    observation, reward, terminated, truncated, info = environment.step_high_level_action(action, **kwargs)
     if terminated or truncated:
         break
     steps += 1

@@ -172,34 +172,34 @@ class LowLevelAction(HighLevelAction):
     
     def space_to_parameters(self, space_action: Space) -> Dict[str, Any]:
         action = list(LowLevelActions)[space_action]
-        return {"action": action}
-    
-    def parameters_to_space(self, action: LowLevelActions) -> Space:
-        if action is None or not isinstance(action, LowLevelActions):
-            log_error("LowLevelAction requires a 'action' parameter of type LowLevelActions.", self._parameters)
-        return action.value
-    
-    def _execute(self, action: LowLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], bool]:
+        return {"low_level_action": action}
+
+    def parameters_to_space(self, low_level_action: LowLevelActions) -> Space:
+        if low_level_action is None or not isinstance(low_level_action, LowLevelActions):
+            log_error("LowLevelAction requires a 'low_level_action' parameter of type LowLevelActions.", self._parameters)
+        return low_level_action.value
+
+    def _execute(self, low_level_action: LowLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], bool]:
         """
         Executes the specified low level action on the emulator.
 
         Args:
-            action (LowLevelActions): The low level action to execute.
+            low_level_action (LowLevelActions): The low level action to execute.
         Returns:
             List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after the low level action executed.
             bool: Whether the action was successful or not. (Is often an estimate.)
 
         """
-        self._emulator.step(action)
+        self._emulator.step(low_level_action)
         state_report = self._state_tracker.report()
         return [state_report], True  # Low level actions are always successful in this context.
-    
-    def is_valid(self, action: LowLevelActions) -> bool:
+
+    def is_valid(self, low_level_action: LowLevelActions) -> bool:
         """
         Checks if the low level action can be performed in the current state.
 
         Args:
-            action (LowLevelActions): The low level action to check.
+            low_level_action (LowLevelActions): The low level action to check.
         Returns:
             bool: Whether the action is valid in the current state.
         """
@@ -212,9 +212,9 @@ class LowLevelAction(HighLevelAction):
         Returns:
             List[Dict[str, Any]]: A list of valid low level actions.
         """
-        return [{"action": action} for action in LowLevelActions]
-     
-    
+        return [{"low_level_action": action} for action in LowLevelActions]
+
+
 class LowLevelPlayAction(HighLevelAction):
     """ A HighLevelAction subclass that directly maps to low level actions, except no menu button presses. """
 
@@ -230,23 +230,23 @@ class LowLevelPlayAction(HighLevelAction):
     
     def space_to_parameters(self, space_action: Space) -> Dict[str, Any]:
         action = self.allowed_actions[space_action]
-        return {"action": action}
+        return {"low_level_action": action}
     
-    def parameters_to_space(self, action: LowLevelActions) -> Space:
-        if action is None or action not in self.allowed_actions:
-            log_error("LowLevelPlayAction requires a 'action' parameter that is not a menu button press.", self._parameters)
-        return self.allowed_actions.index(action)
-    
-    def _execute(self, action: LowLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], bool]:
-        self._emulator.step(action)
+    def parameters_to_space(self, low_level_action: LowLevelActions) -> Space:
+        if low_level_action is None or low_level_action not in self.allowed_actions:
+            log_error("LowLevelPlayAction requires a 'low_level_action' parameter that is not a menu button press.", self._parameters)
+        return self.allowed_actions.index(low_level_action)
+
+    def _execute(self, low_level_action: LowLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], bool]:
+        self._emulator.step(low_level_action)
         state_report = self._state_tracker.report()
         return [state_report], True  # Low level actions are always successful in this context.
-    
-    def is_valid(self, action: LowLevelActions) -> bool:
-        return action in self.allowed_actions
+
+    def is_valid(self, low_level_action: LowLevelActions) -> bool:
+        return low_level_action in self.allowed_actions
 
     def get_all_valid_parameters(self) -> List[Dict[str, Any]]:
-        return [{"action": action} for action in self.allowed_actions]
+        return [{"low_level_action": action} for action in self.allowed_actions]
 
 
 class RandomPlayAction(HighLevelAction):
