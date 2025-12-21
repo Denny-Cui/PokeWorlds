@@ -4,6 +4,9 @@ from gymnasium.spaces import Discrete, OneOf
 import numpy as np
 
 num_cpu = 4  # Number of processes to use
+batch_size = 64
+num_epochs = 10
+tensorboard_path = "demos/charmander_enthusiast_tensorboard/"
 render = False # Whether to render the environment at test time
 
 
@@ -47,11 +50,17 @@ def make_env(rank, seed=0):
 from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import SubprocVecEnv
+from stable_baselines3.common.callbacks import CallbackList
+from tensorboard_callback import TensorboardCallback
+
+
 from wandb.integration.sb3 import WandbCallback
 import wandb
 
 
 if __name__ == "__main__":
+    callbacks = [TensorboardCallback(tensorboard_path)]
+    wandb.tensorboard.patch(root_logdir=str(tensorboard_path))
     run = wandb.init(
     project="PokeWorlds",
     name="charmander_enthusiast_ppo",
@@ -59,12 +68,14 @@ if __name__ == "__main__":
     monitor_gym=True,  # auto-upload the videos of agents playing the game
     save_code=False,  # optional
     )
+    callbacks.append(WandbCallback())
+
     env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
     # Instantiate the agent
-    model = PPO("MultiInputPolicy", env, verbose=1, gamma=0.999, )
+    model = PPO("MultiInputPolicy", env, verbose=1, gamma=0.999, tensorboard_log=tensorboard_path, batch_size=batch_size, n_epochs=num_epochs)
     # Train the agent and display a progress bar
-    model.learn(total_timesteps=int(2e5), progress_bar=True, callback=WandbCallback())
+    model.learn(total_timesteps=int(2e5), progress_bar=True, callback=CallbackList(callbacks))
     # Save the agent
     model.save("charmander_enthusiast_agent")
     del model  # delete trained model to demonstrate loading
