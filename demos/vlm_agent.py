@@ -30,12 +30,12 @@ Think: (your reasoning about the current situation). Should be extremely brief.
     """
     def __init__(self, env):
         self.model = Qwen3VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen3-VL-4B-Instruct",
+            "Qwen/Qwen3-VL-2B-Instruct",
             dtype=torch.bfloat16,
             attn_implementation="flash_attention_2",
             device_map="auto",
         )
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen3-VL-4B-Instruct")
+        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen3-VL-2B-Instruct")
         self.env = env
         self.actions = self.env.actions
 
@@ -68,7 +68,7 @@ Think: (your reasoning about the current situation). Should be extremely brief.
         output_text = self.processor.batch_decode(
             generated_ids_trimmed, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
-        return output_text
+        return output_text[0]
     
     def act(self, current_frame):
         output_text = self.infer(current_frame)
