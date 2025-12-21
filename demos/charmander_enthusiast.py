@@ -48,9 +48,17 @@ from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import SubprocVecEnv
 from wandb.integration.sb3 import WandbCallback
+import wandb
 
 
 if __name__ == "__main__":
+    run = wandb.init(
+    project="PokeWorlds",
+    name="charmander_enthusiast_ppo",
+    sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
+    monitor_gym=True,  # auto-upload the videos of agents playing the game
+    save_code=False,  # optional
+    )
     env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
     # Instantiate the agent
