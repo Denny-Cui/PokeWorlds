@@ -47,6 +47,8 @@ def make_env(rank, seed=0):
 from stable_baselines3 import DQN, PPO
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import SubprocVecEnv
+from wandb.integration.sb3 import WandbCallback
+
 
 if __name__ == "__main__":
     env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
@@ -54,7 +56,7 @@ if __name__ == "__main__":
     # Instantiate the agent
     model = PPO("MultiInputPolicy", env, verbose=1, gamma=0.999, )
     # Train the agent and display a progress bar
-    model.learn(total_timesteps=int(2e5), progress_bar=True)
+    model.learn(total_timesteps=int(2e5), progress_bar=True, callback=WandbCallback())
     # Save the agent
     model.save("charmander_enthusiast_agent")
     del model  # delete trained model to demonstrate loading
