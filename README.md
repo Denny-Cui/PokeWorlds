@@ -87,6 +87,12 @@ cd PokeWorlds
 uv pip install -e .
 ```
 
+If you are in a headless environment, this may fail. In that case try:
+```
+uv pip uninstall opencv-python
+uv pip install opencv-python-headless
+```
+
 You can now `import poke_worlds` from anywhere.
 ## ROM Setup
 
