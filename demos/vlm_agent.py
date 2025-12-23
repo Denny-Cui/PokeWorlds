@@ -172,7 +172,7 @@ environment = get_pokemon_environment(game_variant="pokemon_red", controller=Pok
 vl = VL(environment)
 steps = 0
 #max_steps = 10_000
-max_steps = 600
+max_steps = 6000
 pbar = tqdm(total=max_steps)
 mission = "I am currently in professor oaks lab, he has offered me one of his three pokemon on the right and my goal is to obtain a pokemon and take it to the first gym. First, I will move towards the pokeballs on the table. Then, I will interact with the pokeball to obtain a pokemon. Then, I will leave the pokemon lab and head up to the first city and then re-assess my mission. "
 observation, info = environment.reset()

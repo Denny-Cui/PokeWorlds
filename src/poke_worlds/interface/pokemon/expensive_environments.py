@@ -50,7 +50,7 @@ class OCR:
         output_only = []
         for out in all_outputs:
             output_only.append(out["generated_text"].split("assistant")[-1].strip())
-        return output_only
+        return list(set(output_only))
 
 
 class PokemonHighLevelEnvironment(DummyEnvironment):
