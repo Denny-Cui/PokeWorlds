@@ -37,7 +37,8 @@ Additionally, given the result of your previous action, have you achieved your i
 You should format your action output as follows:
 Input: frame image
 Think: (your reasoning about the current situation). 
-Mission: summarize the immediate action you are trying to take right now. From the results of your actions, does it seem like you have succeeded? If you do succeed, what will you do next? What will you do after that?
+Mission: summarize the immediate action you are trying to take right now. From the results of your actions, does it seem like you have succeeded? Has your context changed? If you do succeed, what will you do next? What will you do after that?
+Critique of Previous Action Failures: From the results of your previous actions, have you been moving closer to your immediate goal? If not, why do you think that is? What can you do differently this time to improve your chances of success?
 Action: <action></action>
 
 Now, based on the current frame and the context, first think and reason about your situation. Then, output your next action in the proper format, do not forget to enclose it with action tags: <action>COMMAND</action>. 
@@ -78,7 +79,7 @@ Now, based on the current frame and the context, first think and reason about yo
             return_tensors="pt"
         )   
         inputs = inputs.to(self.model.device)
-        generated_ids = self.model.generate(**inputs, max_new_tokens=356, stop_strings=["</action>"], tokenizer=self.processor.tokenizer)
+        generated_ids = self.model.generate(**inputs, max_new_tokens=500, stop_strings=["</action>"], tokenizer=self.processor.tokenizer)
         generated_ids_trimmed = [
             out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
         ]
@@ -155,7 +156,10 @@ Now, based on the current frame and the context, first think and reason about yo
             counter += 1
             if counter >= max_out:
                 return None, None
-        mission = output_text.lower().split("mission:")[1].split("action:")[0].strip()
+        if "mission" in output_text.lower() and "action" in output_text.lower():
+            mission = output_text.lower().split("mission")[1].split("action")[0].strip()
+        elif "action" in output_text.lower():
+            mission = output_text.lower().split("action")[0].strip()
         return action, action_kwargs, mission
         
         
