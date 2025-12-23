@@ -16,7 +16,7 @@ You will be provided with images of the game screen. Based on the current screen
 The set of allowed actions are:
 1. MoveSteps(direction: str, steps: int): Move the character in the specified direction ('up', 'down', 'left', 'right') for a certain number of steps (1-10). Can ONLY be used in the FREE ROAM state. Example usage: MoveSteps("up", 3)
 2. Interact(): Interact with the object or character directly in front of the player. Will fail if the player is not facing the object or is even one grid space away. Can ONLY be used in the FREE ROAM state. Example usage: Interact()   
-3. MenuAction(menu_action: str): Perform a menu action. The possible actions are: navigate menu options ("up", "down", "left", "right"), "confirm" to choose the highlighted option, and "back" to go back to the previous menu or exit the menu. Can ONLY be used when in a MENU or BATTLE state. Example usage: MenuAction("select")
+3. MenuAction(menu_action: str): Perform a menu action. The possible actions are: navigate menu options ("up", "down", "left", "right"), choose the highlighted option ("confirm"), and " go back to the previous menu or exit the menu ("exit"). Can ONLY be used when in a MENU or BATTLE state. Example usage: MenuAction("confirm")
 4. PassDialogue(): Advance the dialogue or text box by pressing the confirm button. Can ONLY be used when in a DIALOGUE state. Example usage: PassDialogue()
 
 You must respond with exactly one of the above actions in the right format. Any other action is invalid. 
@@ -90,26 +90,37 @@ Think:
         if "interact" in action_str.lower():
             return InteractAction, {}, self.env._controller.is_valid(InteractAction, {})
         elif "movesteps" in action_str.lower():
-            try:
-                dir_start = action_str.index('("') + 2
-                dir_end = action_str.index('",', dir_start)
-                direction = action_str[dir_start:dir_end].strip()
-                steps_start = action_str.index(',', dir_end) + 1
-                steps_end = action_str.index(')', steps_start)
-                steps = int(action_str[steps_start:steps_end].strip())
-                action_kwargs = {"direction": direction, "steps": steps}
-                return MoveStepsAction, action_kwargs, self.env._controller.is_valid(MoveStepsAction, action_kwargs)
-            except:
-                return "Bad MoveSteps", "parsing error", False
+            if action_str.count(",") != 1:
+                return "Bad MoveSteps", "improper commas", False
+            direction_part, int_part = action_str.split(",")
+            int_part = int_part.replace(")", "").strip()
+            direction_part = direction_part.replace("movesteps(", "").strip()
+            if not int_part.isnumeric():
+                return "Bad MoveSteps", "steps not int", False
+            steps = int(int_part)
+            if "right" in direction_part:
+                return MoveStepsAction, {"direction": "right", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, {"direction": "right", "steps": steps})
+            elif "left" in direction_part:
+                return MoveStepsAction, {"direction": "left", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, {"direction": "left", "steps": steps})
+            elif "up" in direction_part:
+                return MoveStepsAction, {"direction": "up", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, {"direction": "up", "steps": steps})
+            elif "down" in direction_part:
+                return MoveStepsAction, {"direction": "down", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, {"direction": "down", "steps": steps})
+            else:
+                return "Bad MoveSteps", "direction not recognized", False
         elif "menuaction" in action_str.lower():
-            try:
-                action_start = action_str.index('("') + 2
-                action_end = action_str.index('")', action_start)
-                menu_action = action_str[action_start:action_end].strip()
-                action_kwargs = {"menu_action": menu_action}
-                return MenuAction, action_kwargs, self.env._controller.is_valid(MenuAction, action_kwargs)
-            except:
-                return "Bad MenuAction", "parsing error", False
+            if "up" in action_str:
+                return MenuAction, {"menu_action": "up"}, self.env._controller.is_valid(MenuAction, {"menu_action": "up"})
+            elif "down" in action_str:
+                return MenuAction, {"menu_action": "down"}, self.env._controller.is_valid(MenuAction, {"menu_action": "down"})
+            elif "left" in action_str:
+                return MenuAction, {"menu_action": "left"}, self.env._controller.is_valid(MenuAction, {"menu_action": "left"})
+            elif "right" in action_str:
+                return MenuAction, {"menu_action": "right"}, self.env._controller.is_valid(MenuAction, {"menu_action": "right"})
+            elif "confirm" in action_str or "select" in action_str:
+                return MenuAction, {"menu_action": "confirm"}, self.env._controller.is_valid(MenuAction, {"menu_action": "confirm"})
+            elif "exit" in action_str:
+                return MenuAction, {"menu_action": "exit"}, self.env._controller.is_valid(MenuAction, {"menu_action": "exit"})
         elif "passdialogue" in action_str.lower():
             return PassDialogueAction, {}, self.env._controller.is_valid(PassDialogueAction, {})
         else:
@@ -122,7 +133,7 @@ Think:
         allowed_categories = self.env._controller.get_possibly_valid_high_level_actions()
         allowed_string = "The following action categories could possibly be valid now: "
         for ac in allowed_categories:
-            allowed_string = allowed_string + f"{ac}"
+            allowed_string = allowed_string + f"{ac},\t"
         current_frame = observation["screen"]
         prev_message = observation["messages"]
         output_text = self.infer(current_frame, prev_message, allowed_string)
