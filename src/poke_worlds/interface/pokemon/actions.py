@@ -86,6 +86,8 @@ class InteractAction(HighLevelAction):
             if action_success != 0:
                 break
             prev_frames.append(frame)        
+        if action_success == 0:
+            action_success == -1 # I guess?
         return [self._state_tracker.report()], action_success # 0 means something likely happened. 1 means def happened. 
     
     def get_action_space(self):

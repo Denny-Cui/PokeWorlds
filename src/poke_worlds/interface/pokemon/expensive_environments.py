@@ -23,7 +23,7 @@ class OCR:
         self._parameters = load_parameters(parameters)
         kwargs = {}
         if torch.cuda.is_available():
-            kwargs["device_map"] = "auto"
+            kwargs["device"] = "cuda"
         self._model = AutoModelForCausalLM.from_pretrained(
             "PaddlePaddle/PaddleOCR-VL", trust_remote_code=True, dtype=torch.bfloat16, **kwargs
         ).eval()
