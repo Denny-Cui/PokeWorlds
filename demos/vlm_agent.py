@@ -89,7 +89,8 @@ Now, based on the current frame and the context, first think and reason about yo
         full_text = self.processor.batch_decode(
             generated_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False
         )
-        print(full_text[0])
+        full_text = full_text[0].split("Additional Context About Game:")[1].strip()
+        print(full_text)
         return output_text[0]
     
     def parse_validate_action(self, output_text):
