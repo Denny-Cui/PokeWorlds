@@ -175,7 +175,7 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
         if screens is None:
             screens = [info["core"]["current_frame"]]
         for screen in screens:
-            self._screen_render(screen)
+            pass#self._screen_render(screen)
         obs = self.get_observation(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success)
         log_info(f"Messages: {obs['messages']}", self._parameters)
 
