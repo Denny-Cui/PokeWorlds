@@ -113,7 +113,7 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
             if len(dialogue_frames) > 0:
                 ocr_texts = self._ocr.extract_text(dialogue_frames)
                 dialogue_message = "There was some dialogue as a result of your actions: "
-                for i, text in ocr_texts:
+                for i, text in enumerate(ocr_texts):
                     dialogue_message = dialogue_message + f"[{i+1}] {text}\n"
             if action_success == 0:
                 action_success_message = "The action you took was executed fully."
