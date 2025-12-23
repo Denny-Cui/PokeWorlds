@@ -23,7 +23,6 @@ import re
 from PIL import Image
 
 from transformers import NougatProcessor, VisionEncoderDecoderModel
-from datasets import load_dataset
 import torch
 
 
