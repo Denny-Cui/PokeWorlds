@@ -2,8 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Tuple, List, Optional
 from enum import Enum
 from poke_worlds.emulation.emulator import LowLevelActions, Emulator
-from poke_worlds.utils import verify_parameters, log_info, log_warn, log_error, load_parameters
-from poke_worlds.emulation import StateTracker
+from poke_worlds.utils import verify_parameters, log_info, log_warn, log_error, load_parameters, get_lowest_level_subclass
+from poke_worlds.emulation import StateTracker, StateParser
 
 import numpy as np
 from gymnasium.spaces import Space, Discrete
@@ -14,6 +14,9 @@ class HighLevelAction(ABC):
     """ Abstract base class for high level actions. """
     REQUIRED_STATE_TRACKER = StateTracker
     """ The state tracker that tracks the minimal state information required for the action to function. """
+
+    REQUIRED_STATE_PARSER = StateParser
+    """ The state parser that parses the minimal state information required for the action to function. """
 
     def __init__(self, parameters: dict, seed: Optional[int] = None):
         verify_parameters(parameters)
@@ -41,6 +44,8 @@ class HighLevelAction(ABC):
         self._state_tracker = emulator.state_tracker
         if not issubclass(type(self._state_tracker), self.REQUIRED_STATE_TRACKER):
             log_error(f"HighLevelAction requires a StateTracker of type {self.REQUIRED_STATE_TRACKER}, but got {type(self._state_tracker)}", self._parameters)
+        if not issubclass(type(emulator.state_parser), self.REQUIRED_STATE_PARSER):
+            log_error(f"HighLevelAction requires a StateParser of type {self.REQUIRED_STATE_PARSER}, but got {type(emulator.state_parser)}", self._parameters)
 
     def unassign_emulator(self):
         """

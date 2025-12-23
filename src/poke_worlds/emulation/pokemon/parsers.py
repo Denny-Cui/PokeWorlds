@@ -103,6 +103,7 @@ class PokemonStateParser(StateParser, ABC):
     COMMON_MULTI_TARGET_REGIONS = [
         ("screen", 0, 0, 150, 140), # Most of the screen except for the very edges
         ("dialogue_box_middle", 10, 105, 120, 30), # Middle of the dialogue box, but not on that spot where the blinking arrow cursor appears        
+        ("dialogue_box_full", 5, 100, 150, 40), # Full dialogue box area, is useful to capture for OCR purposes
     ]
 
     def __init__(self, variant: str, pyboy: PyBoy, parameters: dict, 
@@ -179,8 +180,17 @@ class PokemonStateParser(StateParser, ABC):
     def is_hovering_over_options_in_menu(self, current_screen: np.ndarray) -> bool:
         """
         Determines if the cursor is currently hovering over options in the menu. Typically we force the agent off this state.
+
+        # TODO: This method currently only has one multi_target screen checked, cursor_on_options, which is screen captured AFTER the player gets the pokedex
+        The problem is the menu layout is slightly different before the pokedex is acquired, making the check useless before that point.
+        To fix this, we need to capture another target for the same multi_target region (e.g. cursor_on_options_no_pokedex) and check for both here.
+        But I am lazy, and so will hope this is not needed.
+
         Args:
             current_screen (np.ndarray): The current screen frame from the emulator.
+
+        Returns:
+            bool: True if hovering over options, False otherwise.
         """
         return self.named_region_matches_multi_target(current_screen, "menu_box_middle", "cursor_on_options")
 
@@ -331,7 +341,7 @@ class BasePokemonCrystalStateParser(PokemonStateParser, ABC):
     """
 
     MULTI_TARGET_REGIONS = [
-        ("menu_box_middle", 89, 13, 30, 120), 
+        ("menu_box_middle", 89, 13, 30, 120),
     ]
     """ Additional multi-target named screen regions specific to Pokemon Crystal games. 
     menu_box_middle: Middle of the menu box when the start menu is open. Open the start menu to capture this. 

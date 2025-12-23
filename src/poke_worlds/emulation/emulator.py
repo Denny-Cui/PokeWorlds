@@ -327,12 +327,11 @@ class Emulator():
         """ 
         return self.state_parser.get_current_frame()
     
-    def update_listeners_after_actions(self, frames: np.ndarray):
+    def _update_listeners_after_actions(self, frames: np.ndarray):
         """
-        Vital method that must be run after a batch of actions are run on the emulator. 
+        Updates the video and state tracker after a batch of actions are run on the emulator without step() 
 
-        When implementing button pressing primitives, you should always run this method *once* after the action buttons are pressed
-        It will update the video and state tracker with all the elapsed frames. 
+        You should *not* call this method when implementing HighLevelActions, instead call step(), track the states at each step, and return the list of transition states. 
 
         Args:
             frames (np.ndarray): Frames of shape [n_frames, H, W, C] that contain the frames which elapsed during the run of the actions outside step
@@ -366,7 +365,7 @@ class Emulator():
 
         frames = self.run_action_on_emulator(action)
         self.step_count += 1
-        self.update_listeners_after_actions(frames)
+        self._update_listeners_after_actions(frames)
         return frames, self.check_if_done()
 
     def get_state_parser(self) -> StateParser:
@@ -631,6 +630,9 @@ class Emulator():
                 self._pyboy.tick(1, True)
                 self.state_tracker.step()
             else:
+                tracker_report = self.state_tracker.report()
+                tracker_report["core"].pop("current_frame", None)
+                tracker_report["core"].pop("passed_frames", None) 
                 dev_instructions = f"""
                 In development mode.
                 Enter 'e' to close the emulator.
@@ -645,9 +647,9 @@ class Emulator():
                 Valid region names are: {valid_regions}
                 Initially unassigned regions (target array not set) were: {unassigned_regions}\n\t Note: This list does not update as you assign targets during this session.
                 Current State: 
-                {self.state_tracker.report()}
                 """
                 log_info(dev_instructions, self._parameters)
+                log_dict(tracker_report, parameters=self._parameters)
                 user_input = input("Dev mode input: ")
                 user_input = user_input.lower().strip()
                 first_char = user_input[0] if len(user_input) > 0 else ""

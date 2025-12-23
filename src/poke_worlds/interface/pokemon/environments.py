@@ -45,7 +45,7 @@ class PokemonRedChooseCharmanderFastEnv(Environment):
         emulator_kwargs["init_state"] = "starter"
         return emulator_kwargs
 
-    def get_observation(self) -> gym.spaces.Space:
+    def get_observation(self, **kwargs):
         info = self.get_info()
         coords = info["pokemon_red_location"]["current_local_location"][:2]
         direction = info["pokemon_red_location"]["direction"]
@@ -68,7 +68,7 @@ class PokemonRedChooseCharmanderFastEnv(Environment):
         starter_chosen = state["pokemon_red_starter"]["current_starter"]
         return starter_chosen is not None    
     
-    def determine_reward(self, start_state: Dict[str, Dict[str, Any]], action: gym.spaces.Space, transition_states: List[Dict[str, Dict[str, Any]]], action_success: bool) -> float:
+    def determine_reward(self, start_state, action, action_kwargs, transition_states, action_success) -> float:
         """
         Reward the agent for choosing Charmander as quickly as possible.
         """

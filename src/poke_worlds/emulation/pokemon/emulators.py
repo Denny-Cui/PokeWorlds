@@ -21,6 +21,7 @@ class PokemonEmulator(Emulator):
         self.state_parser: PokemonStateParser
         current_frame = self.get_current_frame()
         if self.state_parser.is_hovering_over_options_in_menu(current_frame):
+            # WARNING: see the state parser method for details, but this currently does not work before the agent gets the pokedex
             # force the agent to click the up button to get off the options
             self.run_action_on_emulator(LowLevelActions.PRESS_ARROW_UP)
         all_next_frames = [frames]
@@ -41,7 +42,7 @@ class PokemonEmulator(Emulator):
         if len(all_next_frames) > 1:
             frames = np.concatenate(all_next_frames)
         # Must update the tracker too
-        self.update_listeners_after_actions(frames)
+        self._update_listeners_after_actions(frames)
         return frames, done
     
     def run_action_on_emulator(self, *args, **kwargs):

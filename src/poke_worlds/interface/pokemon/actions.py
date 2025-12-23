@@ -1,13 +1,13 @@
 from poke_worlds.utils import log_error
 from poke_worlds.interface.action import HighLevelAction
-from poke_worlds.emulation.pokemon.parsers import AgentState
+from poke_worlds.emulation.pokemon.parsers import AgentState, PokemonStateParser
 from poke_worlds.emulation.pokemon.trackers import CorePokemonTracker
 from poke_worlds.emulation import LowLevelActions
 from abc import ABC
 from typing import List, Tuple
 import numpy as np
 
-from gymnasium.spaces import Box
+from gymnasium.spaces import Box, Discrete
 import matplotlib.pyplot as plt
 
 HARD_MAX_STEPS = 20
@@ -25,11 +25,27 @@ def _plot(past: np.ndarray, current: np.ndarray):
 
 
 class BaseMovementAction(HighLevelAction, ABC):
+    """
+    Base class for movement actions in the Pokemon environment.
+    Has utility methods for moving in directions.
+    """
     REQUIRED_STATE_TRACKER = CorePokemonTracker
+    REQUIRED_STATE_PARSER = PokemonStateParser
 
     def move(self, direction: str, steps: int) -> Tuple[np.ndarray, int]:
         """
-        TODO: Docstring
+        Move in a given direction for a number of steps.
+        Args:
+            direction (str): One of "up", "down", "left", "right"
+            steps (int): Number of steps to move in that direction
+        Returns:
+            Tuple[List[Dict], int]: A tuple containing:
+                - A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
+                - An integer action success status:
+                    0 -> finished all steps
+                    1 -> took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter)
+                    2 -> took some steps, but agent state changed from free roam
+                   -1 -> frame didn't change, even on the first step
         """
         action_dict = {"right": LowLevelActions.PRESS_ARROW_RIGHT, 
                        "down": LowLevelActions.PRESS_ARROW_DOWN, 
@@ -44,25 +60,29 @@ class BaseMovementAction(HighLevelAction, ABC):
         # 2 -> took some steps, but agent state changed from free roam
         # -1 -> frame didn't change, even on the first step 
         action_success = -1
+        transition_state_dicts = []
         transition_frames = []
         previous_frame = self._emulator.get_current_frame() # Do NOT get the state tracker frame, as it may have a grid on it. 
         n_step = 0
         agent_state = AgentState.FREE_ROAM
         while n_step < steps and agent_state == AgentState.FREE_ROAM:
-            frames = self._emulator.run_action_on_emulator(action)
+            frames, done = self._emulator.step(action)
+            transition_state_dicts.append(self._state_tracker.report())
             transition_frames.extend(frames)
-            # check if frames changed. If not, break out
-            current_frame = frames[-1]
-            if not frame_changed(previous_frame, current_frame):
+            if done:
+                break
+            # check if frames changed. If not, break out. 
+            # We check all frames in sequence to try and catch oscillations. TODO: Test
+            if not all([frame_changed(previous_frame, current_frame) for current_frame in frames]):
                 break
             agent_state = self._emulator.state_parser.get_agent_state(self._emulator.get_current_frame())
             if agent_state != AgentState.FREE_ROAM:
                 break
             n_step += 1
-            previous_frame = current_frame
+            previous_frame = frames[-1]
 
-        transition_frames = np.stack(transition_frames, axis=0)
-        self._emulator.update_listeners_after_actions(transition_frames)
+        #transition_frames = np.stack(transition_frames, axis=0)
+        #self._emulator.update_listeners_after_actions(transition_frames)
         if agent_state != AgentState.FREE_ROAM:
             action_success = 2
         else:
@@ -72,36 +92,74 @@ class BaseMovementAction(HighLevelAction, ABC):
                 action_success = 0
             else:
                 action_success = 1
-        return transition_frames, action_success 
+        return transition_state_dicts, action_success 
     
     def chain_move(self, direction_steps: List[Tuple[str, int]]):
         """
         Chain together several move operations. Exit at the first action_success != 0
-        # TODO: DOcstring and implement
+        Args:
+            direction_steps (List[Tuple[str, int]]): A list of tuples, each containing a direction and number of steps to move in that direction.
+        Returns:
+            Tuple[List[Dict], int]: A tuple containing:
+                - A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
+                - An integer action success status:
+                    0 -> finished all steps
+                    1 -> took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter)
+                    2 -> took some steps, but agent state changed from free roam
+                   -1 -> frame didn't change, even on the first step
         """
-        raise ValueError
+        all_transition_states = []
+        for direction, steps in direction_steps:
+            transition_states, action_success = self.move(direction=direction, steps=steps)
+            all_transition_states.extend(transition_states)
+            if action_success != 0:
+                return all_transition_states, action_success
+        return all_transition_states, 0
 
     def move_until_stop(self, direction, ind_step=5):
         """
         Move in a direction until action_success is no longer 0. 
-        MAJOR VULNERABILITY: What if frame change detection is poor?
-            You should have a hard max to guard against this. 
+        Args:
+            direction (str): One of "up", "down", "left", "right"
+            ind_step (int): Number of steps to move in each individual move call.
+        Returns:
+            Tuple[List[Dict], int]: A tuple containing:
+                - A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
+                - An integer action success status:
+                    0 -> finished all steps
+                    1 -> took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter)
+                    2 -> took some steps, but agent state changed from free roam
+                   -1 -> frame didn't change, even on the first step
         """
-        raise ValueError
+        all_transition_states = []
+        n_total_steps = 0
+        while True:
+            transition_states, action_success = self.move(direction=direction, steps=ind_step)
+            all_transition_states.extend(transition_states)
+            n_total_steps += ind_step
+            if action_success != 0 or n_total_steps >= HARD_MAX_STEPS:
+                return all_transition_states, action_success
 
 
     def is_valid(self, **kwargs):
         """
-        Just checks if the 
-        # TODO: Docstring        
+        Just checks if the agent is in free roam state.
         """
         return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
 
 
-class MoveSteps(BaseMovementAction):
+class MoveStepsAction(BaseMovementAction):
 
     def get_action_space(self):
-        # modelling this as a Box in 2D
+        """
+        Returns a Box space representing movement in 2D.
+        The first dimension represents vertical movement (positive is up, negative is down).
+        The second dimension represents horizontal movement (positive is right, negative is left).
+
+        Returns:
+            Box: A Box space with shape (2,) and values ranging from -HARD_MAX_STEPS//2 to HARD_MAX_STEPS//2.
+
+        """
         return Box(low=-HARD_MAX_STEPS//2, high=HARD_MAX_STEPS//2, shape=(2,), dtype=np.int8)
 
     def space_to_parameters(self, space_action):
@@ -147,15 +205,100 @@ class MoveSteps(BaseMovementAction):
 
 
     def _execute(self, direction, steps):
-        res = self.move(direction=direction, steps=steps)
-        state_report = self._state_tracker.report()
-        return [state_report], True
+        transition_states, status = self.move(direction=direction, steps=steps)
+        return transition_states, status
+    
+    def is_valid(self, **kwargs):
+        direction = kwargs.get("direction")
+        step = kwargs.get("step")
+        if direction is not None and direction not in ["up", "down", "left", "right"]:
+            return False
+        if step is not None:
+            if not isinstance(step, str):
+                return False
+        return super().is_valid(**kwargs)
+        
 
+class MenuAction(HighLevelAction):
+    """
+    Handles opening and navigating the in-game start menu. Will also handle PC screens and dialogue choices. 
+    Unfortunately, since PokemonCrystal based games has a bag with submenus, I need to add left right actions as well.
+    Perhaps I can add a bag actions class later and separate these out. 
+    """
 
+    REQUIRED_STATE_PARSER = PokemonStateParser    
+    REQUIRED_STATE_TRACKER = CorePokemonTracker
 
-class MenuAction:
-    pass # navigate up and down, hit b to exit and a to select. 
+    _MENU_ACTION_MAP = {
+            "up": LowLevelActions.PRESS_ARROW_UP,
+            "down": LowLevelActions.PRESS_ARROW_DOWN,
+            "confirm": LowLevelActions.PRESS_BUTTON_A,
+            "left": LowLevelActions.PRESS_ARROW_LEFT,
+            "right": LowLevelActions.PRESS_ARROW_RIGHT,
+            "exit": LowLevelActions.PRESS_BUTTON_B,
+            "open": LowLevelActions.PRESS_BUTTON_START
+    }
 
+    def is_valid(self, **kwargs):
+        """
+        Checks if the menu action is valid in the current state.
+
+        Args:
+            menu_action (str, optional): The menu action to check. One of "up", "down", "confirm", "exit", "open".
+        Returns:
+            bool: True if the action is valid, False otherwise.
+        """
+        menu_action = kwargs.get("menu_action")
+        if menu_action is not None:
+            if menu_action not in self._MENU_ACTION_MAP.keys():
+                return False
+        state = self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
+        if menu_action is None:
+            return (state != AgentState.IN_BATTLE) and (state != AgentState.IN_DIALOGUE)
+        if menu_action == "open":
+            return state == AgentState.FREE_ROAM
+        else:
+            return state == AgentState.IN_MENU
+            
+    def get_action_space(self):
+        """
+        Returns a Discrete space representing menu actions.
+        Returns:
+            Discrete: A Discrete space with size equal to the number of menu actions.
+        """
+        return Discrete(len(self._MENU_ACTION_MAP))
+
+    def parameters_to_space(self, menu_action):
+        if menu_action not in self._MENU_ACTION_MAP.keys():
+            log_error(f"Invalid menu action {menu_action}", self._parameters)
+
+    def space_to_parameters(self, space_action):
+        menu_action = None
+        if space_action == 0:
+            menu_action = "up"
+        elif space_action == 1:
+            menu_action = "down"
+        elif space_action == 2:
+            menu_action = "confirm"
+        elif space_action == 3:
+            menu_action = "exit"
+        elif space_action == 4:
+            menu_action = "open"
+        else:
+            log_error(f"Invalid space action {space_action}")
+        return {"menu_action": menu_action}
+    
+    def _execute(self, menu_action):
+        action = self._MENU_ACTION_MAP[menu_action]
+        current_frame = self._emulator.get_current_frame()
+        frames = self._emulator.run_action_on_emulator(action)
+        self._emulator._update_listeners_after_actions(frames)
+        action_success = frame_changed(current_frame, frames[-1])
+        return [self._state_tracker.report()], action_success
+        
 
 class BattleActions:
+    pass
+
+class PokemonCrystalBagActions:
     pass

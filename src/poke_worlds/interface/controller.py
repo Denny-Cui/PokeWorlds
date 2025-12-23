@@ -140,22 +140,23 @@ class Controller(ABC):
                 valid_actions[action] = valid_parameters
         return valid_actions
         
-    def get_valid_space_actions(self) -> Dict[Type[HighLevelAction], OneOf]:
+    def get_valid_space_actions(self) -> Dict[Type[HighLevelAction], List[OneOf]]:
         """
         Returns a list of valid actions in the controller's action space that can be performed in the current state.
-        # TODO: Seems fishy bro
+
         Returns:
 
-            Dict[HighLevelAction, Space]: A dictionary mapping high level actions to their corresponding valid space actions.
+            Dict[HighLevelAction, List[OneOf]]: A dictionary mapping high level actions to their corresponding valid space actions.
         """
         valid_space_actions = {}
         if not self._emulator_running():
             return valid_space_actions
         valid_high_level_actions = self.get_valid_high_level_actions()
         for action, parameter_list in valid_high_level_actions.items():
+            valid_space_actions[action] = []
             for parameters in parameter_list:
                 space_action = self._high_level_action_to_space_action(action, **parameters)
-                valid_space_actions[action] = space_action
+                valid_space_actions[action].append(space_action)
         return valid_space_actions
 
     def get_possibly_valid_high_level_actions(self) -> List[Type[HighLevelAction]]:
@@ -188,7 +189,7 @@ class Controller(ABC):
             int: Action success status.
         """
         action_index, space_action = action
-        executing_action = self.actions[action_index]
+        executing_action: HighLevelAction = self.actions[action_index]
         return executing_action.execute_space_action(space_action)
     
     def execute(self, action: Type[HighLevelAction], **kwargs) -> Tuple[Optional[List[Dict[str, Dict[str, Any]]]], Optional[int]]:
@@ -221,9 +222,13 @@ class Controller(ABC):
     
     def execute_string(self, input_str: str) -> Tuple[Optional[List[Dict[str, Dict[str, Any]]]], Optional[int]]:
         """
-        Executes a string command after checking for validity
-        # TODO: Docstring
-        Args
+        Executes a high level action specified by a string input.
+        Args:
+            input_str (str): The string input representing the high level action and its parameters.
+        Returns:
+            List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
+
+            int: Action success status.
         """
         action, kwargs = self.string_to_high_level_action(input_str=input_str)
         if action is None:
