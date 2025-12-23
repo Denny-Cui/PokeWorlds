@@ -83,9 +83,9 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
         """ Buffer of recent actions taken in the environment. Each entry is a tuple of (action, kwargs, success_code, success_message)."""
 
 
-    def add_to_action_buffer(self, action: HighLevelAction, action_success: int, success_message: str):
+    def add_to_action_buffer(self, action: HighLevelAction, action_kwargs, action_success: int, success_message: str):
         """ Adds an action to the action buffer, maintaining the maximum size. """
-        self.action_buffer.append((action, action_success, success_message))
+        self.action_buffer.append((action, action_kwargs, action_success, success_message))
         if len(self.action_buffer) > self.action_buffer_max_size:
             self.action_buffer.pop(0)
 

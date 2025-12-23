@@ -30,3 +30,5 @@ from poke_worlds.emulation.pokemon import AVAILABLE_POKEMON_VARIANTS, get_pokemo
 from poke_worlds.interface.pokemon import get_pokemon_environment
 
 from poke_worlds.interface.controller import LowLevelController, RandomPlayController, LowLevelPlayController
+from poke_worlds.interface.pokemon.expensive_environments import PokemonHighLevelEnvironment
+from poke_worlds.interface.pokemon.controllers import PokemonStateWiseController
