@@ -21,12 +21,10 @@ class OCR:
     def __init__(self, parameters: dict = None):
         verify_parameters(parameters)
         self._parameters = load_parameters(parameters)
-        kwargs = {}
-        if torch.cuda.is_available():
-            kwargs["device"] = "cuda"
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
         self._model = AutoModelForCausalLM.from_pretrained(
-            "PaddlePaddle/PaddleOCR-VL", trust_remote_code=True, dtype=torch.bfloat16, **kwargs
-        ).eval()
+            "PaddlePaddle/PaddleOCR-VL", trust_remote_code=True, dtype=torch.bfloat16,
+        ).to(self.device).eval()
         self._processor = AutoProcessor.from_pretrained("PaddlePaddle/PaddleOCR-VL", trust_remote_code=True)
 
     def make_image(self, arr):
@@ -51,7 +49,7 @@ class OCR:
                 text=texts,
                 return_tensors="pt",
                 padding=True,
-            ).to(self._model.device)
+            ).to(self.device)
 
             outputs = self._model.generate(**inputs, max_new_tokens=self._parameters["ocr_model_max_new_tokens"])
             outputs = self._processor.batch_decode(outputs, skip_special_tokens=True)
