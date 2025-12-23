@@ -25,4 +25,6 @@ dependencies = [
 full = [
     "protobuf>=6.33.2",
     "sentencepiece>=0.2.1",
+    "torch>=2.9.1",
+    "transformers==4.56",
 ]
