@@ -10,7 +10,11 @@ import numpy as np
 
 class VL:
     system_prompt = """
-You are playing a Pokemon game, and the objective is to get as far into the game as possible. 
+You are playing a Pokemon game. 
+
+Your grand goal is to clear the game, however your current mission is as follows: [MISSION] 
+
+
 You will be provided with images of the game screen. Based on the current screen, output the next action to take.
 
 The set of allowed actions are:
@@ -21,30 +25,36 @@ The set of allowed actions are:
 
 You must respond with exactly one of the above actions in the right format. Any other action is invalid. 
 
-First, think about what is happening in the current frame, and also consider your past actions. Make sure you are not getting stuck in a repetitive loop, and if you are, try something new to break out of it. 
-
-You should format your action output as follows:
-Input: frame image
-Think: (your reasoning about the current situation). Should be extremely brief.
-<action></action>
-
 Additional Context About Game:
 [PREV]
 [ALLOWED]
+
+
+First, think about what is happening in the current frame, and also consider your past actions. Make sure you are not getting stuck in a repetitive loop, and if you are, try something new to break out of it. 
+Additionally, given the result of your previous action, have you achieved your immediate goal? If not, keep pursuing it, but if so, then state your next immediate mission towards your grand goal.
+
+
+You should format your action output as follows:
+Input: frame image
+Think: (your reasoning about the current situation). 
+Mission: summarize the immediate action you are trying to take right now. From the results of your actions, does it seem like you have succeeded? If you do succeed, what will you do next? What will you do after that?
+Action: <action></action>
+
 Now, based on the current frame and the context, first think and reason about your situation. Then, output your next action in the proper format, do not forget to enclose it with action tags: <action>COMMAND</action>. 
     """
     def __init__(self, env):
         self.model = Qwen3VLForConditionalGeneration.from_pretrained(
-            "Qwen/Qwen3-VL-8B-Instruct",
+            "Qwen/Qwen3-VL-32B-Instruct",
             dtype=torch.bfloat16,
             device_map="auto",
         )
-        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen3-VL-8B-Instruct")
+        self.processor = AutoProcessor.from_pretrained("Qwen/Qwen3-VL-32B-Instruct")
         self.env = env
         self.actions = self.env.actions
 
-    def infer(self, current_frame, prev_message, allowed_string=""):
+    def infer(self, current_frame, prev_message, mission, allowed_string=""):
         use_prompt = self.system_prompt
+        use_prompt = use_prompt.replace("[MISSION]", mission)
         use_prompt = use_prompt.replace("[ALLOWED]", allowed_string)
         use_prompt = use_prompt.replace("[PREV]", prev_message)
         current_frame = current_frame.reshape(current_frame.shape[0], current_frame.shape[1])
@@ -126,9 +136,7 @@ Now, based on the current frame and the context, first think and reason about yo
             return "Unknown Action", "not recognized", False
         
 
-
-
-    def act(self, observation):
+    def act(self, observation, mission):
         allowed_categories = self.env._controller.get_possibly_valid_high_level_actions()
         allowed_string = "The following action categories could possibly be valid now: "
         for ac in allowed_categories:
@@ -147,7 +155,8 @@ Now, based on the current frame and the context, first think and reason about yo
             counter += 1
             if counter >= max_out:
                 return None, None
-        return action, action_kwargs
+        mission = output_text.lower().split("mission:")[1].split("action:")[0].strip()
+        return action, action_kwargs, mission
         
         
     
@@ -159,11 +168,12 @@ environment = get_pokemon_environment(game_variant="pokemon_red", controller=Pok
 vl = VL(environment)
 steps = 0
 #max_steps = 10_000
-max_steps = 10
+max_steps = 50
 pbar = tqdm(total=max_steps)
+mission = "To clear the game I must obtain a pokemon. First, I will move towards the pokeballs on the table. Then, I will interact with the pokeball to obtain a pokemon. Then, I will re-assess my mission. "
 observation, info = environment.reset()
 while steps < max_steps:
-    action, kwargs = vl.act(observation)
+    action, kwargs, mission = vl.act(observation, mission)
     if action is None:
         print("VL agent failed to produce a valid action after multiple attempts. Exiting.")
         break
