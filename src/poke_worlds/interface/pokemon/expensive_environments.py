@@ -13,16 +13,13 @@ import numpy as np
 
 from PIL import Image
 import torch
-from transformers import AutoModelForCausalLM, AutoProcessor
+from transformers import AutoModelForCausalLM, AutoProcessor, pipeline
 
 from gymnasium import spaces
 
 
-from huggingface_hub import hf_hub_download
-import re
 from PIL import Image
 
-from transformers import NougatProcessor, VisionEncoderDecoderModel
 import torch
 
 
@@ -30,9 +27,7 @@ class OCR:
     def __init__(self, parameters: dict = None):
         verify_parameters(parameters)
         self._parameters = load_parameters(parameters)
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        self._model = VisionEncoderDecoderModel.from_pretrained("facebook/nougat-base").to(self.device)
-        self._processor = NougatProcessor.from_pretrained("facebook/nougat-base")
+        self.pipeline = pipe = pipeline("image-text-to-text", model="Qwen/Qwen3-VL-2B-Instruct", device_map="auto", dtype=torch.bfloat16)
 
     def make_image(self, arr):
         rgb = np.stack([arr[:, :, 0], arr[:, :, 0], arr[:, :, 0]], axis=2)
@@ -44,23 +39,17 @@ class OCR:
         Extract text from a list of images.
         """
         all_images = [self.make_image(img) for img in images]
+        text_prompt = "<|im_start|>user\n<vision_start|><|image_pad|><|vision_end|>\nPerform OCR and state the text in this image:\n<|im_end|><|im_start|>assistant\n"
         batch_size = self._parameters["ocr_model_batch_size"]
         all_outputs = []
         for i in range(0, len(all_images), batch_size):
             images = all_images[i:i+batch_size]
-            pixel_values = self._processor(
-                images=images,
-                return_tensors="pt",
-                padding=True,
-            ).pixel_values.to(self.device)
-
-            outputs = self._model.generate(pixel_values, max_new_tokens=self._parameters["ocr_model_max_new_tokens"], 
-                                           bad_words_ids=[[self._processor.tokenizer.unk_token_id]])
-            outputs = self._processor.batch_decode(outputs, skip_special_tokens=True)
+            texts = [text_prompt] * len(images)
+            outputs = self.pipeline(images=images, text=texts, max_new_tokens=self._parameters["ocr_model_max_new_tokens"], do_sample=False)
             all_outputs.extend(outputs)
         output_only = []
         for out in all_outputs:
-            output_only.append(out.split("Assistant: ")[-1].strip())
+            output_only.append(out.split("assistant")[-1].strip())
         return output_only
 
 
