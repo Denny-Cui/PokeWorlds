@@ -31,7 +31,7 @@ Think: (your reasoning about the current situation). Should be extremely brief.
 Additional Context About Game:
 [PREV]
 [ALLOWED]
-Now, based on the current frame and the context, first think and reason about your situation. Then, output your next action in the proper format. 
+Now, based on the current frame and the context, first think and reason about your situation. Then, output your next action in the proper format, do not forget to enclose it with action tags: <action>COMMAND</action>. 
     """
     def __init__(self, env):
         self.model = Qwen3VLForConditionalGeneration.from_pretrained(
@@ -87,7 +87,7 @@ Now, based on the current frame and the context, first think and reason about yo
             return "Bad <action>", "tags wrong", False
         action_str = text.split("<action>")[1].split("</action>")[0].strip()
         if "interact" in action_str.lower():
-            return InteractAction, {}, self.env._controller.is_valid(InteractAction, {})
+            return InteractAction, {}, self.env._controller.is_valid(InteractAction)
         elif "movesteps" in action_str.lower():
             if action_str.count(",") != 1:
                 return "Bad MoveSteps", "improper commas", False
@@ -98,30 +98,30 @@ Now, based on the current frame and the context, first think and reason about yo
                 return "Bad MoveSteps", "steps not int", False
             steps = int(int_part)
             if "right" in direction_part:
-                return MoveStepsAction, {"direction": "right", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, {"direction": "right", "steps": steps})
+                return MoveStepsAction, {"direction": "right", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, direction="right", steps=steps)
             elif "left" in direction_part:
-                return MoveStepsAction, {"direction": "left", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, {"direction": "left", "steps": steps})
+                return MoveStepsAction, {"direction": "left", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, direction="left", steps=steps)
             elif "up" in direction_part:
-                return MoveStepsAction, {"direction": "up", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, {"direction": "up", "steps": steps})
+                return MoveStepsAction, {"direction": "up", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, direction="up", steps=steps)
             elif "down" in direction_part:
-                return MoveStepsAction, {"direction": "down", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, {"direction": "down", "steps": steps})
+                return MoveStepsAction, {"direction": "down", "steps": steps}, self.env._controller.is_valid(MoveStepsAction, direction="down", steps=steps)
             else:
                 return "Bad MoveSteps", "direction not recognized", False
         elif "menuaction" in action_str.lower():
             if "up" in action_str:
-                return MenuAction, {"menu_action": "up"}, self.env._controller.is_valid(MenuAction, {"menu_action": "up"})
+                return MenuAction, {"menu_action": "up"}, self.env._controller.is_valid(MenuAction, menu_action="up")
             elif "down" in action_str:
-                return MenuAction, {"menu_action": "down"}, self.env._controller.is_valid(MenuAction, {"menu_action": "down"})
+                return MenuAction, {"menu_action": "down"}, self.env._controller.is_valid(MenuAction, menu_action="down")
             elif "left" in action_str:
-                return MenuAction, {"menu_action": "left"}, self.env._controller.is_valid(MenuAction, {"menu_action": "left"})
+                return MenuAction, {"menu_action": "left"}, self.env._controller.is_valid(MenuAction, menu_action="left")
             elif "right" in action_str:
-                return MenuAction, {"menu_action": "right"}, self.env._controller.is_valid(MenuAction, {"menu_action": "right"})
+                return MenuAction, {"menu_action": "right"}, self.env._controller.is_valid(MenuAction, menu_action="right")
             elif "confirm" in action_str or "select" in action_str:
-                return MenuAction, {"menu_action": "confirm"}, self.env._controller.is_valid(MenuAction, {"menu_action": "confirm"})
+                return MenuAction, {"menu_action": "confirm"}, self.env._controller.is_valid(MenuAction, menu_action="confirm")
             elif "exit" in action_str:
-                return MenuAction, {"menu_action": "exit"}, self.env._controller.is_valid(MenuAction, {"menu_action": "exit"})
+                return MenuAction, {"menu_action": "exit"}, self.env._controller.is_valid(MenuAction, menu_action="exit")
         elif "passdialogue" in action_str.lower():
-            return PassDialogueAction, {}, self.env._controller.is_valid(PassDialogueAction, {})
+            return PassDialogueAction, {}, self.env._controller.is_valid(PassDialogueAction)
         else:
             return "Unknown Action", "not recognized", False
         
