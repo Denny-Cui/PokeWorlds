@@ -31,8 +31,7 @@ Think: (your reasoning about the current situation). Should be extremely brief.
 Additional Context About Game:
 [PREV]
 [ALLOWED]
-Now, based on the current frame and the context, output your next action.
-Think: 
+Now, based on the current frame and the context, first think and reason about your situation. Then, output your next action in the proper format. 
     """
     def __init__(self, env):
         self.model = Qwen3VLForConditionalGeneration.from_pretrained(
