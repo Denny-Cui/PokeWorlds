@@ -188,7 +188,7 @@ class Controller(ABC):
         if not self._emulator_running():
             return []
         actions = []
-        for i, action_class in self.ACTIONS:
+        for i, action_class in enumerate(self.ACTIONS):
             action = self.actions[i]
             if action.is_valid():
                 actions.append(action_class)
