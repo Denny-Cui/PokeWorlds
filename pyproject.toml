@@ -24,4 +24,5 @@ dependencies = [
 [project.optional-dependencies]
 full = [
     "protobuf>=6.33.2",
+    "sentencepiece>=0.2.1",
 ]
