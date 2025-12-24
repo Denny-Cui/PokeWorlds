@@ -29,7 +29,7 @@ Additional Context About Game:
 
 Your instruction is to:
 1. First, think about what is happening in the current frame, and also consider your past actions. Make sure you are not getting stuck in a repetitive loop, and if you are, try something new to break out of it. 
-2. Reason about your mission: Given the result of your previous action, have you achieved your immediate goal? If not, keep pursuing it, but if so, then state your next immediate mission towards your grand goal.
+2. Reason about your mission: Given the result of your previous action, have you achieved your immediate goal? If not, keep pursuing it, but if so, then state your next immediate mission towards your grand goal. If your goal is to move towards a particular object, count exactly how many grid cells it away from you on both axes and include that in your mission in the form (x, y). 
 3. Select a final action you will perform
 
 You should format your action output as follows:
