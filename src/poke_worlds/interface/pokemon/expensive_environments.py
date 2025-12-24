@@ -27,7 +27,7 @@ class OCR:
     def __init__(self, parameters: dict = None):
         verify_parameters(parameters)
         self._parameters = load_parameters(parameters)
-        self.pipeline = pipe = pipeline("image-text-to-text", model="Qwen/Qwen3-VL-2B-Instruct", device_map="auto", dtype=torch.bfloat16)
+        self.pipeline = pipeline("image-text-to-text", model="Qwen/Qwen3-VL-2B-Instruct", device_map="auto", dtype=torch.bfloat16)
 
     def make_image(self, arr):
         rgb = np.stack([arr[:, :, 0], arr[:, :, 0], arr[:, :, 0]], axis=2)
@@ -168,7 +168,7 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
         if screens is None:
             screens = [info["core"]["current_frame"]]
         for screen in screens:
-            pass#self._screen_render(screen)
+            self._screen_render(screen)
         obs = self.get_observation(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success)
         log_info(f"Messages: {obs['messages']}", self._parameters)
 

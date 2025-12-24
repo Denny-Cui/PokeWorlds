@@ -9,7 +9,7 @@ import numpy as np
 class PokemonEmulator(Emulator):
     """
     Almost the exact same as Emulator, but forces the agent to not mess with the menu options cursor.
-    Also, skips all dialogue automatically (by clicking 'B'). # TODO: Make sure you never skip choices. 
+    Also, skips all dialogue automatically (by clicking 'B'). 
     """
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker

@@ -73,7 +73,7 @@ class InteractAction(HighLevelAction):
         current_frame = self._emulator.get_current_frame()
         frames, done = self._emulator.step(LowLevelActions.PRESS_BUTTON_A)
         action_success = 0
-        # Check if the frames have changed. Be strict and require all to not permit jittering screens. #TODO: Test
+        # Check if the frames have changed. Be strict and require all to not permit jittering screens.
         prev_frames = []
         for frame in frames:
             if self._emulator.state_parser.get_agent_state(frame) != AgentState.FREE_ROAM: # something happened lol
@@ -87,7 +87,7 @@ class InteractAction(HighLevelAction):
                 break
             prev_frames.append(frame)        
         if action_success == 0:
-            action_success = -1 # I guess?
+            action_success = -1 # I guess? For some reason the previous thing doesn't catch same frames
         return [self._state_tracker.report()], action_success # 0 means something maybe happened. 1 means def happened.
     
     def get_action_space(self):
@@ -150,7 +150,7 @@ class BaseMovementAction(HighLevelAction, ABC):
             if done:
                 break
             # check if frames changed. If not, break out. 
-            # We check all frames in sequence to try and catch oscillations. TODO: Test
+            # We check all frames in sequence to try and catch oscillations. But nothing will catch 1 step into wall in areas like this
             if not all([frame_changed(previous_frame, current_frame) for current_frame in frames]):
                 break
             agent_state = self._emulator.state_parser.get_agent_state(self._emulator.get_current_frame())

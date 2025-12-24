@@ -244,7 +244,6 @@ class Environment(gym.Env, ABC):
             terminated (bool): Whether the episode has ended (reached the terminal state of the MDP).
             truncated (bool): Whether the episode was truncated (exceeded the maximum allowed steps).
             info (Dict[str, Dict[str, Any]]): Full state information.
-            # TODO: Change this to have observation take the previous action, action_success and transition_states as an optional input. Same for state I guess. 
         """
         if self._emulator.check_if_done():
             log_error("Cannot step environment because emulator indicates done. Please reset the environment.", self._parameters)
