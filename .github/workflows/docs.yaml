@@ -34,12 +34,13 @@ jobs:
       - run: which python && pip list
       - run: uv pip install pdoc
       - run: uv pip install -e ".[full]"
+      - run: uv pip install vptq
       # ADJUST THIS: build your documentation into docs/.
       # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
       - run: |
           mkdir -p docs/assets
           cp assets/logo_tilt.png docs/assets/
-          pdoc src/poke_worlds -o docs -d google -n --logo "https://dhananjayashok.github.io/PokeWorlds/assets/logo_tilt.png"
+          pdoc src/poke_worlds !poke_worlds.interface.pokemon.transformers -o docs -d google -n --logo "https://dhananjayashok.github.io/PokeWorlds/assets/logo_tilt.png"
       - uses: actions/upload-pages-artifact@v4
         with:
           path: docs/
