@@ -433,6 +433,15 @@ class LocateAction(HighLevelAction):
 class TestAction(HighLevelAction):
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
+    prompt = """
+    You are playing Pokemon and are trying to identify whether you have found the target `[TARGET]` in the current screen. 
+    Output YES if the image provided has the target, and NO otherwise.
+    Give a one sentence reasoning for your decision before you do so.
+    Output format:
+    Reasoning: extremely brief reasoning here
+    Final Answer: YES or NO
+    [STOP]
+    """
 
     def is_valid(self, **kwargs):
         return True
@@ -448,10 +457,18 @@ class TestAction(HighLevelAction):
     
     def _execute(self, context="Pokeballs on a counter"):
         # Do the percieve action in the free roam state:
-        percieve_prompt = Prompts.locate.replace("[CONTEXT]", context)
-        frame = self._emulator.state_parser.draw_grid_overlay(self._emulator.get_current_frame())
-        output = perform_vlm_inference(texts=[percieve_prompt], images=[frame], max_new_tokens=256, batch_size=1)[0]
+        percieve_prompt = self.prompt.replace("[TARGET]", context)
+        quadrant = "tr"
+        cells = self._emulator.state_parser.capture_grid_cells(self._emulator.get_current_frame(), quadrant=quadrant)
+        images = cells.values()
+        texts = [percieve_prompt] * len(images)
+        output = perform_vlm_inference(texts=texts, images=images, max_new_tokens=256, batch_size=len(texts))
+        report = {}
+        for x, y in cells.keys():
+            report[(x, y)] = output.pop(0)
         self._emulator.step() # just to ensure state tracker is populated. THIS FAILS IN DIALOGUE STATES. 
         ret_dict = self._state_tracker.report()
-        ret_dict["vlm_perception"] = output
+        ret_dict["vlm_perception"] = report
         return [ret_dict], 0
+    
+    # TODO: Add the action to break down the grid into pieces and check if the target is in each piece and return the grid coordinates where it is found. 

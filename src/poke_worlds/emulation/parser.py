@@ -523,6 +523,8 @@ class StateParser(ABC):
         Args:
             current_frame (np.ndarray): The current frame from the emulator.
             grid_skip (int, optional): The number of pixels between grid lines. 
+            x_offset (int, optional): The x-offset to apply when drawing the grid.
+            y_offset (int, optional): The y-offset to apply when drawing the grid.
         Returns:
             np.ndarray: The frame with the grid overlay.            
         """
@@ -533,12 +535,15 @@ class StateParser(ABC):
             cv2.line(frame_with_grid, (0, y + y_offset), (current_frame.shape[1], y + y_offset), (0, 0, 255), 1, lineType=cv2.LINE_AA)
         return frame_with_grid
     
-    def capture_grid_cells(self, current_frame: np.ndarray, grid_skip: int=16, x_offset=0, y_offset=-2) -> Dict[Tuple[int, int], np.ndarray]:
+    def capture_grid_cells(self, current_frame: np.ndarray, * , quadrant: str = None, grid_skip: int=16, x_offset=0, y_offset=-2) -> Dict[Tuple[int, int], np.ndarray]:
         """
         Captures all grid cells from the current frame based on the specified grid skip.
         Args:
             current_frame (np.ndarray): The current frame from the emulator.
+            quadrant (str, optional): If specified, only captures cells in the given quadrant ('TL', 'TR', 'BL', 'BR').
             grid_skip (int, optional): The number of pixels between grid lines.
+            x_offset (int, optional): The x-offset to apply when capturing cells.
+            y_offset (int, optional): The y-offset to apply when capturing cells.
 
         Returns:
             Dict[Tuple[int, int], np.ndarray]: A dictionary mapping grid cell coordinates to their captured images.
@@ -559,6 +564,17 @@ class StateParser(ABC):
             for y in y_iter:
                 x_cell = x_ind(x)
                 y_cell = y_ind(y)
+                if quadrant is not None:
+                    if quadrant.lower() == "tl" and (x_cell >= 0 or y_cell <= 0):
+                        continue
+                    elif quadrant.lower() == "tr" and (x_cell <= 0 or y_cell <= 0):
+                        continue
+                    elif quadrant.lower() == "bl" and (x_cell >= 0 or y_cell >= 0):
+                        continue
+                    elif quadrant.lower() == "br" and (x_cell <= 0 or y_cell >= 0):
+                        continue
+                    else:
+                        log_error(f"Invalid quadrant specified: {quadrant}. Must be one of 'TL', 'TR', 'BL', 'BR'", self._parameters)
                 cell_image = self.capture_box(current_frame, x+x_offset , y+y_offset, grid_skip, grid_skip)
                 cells[(x_cell, y_cell)] = cell_image
         return cells
