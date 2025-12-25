@@ -1,10 +1,10 @@
 from poke_worlds.utils import log_error, log_info
-from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction
+from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction
 from poke_worlds.interface.controller import Controller
 
 
 class PokemonStateWiseController(Controller):
-    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction]
+    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction]
 
     def _parse_distance(self, distance_str):
         if distance_str.count(":") != 1:
@@ -33,6 +33,8 @@ class PokemonStateWiseController(Controller):
             return InteractAction, {}
         elif input_str == "p":
             return PassDialogueAction, {}
+        elif input_str == "t":
+            return TestAction, {}
         if ":" in input_str:
             return self._parse_distance(input_str)
         else:
@@ -55,7 +57,7 @@ class PokemonStateWiseController(Controller):
         
     def get_action_strings(self):
         msg = f"""
-        <direction(u,d,r,l)>: <steps(int)> or <menu(m_u, m_d, m_r, m_l, m_a, m_b, m_o)> or <interaction(a)> or <pass_dialogue(p)>
+        <direction(u,d,r,l)>: <steps(int)> or <menu(m_u, m_d, m_r, m_l, m_a, m_b, m_o)> or <interaction(a)> or <pass_dialogue(p)> or <test(t)>
         """
         return msg    
 

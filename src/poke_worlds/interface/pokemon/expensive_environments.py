@@ -89,6 +89,10 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
                         action_success_message = "Your interaction led to something."
             self.add_to_action_buffer(action, action_kwargs, action_success, action_success_message)
         final_message = ""
+        if transition_states is not None:
+            for transition_state in transition_states:
+                if "vlm_perception" in transition_state:
+                    final_message = final_message + "\nVLM Perception: " + transition_state["vlm_perception"] + "\n"
         if len(self.action_buffer) > 0:
             final_message = "Recent actions taken in the environment: \n"
         for i, (buffered_action, buffered_kwargs, buffered_success, buffered_message) in enumerate(self.action_buffer):

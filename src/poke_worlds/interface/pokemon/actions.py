@@ -1,4 +1,4 @@
-from poke_worlds.utils import log_error
+from poke_worlds.utils import log_error, perform_vlm_inference
 from poke_worlds.interface.action import HighLevelAction
 from poke_worlds.emulation.pokemon.parsers import AgentState, PokemonStateParser
 from poke_worlds.emulation.pokemon.trackers import CorePokemonTracker
@@ -379,3 +379,49 @@ class BattleActions:
 
 class PokemonCrystalBagActions:
     pass
+
+
+class Prompts:
+    percieve = """
+    You are playing Pokemon and are given a screen capture of the game, with a grid overlayed on top of it. Here is some context: [CONTEXT]. 
+    Your task is to state the grid locations of every notable object, character, barrier or structure that you can see on the screen. 
+    Assume the player at the centre is located at (0, 0) and then provide the following information:
+    1. Grid Upper Right Coordinates: The maximum x and y grid coordinates visible on the screen.
+    2. Grid Lower Left Coordinates: The minimum x and y grid coordinates visible on the screen.
+    3. List of Notable Elements: For each notable element, provide a description and a list of grid coordinates it occupies. 
+    Format your response as follows:
+    1. Grid Upper Right Coordinates: (x_max, y_max)
+    2. Grid Lower Left Coordinates: (x_min, y_min)
+    3. Notable Elements:
+    - E1: Description: [Description of Element 1], Coordinates: [(x1, y1), (x2, y2), ...] (there may be only one coordinate, in which case just provide one)
+    - E2: Description: [Description of Element 2], Coordinates: [(x1, y1), (x2, y2), ...]
+    .....
+    [STOP]
+    Ensure that the coordinates are relative to the player's position at (0, 0). Only include elements that are clearly visible on the screen. 
+    Output: 
+    """
+
+class TestAction(HighLevelAction):
+    REQUIRED_STATE_PARSER = PokemonStateParser
+    REQUIRED_STATE_TRACKER = CorePokemonTracker
+
+    def is_valid(self, **kwargs):
+        return True
+    
+    def get_action_space(self):
+        return Discrete(1) # Dummy
+    
+    def parameters_to_space(self):
+        return 0
+    
+    def space_to_parameters(self, space_action):
+        return {"context": "You playin pokemon"} # Dummy
+    
+    def _execute(self, context="You are in prof oaks lab. He has offered you a choice of starter pokemon."):
+        # Do the percieve action in the free roam state:
+        percieve_prompt = Prompts.percieve.replace("[CONTEXT]", context)
+        frame = self._emulator.state_parser.draw_grid_overlay(self._emulator.get_current_frame())
+        output = perform_vlm_inference(texts=[percieve_prompt], images=[frame], max_new_tokens=256, batch_size=1)[0]
+        ret_dict = self._state_tracker.report()
+        ret_dict["vlm_perception"] = output
+        return [ret_dict], 0
