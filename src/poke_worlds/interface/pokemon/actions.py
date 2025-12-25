@@ -7,7 +7,7 @@ from abc import ABC
 from typing import List, Tuple
 import numpy as np
 
-from gymnasium.spaces import Box, Discrete
+from gymnasium.spaces import Box, Discrete, Text
 import matplotlib.pyplot as plt
 
 HARD_MAX_STEPS = 20
@@ -381,9 +381,9 @@ class PokemonCrystalBagActions:
     pass
 
 
-class Prompts:
-    locate = """
-    You are playing Pokemon and are given a screen capture of the game, with a grid overlayed on top of it. Your job is to locate the target that best fits the description `[CONTEXT]`
+class LocateAction(HighLevelAction):
+    prompt = """
+    You are playing Pokemon and are given a screen capture of the game, with a grid overlayed on top of it. Your job is to locate the target that best fits the description `[TARGET]`
     and identify which quadrant it is in relative to the player. 
 
     Format your response as follows:
@@ -392,6 +392,43 @@ class Prompts:
     [STOP]
     Output:
     """
+    REQUIRED_STATE_PARSER = PokemonStateParser
+    REQUIRED_STATE_TRACKER = CorePokemonTracker
+
+    def is_valid(self, target: str = None):
+        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
+    
+    def get_action_space(self):
+        return Text(max_length=50)
+    
+    def parameters_to_space(self, target: str):
+        return target
+    
+    def space_to_parameters(self, space_action: str):
+        return {"target": space_action}
+    
+    def _execute(self, target: str):
+        percieve_prompt = self.prompt.replace("[TARGET]", target)
+        frame = self._emulator.state_parser.draw_grid_overlay(self._emulator.get_current_frame())
+        output = perform_vlm_inference(texts=[percieve_prompt], images=[frame], max_new_tokens=256, batch_size=1)[0].lower()
+        found = False
+        reasoning = None
+        quadrant = None
+        if "quadrant:" in output:
+            reasoning = output.split("quadrant:")[0]
+            suspect_text = output.split("quadrant:")[1]
+            for quad in ["top-left", "top-right", "bottom-left", "bottom-right"]:
+                if quad in suspect_text:
+                    quadrant = quad
+                    found = True
+                    break
+        else:
+            reasoning = output
+            found = False
+        self._emulator.step() # just to ensure state tracker is populated. #TODO: THIS FAILS IN DIALOGUE STATES. 
+        ret_dict = self._state_tracker.report()
+        ret_dict["location_result"] = (found, quadrant, reasoning)
+        return [ret_dict], 0
 
 class TestAction(HighLevelAction):
     REQUIRED_STATE_PARSER = PokemonStateParser
