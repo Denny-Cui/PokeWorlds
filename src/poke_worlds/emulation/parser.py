@@ -549,6 +549,9 @@ class StateParser(ABC):
             Dict[Tuple[int, int], np.ndarray]: A dictionary mapping grid cell coordinates to their captured images.
             The grid cells are with the central cell as (0,0)
         """
+        if quadrant is not None:
+            if quadrant.lower() not in ["tl", "tr", "bl", "br"]:
+                log_error(f"Invalid quadrant: {quadrant}. Must be one of 'TL', 'TR', 'BL', 'BR'", self._parameters)
         cells = {}
         x_iter = [-x_offset] + list(range(0, current_frame.shape[1], grid_skip))
         y_iter = [-y_offset] + list(range(0, current_frame.shape[0], grid_skip))
@@ -573,8 +576,6 @@ class StateParser(ABC):
                         continue
                     elif quadrant.lower() == "br" and (x_cell <= 0 or y_cell >= 0):
                         continue
-                    else:
-                        log_error(f"Invalid quadrant specified: {quadrant}. Must be one of 'TL', 'TR', 'BL', 'BR'", self._parameters)
                 cell_image = self.capture_box(current_frame, x+x_offset , y+y_offset, grid_skip, grid_skip)
                 cells[(x_cell, y_cell)] = cell_image
         return cells
