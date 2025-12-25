@@ -275,7 +275,7 @@ class CorePokemonTracker(StateTracker):
         # if agent_state is in FREE ROAM, draw the grid, otherwise do not
         if state == AgentState.FREE_ROAM:
             screen = self.episode_metrics["core"]["current_frame"]
-            screen = self.state_parser.draw_grid_overlay(current_frame=screen, grid_skip=20)
+            screen = self.state_parser.draw_grid_overlay(current_frame=screen)
             self.episode_metrics["core"]["current_frame"] = screen
             previous_screens = self.episode_metrics["core"]["passed_frames"]
             if previous_screens is not None:

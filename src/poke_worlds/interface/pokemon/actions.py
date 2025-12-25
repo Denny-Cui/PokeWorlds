@@ -429,6 +429,49 @@ class LocateAction(HighLevelAction):
         ret_dict = self._state_tracker.report()
         ret_dict["location_result"] = (found, quadrant, reasoning)
         return [ret_dict], 0
+    
+class GridLocateAction(HighLevelAction):
+    prompt = """
+    You are playing Pokemon and are trying to identify whether you have found the target `[TARGET]` in the current screen. 
+    Output YES if the image provided has the target, and NO otherwise.
+    Give a one sentence reasoning for your decision before you do so.
+    Output format:
+    Reasoning: extremely brief reasoning here
+    Final Answer: YES or NO
+    [STOP]
+    """
+
+    REQUIRED_STATE_PARSER = PokemonStateParser
+    REQUIRED_STATE_TRACKER = CorePokemonTracker
+
+    def is_valid(self, target: str = None, quadrant: str = None):
+        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM and quadrant in ["tr", "tl", "br", "bl"]
+    
+    def get_action_space(self):
+        return Text(max_length=50) # the expected action space is a concatenation with | quadrant at the end
+    
+    def parameters_to_space(self, target: str, quadrant: str):
+        return f"{target}|{quadrant}"
+    
+    def space_to_parameters(self, space_action: str):
+        target, quadrant = space_action.split("|")
+        return {"target": target, "quadrant": quadrant}
+    
+    def _execute(self, target: str, quadrant: str):
+        percieve_prompt = self.prompt.replace("[TARGET]", target)
+        cells = self._emulator.state_parser.capture_grid_cells(self._emulator.get_current_frame(), quadrant=quadrant)
+        keys = list(cells.keys())
+        images = [cells[key] for key in keys]
+        texts = [percieve_prompt] * len(images)
+        output = perform_vlm_inference(texts=texts, images=images, max_new_tokens=256, batch_size=len(texts))
+        hits = []
+        for i, out in enumerate(output):
+            if "final answer: yes" in out.lower():
+                hits.append(keys[i])
+        self._emulator.step() # just to ensure state tracker is populated. THIS FAILS IN DIALOGUE STATES. 
+        ret_dict = self._state_tracker.report()
+        ret_dict["grid_location_result"] = str(hits)
+        return [ret_dict], 0
 
 class TestAction(HighLevelAction):
     REQUIRED_STATE_PARSER = PokemonStateParser
@@ -460,15 +503,17 @@ class TestAction(HighLevelAction):
         percieve_prompt = self.prompt.replace("[TARGET]", context)
         quadrant = "tr"
         cells = self._emulator.state_parser.capture_grid_cells(self._emulator.get_current_frame(), quadrant=quadrant)
-        images = cells.values()
+        keys = list(cells.keys())
+        images = [cells[key] for key in keys]
         texts = [percieve_prompt] * len(images)
         output = perform_vlm_inference(texts=texts, images=images, max_new_tokens=256, batch_size=len(texts))
-        report = {}
-        for x, y in cells.keys():
-            report[(x, y)] = output.pop(0)
+        hits = []
+        for i, out in enumerate(output):
+            if "final answer: yes" in out.lower():
+                hits.append(keys[i])
         self._emulator.step() # just to ensure state tracker is populated. THIS FAILS IN DIALOGUE STATES. 
         ret_dict = self._state_tracker.report()
-        ret_dict["vlm_perception"] = str(report)
+        ret_dict["vlm_perception"] = str(hits)
         return [ret_dict], 0
     
     # TODO: Add the action to break down the grid into pieces and check if the target is in each piece and return the grid coordinates where it is found. 
