@@ -557,24 +557,24 @@ class StateParser(ABC):
         y_iter = [-y_offset] + list(range(0, current_frame.shape[0], grid_skip))
         def x_ind(x):
             index = x_iter.index(x)
-            return (index - len(x_iter)//2) + 1
+            return (index - len(x_iter)//2)
 
         def y_ind(y):
             index = y_iter.index(y)
-            return (index - len(y_iter)//2)
+            return -(index - len(y_iter)//2)
         
         for x in x_iter:
             for y in y_iter:
                 x_cell = x_ind(x)
                 y_cell = y_ind(y)
                 if quadrant is not None:
-                    if quadrant.lower() == "tl" and (x_cell >= 0 or y_cell <= 0):
+                    if quadrant.lower() == "tl" and (x_cell > 0 or y_cell < 0):
                         continue
-                    elif quadrant.lower() == "tr" and (x_cell <= 0 or y_cell <= 0):
+                    elif quadrant.lower() == "tr" and (x_cell < 0 or y_cell < 0):
                         continue
-                    elif quadrant.lower() == "bl" and (x_cell >= 0 or y_cell >= 0):
+                    elif quadrant.lower() == "bl" and (x_cell > 0 or y_cell > 0):
                         continue
-                    elif quadrant.lower() == "br" and (x_cell <= 0 or y_cell >= 0):
+                    elif quadrant.lower() == "br" and (x_cell < 0 or y_cell > 0):
                         continue
                 cell_image = self.capture_box(current_frame, x+x_offset , y+y_offset, grid_skip, grid_skip)
                 cells[(x_cell, y_cell)] = cell_image
