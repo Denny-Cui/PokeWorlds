@@ -517,7 +517,7 @@ class StateParser(ABC):
         x, y, w, h = region.start_x, region.start_y, region.width, region.height
         return self.draw_box(current_frame, x, y, w, h, color, thickness)
 
-    def draw_grid_overlay(self, current_frame: np.ndarray, grid_skip: int=20) -> np.ndarray:
+    def draw_grid_overlay(self, current_frame: np.ndarray, grid_skip: int=16, x_offset=0, y_offset=-2) -> np.ndarray:
         """
         Draws a grid overlay on the current frame for easier region identification.
         Args:
@@ -528,10 +528,40 @@ class StateParser(ABC):
         """
         frame_with_grid = current_frame.copy()
         for x in range(0, current_frame.shape[1], grid_skip):
-            cv2.line(frame_with_grid, (x, 0), (x, current_frame.shape[0]), (0, 0, 255), 1, lineType=cv2.LINE_AA)
+            cv2.line(frame_with_grid, (x + x_offset, 0), (x + x_offset, current_frame.shape[0]), (0, 0, 255), 1, lineType=cv2.LINE_AA)
         for y in range(0, current_frame.shape[0], grid_skip):
-            cv2.line(frame_with_grid, (0, y), (current_frame.shape[1], y), (0, 0, 255), 1, lineType=cv2.LINE_AA)
+            cv2.line(frame_with_grid, (0, y + y_offset), (current_frame.shape[1], y + y_offset), (0, 0, 255), 1, lineType=cv2.LINE_AA)
         return frame_with_grid
+    
+    def capture_grid_cells(self, current_frame: np.ndarray, grid_skip: int=16, x_offset=0, y_offset=-2) -> Dict[Tuple[int, int], np.ndarray]:
+        """
+        Captures all grid cells from the current frame based on the specified grid skip.
+        Args:
+            current_frame (np.ndarray): The current frame from the emulator.
+            grid_skip (int, optional): The number of pixels between grid lines.
+
+        Returns:
+            Dict[Tuple[int, int], np.ndarray]: A dictionary mapping grid cell coordinates to their captured images.
+            The grid cells are with the central cell as (0,0)
+        """
+        cells = {}
+        x_iter = [-x_offset] + list(range(0, current_frame.shape[1], grid_skip))
+        y_iter = [-y_offset] + list(range(0, current_frame.shape[0], grid_skip))
+        def x_ind(x):
+            index = x_iter.index(x)
+            return (index - len(x_iter)//2) + 1
+
+        def y_ind(y):
+            index = y_iter.index(y)
+            return (index - len(y_iter)//2)
+        
+        for x in x_iter:
+            for y in y_iter:
+                x_cell = x_ind(x)
+                y_cell = y_ind(y)
+                cell_image = self.capture_box(current_frame, x+x_offset , y+y_offset, grid_skip, grid_skip)
+                cells[(x_cell, y_cell)] = cell_image
+        return cells
 
     @abstractmethod
     def __repr__(self) -> str:
