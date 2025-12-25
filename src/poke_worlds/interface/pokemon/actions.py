@@ -424,7 +424,7 @@ class LocateAction(HighLevelAction):
             # save the output too
             with open(f"hits/{names[i]}.txt", "w") as f:
                 f.write(output)
-            if "[yes]" in output.lower():
+            if "yes" in output.lower():
                 founds.append(True)
             else:
                 founds.append(False)
