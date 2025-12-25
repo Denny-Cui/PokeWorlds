@@ -472,7 +472,7 @@ class LocateAction(HighLevelAction):
                         potential_cells.extend(cells.keys())
                         cell_keys = list(cells.keys())
                         cell_screens = [cells[key] for key in cell_keys]
-                        cell_founds = self.check_for_target(prompt, cell_screens, cell_keys, f"{name}_{quadrant}_cells")
+                        cell_founds = self.check_for_target(prompt, cell_screens, cell_keys)
                         for i, found in enumerate(cell_founds):
                             if found:
                                 quadrant_definites.append(cell_keys[i])
