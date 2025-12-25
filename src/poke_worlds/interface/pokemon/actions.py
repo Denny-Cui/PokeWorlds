@@ -390,17 +390,16 @@ class PokemonCrystalBagActions:
 
 class LocateAction(HighLevelAction):
     prompt = """
-    You are playing Pokemon and are given a screen capture of the game, with a grid overlayed on top of it. Your job is to locate the target that best fits the description `[TARGET]`
-    and identify which quadrant it is in relative to the player. 
+    You are playing Pokemon and are given a screen capture of the game. 
+    Your job is to locate the target that best fits the description `[TARGET]`
 
-    Format your response as follows:
-    1. Reasoning: Do you see the target described? Answer with a single sentence and then [YES] or [NO]
-    2. If YES, Quadrant: <one of "top-left", "top-right", "bottom-left", "bottom-right">
+    Do you see the target described? Answer with a single sentence and then [YES] or [NO]
     [STOP]
     Output:
     """
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
+    _MAX_NEW_TOKENS = 60
 
     def is_valid(self, target: str = None):
         return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
@@ -414,37 +413,51 @@ class LocateAction(HighLevelAction):
     def space_to_parameters(self, space_action: str):
         return {"target": space_action}
     
+    
+    def get_cells_found(self, prompt, grid_cells):
+        quadrant_keys = ["tl", "tr", "bl", "br"]
+        if len(grid_cells) == 1:
+            screen = list(grid_cells.values())[0]
+            output = perform_vlm_inference(texts=[prompt], images=[screen], max_new_tokens=self._MAX_NEW_TOKENS, batch_size=1)[0]
+            if "[yes]" in output.lower():
+                return False, list(grid_cells.keys()), list(grid_cells.keys())
+            else:
+                return False, [], []
+        quadrants = self._emulator.state_parser.get_quadrant_frame(grid_cells=grid_cells) # TODO: Verify how this works on the edges
+        found_cells = []
+        screens = []
+        for quadrant in quadrant_keys:
+            screen = quadrants[quadrant]["screen"]
+            screens.append(screen)
+        outputs = perform_vlm_inference(texts=[prompt]*4, images=screens, max_new_tokens=self._MAX_NEW_TOKENS, batch_size=4)
+        quadrant_founds = ["[yes]" in output.lower() for output in outputs]
+        if not any(quadrant_founds):
+            return False, [], []
+        else:
+            potential_cells = []
+            all_cells_found = []
+            for i in range(len(quadrant_keys)):
+                quadrant = quadrant_keys[i]
+                if quadrant_founds[i]:
+                    cells = quadrants[quadrant]["cells"]
+                    found_in_quadrant, quadrant_potentials, quadrant_definites = self.get_cells_found(prompt, cells)
+                    if not found_in_quadrant:
+                        potential_cells.extend(cells)
+                    else:
+                        all_cells_found.extend(quadrant_definites)
+            return True, potential_cells, all_cells_found
+
+        
+
+
+    
     def _execute(self, target: str):
         percieve_prompt = self.prompt.replace("[TARGET]", target)
-        frame = self._emulator.state_parser.draw_grid_overlay(self._emulator.get_current_frame())
-        output = perform_vlm_inference(texts=[percieve_prompt], images=[frame], max_new_tokens=256, batch_size=1)[0].lower()
-        found = False
-        reasoning = None
-        quadrant = None
-        if "quadrant:" in output:
-            reasoning = output.split("quadrant:")[0]
-            suspect_text = output.split("quadrant:")[1]
-            for quad in ["top-left", "top-right", "bottom-left", "bottom-right"]:
-                if quad in suspect_text:
-                    quadrant = quad
-                    found = True
-                    break
-        else:
-            reasoning = output
-            found = False
-        quadrant_key = {"top-left": "tl", "top-right": "tr", "bottom-left": "bl", "bottom-right": "br"}
-        if found:
-            quadrants = self._emulator.state_parser.get_quadrant_frame()
-            screen = quadrants[quadrant_key[quadrant]]["screen"]
-            output = perform_vlm_inference(texts=[percieve_prompt], images=[screen], max_new_tokens=256, batch_size=1)[0].lower()
-            found = False
-            reasoning = None
-            quadrant = None
-            print(output)
-
+        grid_cells = self._emulator.state_parser.capture_grid_cells(self._emulator.get_current_frame())
+        found, potential_cells, definitive_cells = self.get_cells_found(percieve_prompt, grid_cells)
         self._emulator.step() # just to ensure state tracker is populated. #TODO: THIS FAILS IN DIALOGUE STATES. 
         ret_dict = self._state_tracker.report()
-        ret_dict["vlm_perception"] = (found, quadrant, reasoning)
+        ret_dict["vlm_perception"] = (found, potential_cells, definitive_cells)
         return [ret_dict], 0
     
 class GridLocateAction(HighLevelAction):
