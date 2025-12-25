@@ -427,7 +427,7 @@ class LocateAction(HighLevelAction):
             found = False
         self._emulator.step() # just to ensure state tracker is populated. #TODO: THIS FAILS IN DIALOGUE STATES. 
         ret_dict = self._state_tracker.report()
-        ret_dict["location_result"] = (found, quadrant, reasoning)
+        ret_dict["vlm_perception"] = (found, quadrant, reasoning)
         return [ret_dict], 0
     
 class GridLocateAction(HighLevelAction):
@@ -478,7 +478,7 @@ class TestAction(HighLevelAction):
     REQUIRED_STATE_TRACKER = CorePokemonTracker
     prompt = """
     You are playing Pokemon and are trying to identify whether you have found the target `[TARGET]` in the current screen. 
-    Output YES if the image provided has the target, and NO otherwise.
+    Output YES if the image provided has the target, and NO otherwise. Only output YES if the full target occupies most of the image. If only a small part of it or a corner is visible, output NO.
     Give a one sentence reasoning for your decision before you do so.
     Output format:
     Reasoning: extremely brief reasoning here
