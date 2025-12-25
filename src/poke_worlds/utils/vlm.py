@@ -63,7 +63,7 @@ class HuggingFaceVLM:
         if max_new_tokens is None:
             log_error(f"Can't set max_new_tokens to None", project_parameters)
         all_images = [convert_numpy_greyscale_to_pillow(img) for img in images]
-        all_texts = [f"<|im_start|>user\n<vision_start|><|image_pad|><|vision_end|>\n{text}\n<|im_end|><|im_start|>assistant\n" for text in texts]
+        all_texts = [f"<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>\n{text}\n<|im_end|><|im_start|>assistant\n" for text in texts]
         if batch_size is None:
             batch_size = HuggingFaceVLM._BATCH_SIZE
         all_outputs = []

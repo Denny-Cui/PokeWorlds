@@ -63,6 +63,8 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
                 if self._emulator.state_parser.get_agent_state(screen) == AgentState.IN_DIALOGUE:
                     dialogue_frames.append(screen)
             if len(dialogue_frames) > 0:
+                # get every second dialogue frame to reduce duplicates. 
+                dialogue_frames = dialogue_frames[::2]
                 ocr_texts = ocr(dialogue_frames)
                 dialogue_message = "There was some dialogue as a result of your actions: "
                 for i, text in enumerate(ocr_texts):
