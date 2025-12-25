@@ -498,7 +498,7 @@ class TestAction(HighLevelAction):
     def space_to_parameters(self, space_action):
         return {"context": "You playin pokemon"} # Dummy
     
-    def _execute(self, context="Pokeballs on a counter"):
+    def _execute(self, context="A single Pokeball"):
         # Do the percieve action in the free roam state:
         percieve_prompt = self.prompt.replace("[TARGET]", context)
         quadrant = "tr"
