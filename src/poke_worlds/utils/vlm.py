@@ -53,7 +53,7 @@ class HuggingFaceVLM:
             log_error(f"Tried to instantiate a HuggingFace VLM, but the required packages are not installed. Run `uv pip install -e \".[full]\"` to install required packages.", project_parameters)
         else:
             HuggingFaceVLM._MODEL = AutoModelForImageTextToText.from_pretrained(project_parameters["backbone_vlm_model"], dtype=torch.bfloat16, device_map="auto")
-            HuggingFaceVLM._PROCESSOR = AutoProcessor.from_pretrained(project_parameters["backbone_vlm_model"])
+            HuggingFaceVLM._PROCESSOR = AutoProcessor.from_pretrained(project_parameters["backbone_vlm_model"], padding_side="left")
 
     @staticmethod
     def infer(texts: List[str], images: List[np.ndarray], max_new_tokens: int, batch_size: int = None) -> List[str]:
