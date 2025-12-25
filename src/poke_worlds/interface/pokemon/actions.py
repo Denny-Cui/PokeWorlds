@@ -404,14 +404,15 @@ class Prompts:
     locate = """
     You are playing Pokemon and are given a screen capture of the game, with a grid overlayed on top of it. Your job is to locate the target that best fits the description `[CONTEXT]`
     and identify how many steps it is away from the player.
-    Assume the player at the centre is located at (0, 0) and then provide the following information:
     1. Target Identifiable: [Either Yes or No] - it should be no only if there is no visible object that could possibly match the description.
-    2. If Yes, provide: (x_steps, y_steps) - the grid coordinates of the target relative to the player. Positive x is right, positive y is up. So if the target is 3 steps to the right and 2 steps up, it would be (3, 2). If the target is 1 step to the left and 4 steps down, it would be (-1, -4). 
+    2. If Yes, provide: how many steps to the right is the target: [number of steps right/left, negative if left] e.g. 4 for 4 steps right, -3 for 3 steps left
+    3. If Yes, provide: how many steps up is the target: [number of steps up/down, negative if down] e.g. 5 for 5 steps up, -2 for 2 steps down
     Format your response as follows:
-    0. Thinking: [an extremely brief reasoning about how you identified the target, and then counted the grid steps from the player to it. Should not be more than 2 sentences.]
-    1. Target Identifiable: [Yes/No]
-    2. If Yes, provide: (x_steps, y_steps) - the steps to the target.
+    1. Target identifiable: short sentence describing which entity on the map is most likely to be the target and whether they are to the bottom right, top right, bottom left or top left of the player [Yes/No] 
+    2. If Yes, how many steps to the right is the target: [number of steps right/left, negative if left]
+    3. If Yes, how many steps up is the target: [number of steps up/down, negative if down]
     [STOP]
+    Output:
     """
 
 class TestAction(HighLevelAction):
