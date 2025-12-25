@@ -553,15 +553,21 @@ class StateParser(ABC):
             if quadrant.lower() not in ["tl", "tr", "bl", "br"]:
                 log_error(f"Invalid quadrant: {quadrant}. Must be one of 'TL', 'TR', 'BL', 'BR'", self._parameters)
         cells = {}
-        x_iter = [-x_offset] + list(range(0, current_frame.shape[1], grid_skip))
-        y_iter = [-y_offset] + list(range(0, current_frame.shape[0], grid_skip))
+        if x_offset != 0:
+            x_iter = [-x_offset] + list(range(0, current_frame.shape[1], grid_skip))
+        else:
+            x_iter = list(range(0, current_frame.shape[1], grid_skip))
+        if y_offset != 0:
+            y_iter = [-y_offset] + list(range(0, current_frame.shape[0], grid_skip))
+        else:
+            y_iter = list(range(0, current_frame.shape[0], grid_skip))
         def x_ind(x):
             index = x_iter.index(x)
-            return (index - len(x_iter)//2)
+            return (index - (len(x_iter))//2) + 1*(x_offset!=0)
 
         def y_ind(y):
             index = y_iter.index(y)
-            return -(index - len(y_iter)//2)
+            return -(index - len(y_iter)//2) + 1*(y_offset!=0)
         
         for x in x_iter:
             for y in y_iter:
@@ -579,6 +585,75 @@ class StateParser(ABC):
                 cell_image = self.capture_box(current_frame, x+x_offset , y+y_offset, grid_skip, grid_skip)
                 cells[(x_cell, y_cell)] = cell_image
         return cells
+    
+    def reform_image(self, grid_cells: Dict[Tuple[int, int], np.ndarray]) -> np.ndarray:
+        """
+        Reform the image from grid cells back into a single image.
+        Expects the grid_cells to correspond to a rectangle.
+        Args:
+            grid_cells (Dict[Tuple[int, int], np.ndarray]): A dictionary mapping (x, y) coordinates to image cells.
+
+        Returns:
+            np.ndarray: The reformed image.
+        """
+        coords = grid_cells.keys()
+        xs = list(set([coord[0] for coord in coords]))
+        ys = list(set([coord[1] for coord in coords]))
+        xs.sort()
+        ys.sort()
+        rows = []
+        for y in ys:
+            row_cells = []
+            for x in xs:
+                row_cells.append(grid_cells[(x, y)])
+            row_image = np.concatenate(row_cells, axis=1)
+            rows.append(row_image)
+        new_rows = []
+        for item in range(len(rows)-2, -1, -1):
+            new_rows.append(rows[item])
+        full_image = np.concatenate(new_rows, axis=0)
+        return full_image
+    
+    def get_quadrant_frame(self, grid_cells: Dict[Tuple[int, int], np.ndarray]=None) -> Dict[str, Tuple[Dict[Tuple[int, int], np.ndarray], np.ndarray]]:
+        """
+        Divides the current frame or subframe into quadrants and returns groups of quadrants
+        """
+        if grid_cells is None:
+            grid_cells = self.capture_grid_cells(self.get_current_frame())
+        coords = grid_cells.keys()
+        xs = list(set([coord[0] for coord in coords]))
+        ys = list(set([coord[1] for coord in coords]))
+        xs.sort()
+        ys.sort()
+        mid_x = xs[len(xs)//2]
+        mid_y = ys[len(ys)//2]
+        quadrants = {
+            "tl": {"screen": None, "cells": {}},
+            "tr": {"screen": None, "cells": {}},
+            "bl": {"screen": None, "cells": {}},
+            "br": {"screen": None, "cells": {}}
+        }
+        lower_x = [x for x in xs if x < mid_x]
+        higher_x = [x for x in xs if x >= mid_x]
+        lower_y = [y for y in ys if y < mid_y]
+        higher_y = [y for y in ys if y >= mid_y]
+        for x in lower_x:
+            for y in higher_y:
+                quadrants["tl"]["cells"][(x, y)] = grid_cells[(x, y)]
+        quadrants["tl"]["screen"] = self.reform_image(quadrants["tl"]["cells"])
+        for x in higher_x:
+            for y in higher_y:
+                quadrants["tr"]["cells"][(x, y)] = grid_cells[(x, y)]
+        quadrants["tr"]["screen"] = self.reform_image(quadrants["tr"]["cells"])
+        for x in lower_x:
+            for y in lower_y:
+                quadrants["bl"]["cells"][(x, y)] = grid_cells[(x, y)]
+        quadrants["bl"]["screen"] = self.reform_image(quadrants["bl"]["cells"])
+        for x in higher_x:
+            for y in lower_y:
+                quadrants["br"]["cells"][(x, y)] = grid_cells[(x, y)]
+        quadrants["br"]["screen"] = self.reform_image(quadrants["br"]["cells"])
+        return quadrants
 
     @abstractmethod
     def __repr__(self) -> str:

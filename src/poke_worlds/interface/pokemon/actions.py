@@ -4,7 +4,7 @@ from poke_worlds.emulation.pokemon.parsers import AgentState, PokemonStateParser
 from poke_worlds.emulation.pokemon.trackers import CorePokemonTracker
 from poke_worlds.emulation import LowLevelActions
 from abc import ABC
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 import numpy as np
 
 from gymnasium.spaces import Box, Discrete, Text
@@ -381,6 +381,13 @@ class PokemonCrystalBagActions:
     pass
 
 
+
+
+
+
+
+
+
 class LocateAction(HighLevelAction):
     prompt = """
     You are playing Pokemon and are given a screen capture of the game, with a grid overlayed on top of it. Your job is to locate the target that best fits the description `[TARGET]`
@@ -425,6 +432,16 @@ class LocateAction(HighLevelAction):
         else:
             reasoning = output
             found = False
+        quadrant_key = {"top-left": "tl", "top-right": "tr", "bottom-left": "bl", "bottom-right": "br"}
+        if found:
+            quadrants = self._emulator.state_parser.get_quadrant_frame()
+            screen = quadrants[quadrant_key[quadrant]]["screen"]
+            output = perform_vlm_inference(texts=[percieve_prompt], images=[screen], max_new_tokens=256, batch_size=1)[0].lower()
+            found = False
+            reasoning = None
+            quadrant = None
+            print(output)
+
         self._emulator.step() # just to ensure state tracker is populated. #TODO: THIS FAILS IN DIALOGUE STATES. 
         ret_dict = self._state_tracker.report()
         ret_dict["vlm_perception"] = (found, quadrant, reasoning)
