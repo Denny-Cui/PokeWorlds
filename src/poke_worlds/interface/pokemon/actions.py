@@ -401,6 +401,19 @@ class Prompts:
     Output: 
     """
 
+    locate = """
+    You are playing Pokemon and are given a screen capture of the game, with a grid overlayed on top of it. Your job is to locate the target that best fits the description `[CONTEXT]`
+    and provide the grid coordinates it occupies.
+    Assume the player at the centre is located at (0, 0) and then provide the following information:
+    1. Target Identifiable: [Either Yes or No] - it should be no only if there is no visible object that could possibly match the description.
+    2. If Yes, provide: List of Grid Coordinates: A list of grid coordinates that the target occupies. 
+    Format your response as follows:
+    0. Thinking: A brief reasoning about how you identified the target and counted the coordinates. To derive the coordinates count the number of grid steps from the player position (with the center at (0,0)) to the target position.
+    1. Target Identifiable: [Yes/No]
+    2. If Yes, provide: Coordinates: [(x1, y1), (x2, y2), ...] (there may be only one coordinate, in which case just provide one). 
+    [STOP]
+    """
+
 class TestAction(HighLevelAction):
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
@@ -417,9 +430,9 @@ class TestAction(HighLevelAction):
     def space_to_parameters(self, space_action):
         return {"context": "You playin pokemon"} # Dummy
     
-    def _execute(self, context="You are in prof oaks lab. He has offered you a choice of starter pokemon. We are looking for pokeballs in the area."):
+    def _execute(self, context="Pokeballs on a counter"):
         # Do the percieve action in the free roam state:
-        percieve_prompt = Prompts.percieve.replace("[CONTEXT]", context)
+        percieve_prompt = Prompts.locate.replace("[CONTEXT]", context)
         frame = self._emulator.state_parser.draw_grid_overlay(self._emulator.get_current_frame())
         output = perform_vlm_inference(texts=[percieve_prompt], images=[frame], max_new_tokens=256, batch_size=1)[0]
         self._emulator.step() # just to ensure state tracker is populated
