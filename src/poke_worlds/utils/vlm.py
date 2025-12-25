@@ -70,7 +70,7 @@ class HuggingFaceVLM:
         for i in range(0, len(all_images), batch_size):
             images = all_images[i:i+batch_size]
             texts = all_texts[i:i+batch_size]
-            outputs = HuggingFaceVLM.pipeline(images=images, text=texts, max_new_tokens=max_new_tokens, stop_strings=stop_strings)
+            outputs = HuggingFaceVLM._MODEL(images=images, text=texts, max_new_tokens=max_new_tokens, stop_strings=stop_strings)
             all_outputs.extend(outputs)
         output_only = []
         for out in all_outputs:
