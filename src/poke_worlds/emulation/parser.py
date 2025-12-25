@@ -597,6 +597,8 @@ class StateParser(ABC):
             np.ndarray: The reformed image.
         """
         coords = grid_cells.keys()
+        if len(coords) == 1:
+            return list(grid_cells.values())[0]
         xs = list(set([coord[0] for coord in coords]))
         ys = list(set([coord[1] for coord in coords]))
         xs.sort()
