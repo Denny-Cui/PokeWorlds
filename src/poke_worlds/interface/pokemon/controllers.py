@@ -35,8 +35,8 @@ class PokemonStateWiseController(Controller):
             return PassDialogueAction, {}
         elif input_str == "t":
             return TestAction, {}
-        elif input_str.startswith("l"):
-            return LocateAction, {"target": input_str.replace("l", "").strip()}
+        elif input_str.startswith("l "):
+            return LocateAction, {"target": input_str[2:].strip()}
         if ":" in input_str:
             return self._parse_distance(input_str)
         else:
