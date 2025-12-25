@@ -408,7 +408,6 @@ class Prompts:
     1. Target Identifiable: [Either Yes or No] - it should be no only if there is no visible object that could possibly match the description.
     2. If Yes, provide: List of Grid Coordinates: A list of grid coordinates that the target occupies. 
     Format your response as follows:
-    0. Thinking: A brief reasoning about how you identified the target and counted the coordinates. To derive the coordinates count the number of grid steps from the player position (with the center at (0,0)) to the target position.
     1. Target Identifiable: [Yes/No]
     2. If Yes, provide: Coordinates: [(x1, y1), (x2, y2), ...] (there may be only one coordinate, in which case just provide one). 
     [STOP]
