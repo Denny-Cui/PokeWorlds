@@ -468,7 +468,7 @@ class TestAction(HighLevelAction):
             report[(x, y)] = output.pop(0)
         self._emulator.step() # just to ensure state tracker is populated. THIS FAILS IN DIALOGUE STATES. 
         ret_dict = self._state_tracker.report()
-        ret_dict["vlm_perception"] = report
+        ret_dict["vlm_perception"] = str(report)
         return [ret_dict], 0
     
     # TODO: Add the action to break down the grid into pieces and check if the target is in each piece and return the grid coordinates where it is found. 
