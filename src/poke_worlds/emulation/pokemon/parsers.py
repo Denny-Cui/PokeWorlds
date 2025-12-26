@@ -235,6 +235,9 @@ class PokemonStateParser(StateParser, ABC):
                 return True
         return False
 
+    def dialogue_box_open(self, current_screen: np.ndarray) -> bool:
+        return self.named_region_matches_target(current_screen, "dialogue_bottom_right")
+
     def is_in_dialogue(self, current_screen: np.ndarray, trust_previous: bool = False) -> bool:
         """
         Determines if the player is currently in a dialogue state or reading text from a sign, interacting with an object etc.
@@ -254,7 +257,7 @@ class PokemonStateParser(StateParser, ABC):
         elif self.is_in_menu(current_screen):
             return False
         else:
-            return self.named_region_matches_target(current_screen, "dialogue_bottom_right")
+            return self.dialogue_box_open(current_screen)
         
     def get_agent_state(self, current_screen: np.ndarray) -> AgentState:
         """
