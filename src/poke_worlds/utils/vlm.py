@@ -105,6 +105,8 @@ class vLLMVLM:
 
     @staticmethod
     def infer(texts: List[str], images: List[np.ndarray], max_new_tokens: int, batch_size: int = None) -> List[str]:
+        if vLLMVLM._MODEL is None:
+            vLLMVLM.start()
         images = [convert_numpy_greyscale_to_pillow(image) for image in images]
         
         params = SamplingParams(
