@@ -1,7 +1,6 @@
 """
 Provides query access to a single VLM that is shared across the project
 """
-from poke_worlds.utils.fundamental import check_optional_installs
 from poke_worlds.utils.parameter_handling import load_parameters
 from poke_worlds.utils.log_handling import log_warn, log_error, log_info
 from typing import List
@@ -31,7 +30,12 @@ else:
 
 if project_parameters["use_vllm"]:
     if project_parameters["vllm_importable"]:
-        from vllm import LLM, SamplingParams
+        from vllm import LLM, SamplingParams, EngineArgs
+        from vllm.assets.image import ImageAsset
+        from vllm.multimodal.image import convert_image_mode
+        from vllm.lora.request import LoRARequest
+
+        
     elif project_parameters["full_importable"]:
         log_warn("Project parameters has `use_vllm` set to True, but vllm is not installed. Run `uv pip install -e \".[full, vllm]\"` to install required packages.", project_parameters)
         project_parameters["use_vllm"] = False
@@ -87,8 +91,56 @@ class vLLMVLM:
 
     @staticmethod
     def start():
-        _MODEL = LLM(model=project_parameters["backbone_vlm_model"])
-        pass # Start the VLM
+        if "qwen3" not in project_parameters["backbone_vlm_model"]:
+            log_warn(f"You are using a non Qwen3 model with the vLLM VLM class. This has not been tested.", project_parameters)
+        engine_args = EngineArgs(
+            model=project_parameters["backbone_vlm_model"],
+            max_model_len=4096,
+            max_num_seqs=5,
+            mm_processor_kwargs={
+                "min_pixels": 28 * 28,
+                "max_pixels": 1280 * 28 * 28,
+                "fps": 1,
+            }, # copied from: https://docs.vllm.ai/en/latest/examples/offline_inference/vision_language/?h=vision+language. Unsure if I need it
+            limit_mm_per_prompt={"image": 1},
+        )        
+        vLLMVLM._MODEL = LLM(**engine_args)
+
+    @staticmethod
+    def infer(texts: List[str], images: List[np.ndarray], max_new_tokens: int, batch_size: int = None) -> List[str]:
+        images = [convert_numpy_greyscale_to_pillow(image) for image in images]
+        
+        params = SamplingParams(
+            max_tokens=max_new_tokens
+        )
+
+        placeholder = "<|image_pad|>"
+
+        prompts = [
+            (
+                "<|im_start|>system\nYou are a helpful assistant.<|im_end|>\n"
+                f"<|im_start|>user\n<|vision_start|>{placeholder}<|vision_end|>"
+                f"{text}<|im_end|>\n"
+                "<|im_start|>assistant\n"
+            )
+            for text in texts
+        ]
+        inputs = []
+        for i in range(len(prompts)):
+            inputs.append({
+                "prompt": prompts[i],
+                "multi_modal_data": {"image": images[i]},
+                "multi_modal_uuids": {"image": f"uuid_{i}"}
+            })
+
+        outputs = vLLMVLM._MODEL.generate(
+            inputs,
+            sampling_params=params,
+        )
+        final_texts = []
+        for output in outputs:
+            final_texts.append(output.outputs[0].text)
+        return final_texts
 
 
 def perform_vlm_inference(texts: List[str], images: List[np.array], max_new_tokens: int, batch_size: int = None):
