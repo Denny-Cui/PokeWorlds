@@ -31,3 +31,9 @@ full = [
     "torchvision>=0.24.1",
     "transformers>=4.57.3",
 ]
+vllm = [
+    "pandas>=2.3.3",
+    "pyarrow>=22.0.0",
+    "ray[data,serve,train,tune]==2.50.1",
+    "vllm>=0.2.5",
+]
