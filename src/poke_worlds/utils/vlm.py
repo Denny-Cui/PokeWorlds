@@ -93,7 +93,7 @@ class vLLMVLM:
         engine_args = {
             "model": project_parameters["backbone_vlm_model"],
             "max_model_len": 4096,
-            "limit_mm_per_prompt": {"image": 1},
+            #"limit_mm_per_prompt": {"image": 1},
         }        
         vLLMVLM._MODEL = LLM(**engine_args)
 
