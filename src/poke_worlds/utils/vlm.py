@@ -31,9 +31,6 @@ else:
 if project_parameters["use_vllm"]:
     if project_parameters["vllm_importable"]:
         from vllm import LLM, SamplingParams, EngineArgs
-        from vllm.assets.image import ImageAsset
-        from vllm.multimodal.image import convert_image_mode
-        from vllm.lora.request import LoRARequest
 
         
     elif project_parameters["full_importable"]:
