@@ -44,6 +44,10 @@ def compute_secondary_parameters(params: dict):
     configs = check_optional_installs()
     for config in configs:
         params[f"{config}_importable"] = configs[config]
+    # convert all rom_data_paths to absolute paths
+    for key in params:
+        if key.endswith("_rom_data_path"):
+                params[key] = os.path.abspath(os.path.join(params["rom_data_dir"], params[key]))
 
 
 
@@ -97,11 +101,11 @@ def load_parameters(parameters: dict = None) -> dict:
         if any([f.endswith(".py") for f in os.listdir(params["storage_dir"])]):
             logger.warning(f"There are .py files in the storage_dir {params['storage_dir']}. It is recommended to set a path which has nothing else inside it to avoid issues.")
     else:
+        full_path = os.path.abspath(params["storage_dir"])        
         if params["storage_dir"] == "storage":
-            full_path = os.path.abspath(params["storage_dir"])
-        logger.warning(f"Using default storage directory '{full_path}'. This may cause issues if your project root directory has limited space. To change the storage directory, modify the 'storage_dir' parameter in your config files and run this method again.")
-        os.makedirs(params['storage_dir'])
-        logger.info(f"Created storage directory {params['storage_dir']}")
+            logger.warning(f"Using default storage directory '{full_path}'. This may cause issues if your project root directory has limited space. To change the storage directory, modify the 'storage_dir' parameter in your config files and run this method again.")
+        os.makedirs(full_path)
+        logger.info(f"Created storage directory {full_path}. You will find a {full_path}/rom_data/ directory inside it, which is where you must place your downloaded ROM (.gb or .gbc) files.")
     # For every path, see if it looks relative, and if so, make it absolute based on project_root
     for key in params:
         if isinstance(params[key], str):
