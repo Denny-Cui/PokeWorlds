@@ -50,8 +50,11 @@ class HuggingFaceVLM:
     def start():
         if HuggingFaceVLM._MODEL is not None:
             return
-        if not project_parameters[f"full_importable"]:
-            log_error(f"Tried to instantiate a HuggingFace VLM, but the required packages are not installed. Run `uv pip install -e \".[full]\"` to install required packages.", project_parameters)
+        if not project_parameters[f"full_importable"] or project_parameters["debug_skip_lm"]:
+            if not project_parameters["do_debug"]:
+                log_error(f"Tried to instantiate a HuggingFace VLM, but the required packages are not installed. Run `uv pip install -e \".[full]\"` to install required packages.", project_parameters)
+            else:
+                log_warn(f"Tried to instantiate a HuggingFace VLM, but the required packages are not installed. Running in dev mode, so all LM calls will return a placeholder string.", project_parameters)
         else:
             HuggingFaceVLM._MODEL = AutoModelForImageTextToText.from_pretrained(project_parameters["backbone_vlm_model"], dtype=torch.bfloat16, device_map="auto")
             HuggingFaceVLM._PROCESSOR = AutoProcessor.from_pretrained(project_parameters["backbone_vlm_model"], padding_side="left")
@@ -63,6 +66,8 @@ class HuggingFaceVLM:
         """
         if HuggingFaceVLM._MODEL is None:
             HuggingFaceVLM.start()
+        if HuggingFaceVLM._MODEL is None: # it is only still None in debug mode
+            return ["LM Output" for text in texts]
         if max_new_tokens is None:
             log_error(f"Can't set max_new_tokens to None", project_parameters)
         all_images = [convert_numpy_greyscale_to_pillow(img) for img in images]

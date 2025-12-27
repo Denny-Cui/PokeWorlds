@@ -1,4 +1,5 @@
 debug_mode: false
+debug_skip_lm: false # Will skip all LM calls, to allow debugging on systems without LM access. 
 backbone_vlm_model: Qwen/Qwen3-VL-2B-Instruct
 ocr_batch_size: 16
 ocr_max_new_tokens: 20

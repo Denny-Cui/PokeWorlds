@@ -48,6 +48,9 @@ def compute_secondary_parameters(params: dict):
     for key in params:
         if key.endswith("_rom_data_path"):
                 params[key] = os.path.abspath(os.path.join(params["rom_data_dir"], params[key]))
+    if params["debug_skip_lm"]:
+        if not params["do_debug"]:
+            logger.error("Can only set `debug_skip_lm` to True in configs if you are in debug mode. Set `do_debug` to True in configs")
 
 
 
