@@ -272,7 +272,7 @@ class PokemonOCRMetric(OCRMetric):
     def can_read_kind(self, current_frame: np.ndarray, kind: str) -> bool:
         self.state_parser: PokemonStateParser
         if kind == "dialogue":
-            in_dialogue = self.state_parser.dialogue_box_open(current_frame=current_frame)
+            in_dialogue = self.state_parser.dialogue_box_open(current_screen=current_frame)
             return in_dialogue
         return False
 
