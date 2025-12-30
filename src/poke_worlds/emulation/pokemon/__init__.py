@@ -3,7 +3,7 @@ from poke_worlds.utils import load_parameters, log_error, verify_parameters
 from poke_worlds.emulation.emulator import Emulator
 from poke_worlds.emulation.tracker import StateTracker
 from poke_worlds.emulation.pokemon.parsers import MemoryBasedPokemonRedStateParser, PokemonBrownStateParser, PokemonCrystalStateParser, PokemonStarBeastsStateParser, PokemonPrismStateParser, PokemonFoolsGoldStateParser
-from poke_worlds.emulation.pokemon.trackers import CorePokemonMetrics, CorePokemonTracker, PokemonRedStarterTracker
+from poke_worlds.emulation.pokemon.trackers import CorePokemonMetrics, CorePokemonTracker, PokemonRedStarterTracker, PokemonOCRTracker
 from typing import Optional, Union, Type
 
 VARIANT_TO_GB_NAME = {
@@ -45,7 +45,8 @@ This means there is never a reason to use a weaker parser.
 _VARIANT_TO_TRACKER = {
     "pokemon_red": {
         "default": CorePokemonTracker,
-        "starter_example": PokemonRedStarterTracker
+        "starter_example": PokemonRedStarterTracker,
+        "ocr": PokemonOCRTracker,
         },
     "pokemon_brown": {
         "default": CorePokemonTracker

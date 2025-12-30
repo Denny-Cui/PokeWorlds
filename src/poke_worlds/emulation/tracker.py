@@ -6,6 +6,7 @@ import numpy as np
 from typing import Optional, Type, Dict, Any, Tuple, List
 
 from abc import ABC, abstractmethod
+from poke_worlds.utils.vlm import ocr
 
 EPSILON = 0.01
 """ Default epsilon for frame change detection. """
@@ -213,6 +214,134 @@ class CoreMetrics(MetricGroup):
             dict: A dictionary containing the final metrics.
         """
         return self.final_metrics
+
+
+class OCRMetric(ABC ,MetricGroup):
+    """
+    MetricGroup for OCR results.
+    """
+
+    def start(self):
+        """
+        Assumes the child has initialized a dict called self.kinds which tracks the various kinds of OCR that could be done. 
+                self.kinds should be in the form: {kind: region_name} where region_name is the name of the region to OCR for that kind.
+                Will track ocr results in form of list of dictionaries where these kinds are keys. 
+        """
+        super().start()
+        if not hasattr(self, 'kinds'):
+            log_error("OCRMetrics must declare self.kinds dictionary", self._parameters)
+        elif not isinstance(self.kinds, dict):
+            log_error("self.kinds must be a dictionary", self._parameters)
+
+    def read_kind(self, current_frame: np.ndarray, kind: str) -> Optional[str]:
+        """
+        Reads text of the given kind from the current frame.
+        """
+        if kind not in self.kinds:
+            log_error(f"OCR kind {kind} not found in self.kinds", self._parameters)
+        region = self.kinds[kind]
+        captured_region = self.state_parser.capture_named_region(current_frame=current_frame, name=region)
+        ocr_result = ocr([captured_region])[0]
+        if ocr_result.strip() != "":
+            return ocr_result.strip()
+        return None
+    
+    def batch_read_kind(self, frames: np.ndarray, kinds: str, merge: bool = True) -> Optional[List[str]]:
+        """
+        Reads text from the frames in batch style and does optional merge aggregatoin over results. 
+        If merge is True, the list size can be anything less than the number of kinds
+        else it will be equal to the number of kinds, with Nones included. 
+        """
+        if kinds not in self.kinds:
+            log_error(f"OCR kind {kinds} not found in self.kinds", self._parameters)
+        region = self.kinds[kinds]
+        captured_regions = []
+        for frame in frames:
+            captured_region = self.state_parser.capture_named_region(current_frame=frame, name=region)
+            captured_regions.append(captured_region)
+        ocr_results = ocr(captured_regions, do_merge=merge)
+        if merge:
+            ocr_results = [res.strip() for res in ocr_results if res.strip() != ""]
+            if len(ocr_results) == 0:
+                return None
+            return ocr_results
+        else:
+            return ocr_results
+
+    @staticmethod
+    def can_read_kind(self, frame: np.ndarray, kind: str) -> bool:
+        """
+        Checks if the frame has text for the given kind.
+
+        Args:
+            frame (np.ndarray): The frame to check.
+            kind (str): The kind of text to check for.
+        """
+        raise NotImplementedError
+
+    def reset(self, first = False):
+        """
+        ocr_texts will track a list of the form List[Tuple[int, Dict[str, str]]]
+        which is a list of (step_number, {kind: ocr_text}) dictionaries.
+        """
+        self.ocr_texts = []
+        self.steps = 0
+        self.prev_has_ocr = False
+
+    def simple_merge(self, existing: Optional[str], new: str) -> str:
+        if existing is None:
+            return new
+        if new in existing:
+            return existing
+        if existing in new:
+            return new
+        return existing + " " + new
+    
+    
+    def step(self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]):
+        """
+        By default we don't use the batch functionality, but this can be overridden in child classes.
+        """
+        all_frames = [current_frame]
+        if recent_frames is not None:
+            all_frames = np.concatenate([recent_frames, current_frame], axis=0) # TODO: check
+        else:
+            all_frames = np.array([current_frame])
+        ocr_dict = {}
+        # Aggregate results for all frames and separate per kind. 
+        for kind in self.kinds.keys():
+            if self.can_read_kind(current_frame, kind):
+                ocr_result = self.batch_read_kind(all_frames, kind, merge=True)
+                if ocr_result is not None:
+                    ocr_dict[kind] = ocr_result
+        if len(ocr_dict) > 0:
+            self.ocr_texts.append((self.steps, ocr_dict))
+            self.prev_has_ocr = True
+        else:
+            self.prev_has_ocr = False
+        self.steps += 1    
+
+
+    def report(self) -> dict:
+        """
+        Reports just the previous OCR texts extracted in the episode.
+        Returns:
+            dict: A dictionary containing the OCR texts.
+        """
+        if self.prev_has_ocr:
+            return {
+                "ocr_texts": [self.ocr_texts[-1]]
+            }
+        else:
+            return {}
+    
+    def report_final(self) -> dict:
+        """
+        Reports all the OCR texts extracted in the episode.
+        """
+        return {
+            "ocr_texts": self.ocr_texts
+        }
 
 
 class StateTracker():

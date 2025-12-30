@@ -236,6 +236,13 @@ class PokemonStateParser(StateParser, ABC):
         return False
 
     def dialogue_box_open(self, current_screen: np.ndarray) -> bool:
+        """
+        Determines if a dialogue box is currently open by checking the dialogue bottom right region.
+        Args:
+            current_screen (np.ndarray): The current screen frame from the emulator.
+        Returns:
+            bool: True if a dialogue box is open, False otherwise.
+        """
         return self.named_region_matches_target(current_screen, "dialogue_bottom_right")
 
     def is_in_dialogue(self, current_screen: np.ndarray, trust_previous: bool = False) -> bool:

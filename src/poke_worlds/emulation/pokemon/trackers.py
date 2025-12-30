@@ -1,8 +1,11 @@
 from poke_worlds.utils import log_info
-from poke_worlds.emulation.tracker import MetricGroup, StateTracker
+from poke_worlds.emulation.tracker import MetricGroup, StateTracker, OCRMetric
 from poke_worlds.emulation.pokemon.parsers import PokemonStateParser, AgentState, MemoryBasedPokemonRedStateParser, PokemonRedStateParser
 from typing import Optional, Type
 import numpy as np
+
+from poke_worlds.utils.vlm import ocr
+from abc import ABC
 
 
 class CorePokemonMetrics(MetricGroup):
@@ -93,7 +96,6 @@ class CorePokemonMetrics(MetricGroup):
             "max_battles_per_episode": int(np.max(n_battles_total)),
             "std_battles_per_episode": float(np.std(n_battles_total))
         }
-
 
 class PokemonRedStarter(MetricGroup):
     """
@@ -258,6 +260,23 @@ class PokemonRedLocation(MetricGroup):
         pass
     
 
+class PokemonOCRMetric(OCRMetric):
+    REQUIRED_PARSER = PokemonStateParser
+
+    def start(self):
+        # So far, just dialogue
+        self.kinds = {
+            "dialogue": "dialogue_box_full",
+        }  
+
+    def can_read_kind(self, current_frame: np.ndarray, kind: str) -> bool:
+        self.state_parser: PokemonStateParser
+        if kind == "dialogue":
+            in_dialogue = self.state_parser.dialogue_box_open(current_frame=current_frame)
+            return in_dialogue
+        return False
+
+
 class CorePokemonTracker(StateTracker):
     """
     StateTracker for core Pokémon metrics.
@@ -268,7 +287,7 @@ class CorePokemonTracker(StateTracker):
 
     def step(self, *args, **kwargs):
         """
-        Calls on super().step(), but then modifies the 
+        Calls on super().step(), but then modifies the current frame to overlay the grid if the agent is in FREE ROAM.
         """
         super().step(*args, **kwargs)
         state = self.episode_metrics["pokemon_core"]["agent_state"]
@@ -280,6 +299,12 @@ class CorePokemonTracker(StateTracker):
             previous_screens = self.episode_metrics["core"]["passed_frames"]
             if previous_screens is not None:
                 self.episode_metrics["core"]["passed_frames"][-1, :] = screen
+
+
+class PokemonOCRTracker(CorePokemonTracker):
+    def start(self):
+        super().start()
+        self.metric_classes.extend([PokemonOCRMetric]) 
 
 
 
