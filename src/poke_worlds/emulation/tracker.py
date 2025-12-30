@@ -216,7 +216,7 @@ class CoreMetrics(MetricGroup):
         return self.final_metrics
 
 
-class OCRMetric(ABC ,MetricGroup):
+class OCRMetric(MetricGroup, ABC):
     """
     MetricGroup for OCR results.
     """
@@ -342,6 +342,9 @@ class OCRMetric(ABC ,MetricGroup):
         return {
             "ocr_texts": self.ocr_texts
         }
+    
+    def close(self):
+        pass
 
 
 class StateTracker():
