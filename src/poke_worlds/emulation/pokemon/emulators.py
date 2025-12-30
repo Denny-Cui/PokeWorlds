@@ -28,9 +28,12 @@ class PokemonEmulator(Emulator):
         # If we are on a naming screen, just don't pick a name and get out. 
         if self.state_parser.named_region_matches_target(current_frame, name="name_entity_top_left"):
             # then enter and get out
-            all_next_frames.append(self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_START))
-            all_next_frames.append(self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A))
-        else:
+            next_frames = self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_START)
+            #all_next_frames.append(next_frames)
+            next_frames = self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A)
+            #all_next_frames.append(next_frames)
+            # I think we don't get much value by adding these frames, so skip it for now.
+        if False: # Make this True to auto skip dialogue and accumilate it into the frames returned.
             current_state = self.state_parser.get_agent_state(current_frame)
             n_clicks = 0
             # Clicks through any dialogue popups. 
@@ -41,8 +44,8 @@ class PokemonEmulator(Emulator):
                 n_clicks += 1
         if len(all_next_frames) > 1:
             frames = np.concatenate(all_next_frames)
-        # Must update the tracker too
-        self._update_listeners_after_actions(frames)
+            # Must update the tracker too
+            self._update_listeners_after_actions(frames)
         return frames, done
     
     def run_action_on_emulator(self, *args, **kwargs):
