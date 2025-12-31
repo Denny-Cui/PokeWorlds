@@ -118,10 +118,15 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
         self.action_buffer_max_size = action_buffer_max_size
         screen_shape = self._emulator.screen_shape
         screen_space = spaces.Box(low=0, high=255, shape=(screen_shape[1], screen_shape[0], 1), dtype=np.uint8)
-        text_output = spaces.Text(max_length=512)
+        action_buffer = spaces.Text(max_length=512)
+        ocr = spaces.Text(max_length=512)
+        state = spaces.Discrete(4) # In Dialogue, In Menu, Battle, Free Roam
+
         self.observation_space = spaces.Dict({
             "screen": screen_space,
-            "messages": text_output
+            "action_buffer": action_buffer,
+            "ocr": ocr,
+            "state": state
         })
         """ The observation space is the raw pixel values of the emulator's screen and messages with OCR text and error signals from HighLevelActions"""
         self.action_buffer: List[Tuple[HighLevelAction, Dict[str, Any], int, str]] = []
@@ -143,36 +148,24 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
         if len(self.action_buffer) > self.action_buffer_max_size:
             self.action_buffer.pop(0)
 
+    def action_buffer_to_str(self) -> str:
+        """ Converts the action buffer to a string representation. """
+        buffer_str = ""
+        for i, (action, action_kwargs, action_success, success_message) in enumerate(self.action_buffer):
+            buffer_str += f"Action {i}: {action.__name__} with args {action_kwargs}, message: {success_message}\n" # No need to print success code for now
+        return buffer_str
 
-    def get_observation(self, *, action=None, action_kwargs=None, transition_states=None, action_success=None):
+    def get_observation(self, *, action=None, action_kwargs=None, transition_states=None, action_success=None, add: bool=True):
         if transition_states is None:
-            screen = self.get_info()["core"]["current_frame"]
+            current_state = self.get_info()
+            screen = current_state["core"]["current_frame"]
+            if "ocr" in current_state and "ocr_texts" in current_state["ocr"]:
+                ocr_texts = current_state["ocr"]["ocr_texts"] # is a dict with kind -> text
+                ocr_combined = " | ".join([f"{kind}: {text}" for kind, text in ocr_texts.items()])
+            else:
+                ocr_combined = ""
         else:
             screen = transition_states[-1]["core"]["current_frame"]
-        dialogue_message = ""
-        action_success_message = ""
-        if transition_states is None:
-            pass
-        else:
-            dialogue_frames = []
-            screens = transition_states[0]["core"]["passed_frames"]
-            for transition_state in transition_states[1:]:
-                screens = np.concatenate([screens, transition_state["core"]["passed_frames"]], axis=0)
-            if screens is None: # then no passed_frames, rely on just the current screen
-                screens = [transition_states[-1]["core"]["current_frame"]]
-            for screen in screens:
-                if self._emulator.state_parser.get_agent_state(screen) == AgentState.IN_DIALOGUE:
-                    dialogue_frames.append(screen)
-            if len(dialogue_frames) > 0:
-                # get every second dialogue frame to reduce duplicates. 
-                use_dialogue_frames = []
-                for dialogue_frame in dialogue_frames[::2]:
-                    self._emulator.state_parser.capture_named_region(dialogue_frame, "dialogue_box_full")
-                    use_dialogue_frames.append(dialogue_frame)
-                ocr_texts = ocr(use_dialogue_frames)
-                dialogue_message = "There was some dialogue as a result of your actions: "
-                for i, text in enumerate(ocr_texts):
-                    dialogue_message = dialogue_message + f"[{i+1}] {text}\n"
             if action_success == 0:
                 action_success_message = "The action you took was executed fully."
             else:
@@ -188,34 +181,28 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
                         action_success_message = "There was nothing to interact with in front of you. Make sure you are facing an object or character and are right next to it. Move into an object or NPC to face them."
                     if action_success == 1:
                         action_success_message = "Your interaction led to something."
-            self.add_to_action_buffer(action, action_kwargs, action_success, action_success_message)
-        final_message = ""
-        if transition_states is not None:
-            for transition_state in transition_states:
-                if "vlm_perception" in transition_state:
-                    final_message = final_message + "\nVLM Perception: " + str(transition_state["vlm_perception"]) + "\n"
-        if len(self.action_buffer) > 0:
-            final_message = final_message + "\nRecent actions taken in the environment: \n"
-        for i, (buffered_action, buffered_kwargs, buffered_success, buffered_message) in enumerate(self.action_buffer):
-            if buffered_message == "":
-                buffered_message = "executed"
-            additional = ""
-            if i == len(self.action_buffer) - 1:
-                additional = "(previous action you took)"
-            final_message = final_message + f"[{i+1}] {additional} Action: {buffered_action.__name__} with arguments {buffered_kwargs}, System Response: {buffered_message}. \n"
-        if dialogue_message != "":
-            final_message = final_message + dialogue_message + "\n"
+                else:
+                    action_success_message = f"UNHANDLED CASE: action={action}, args={action_kwargs}, action_success={action_success}"
+            if add:
+                self.add_to_action_buffer(action, action_kwargs, action_success, action_success_message)
+            ocr_texts_all = []
+            for state in transition_states:
+                if "ocr" in state and "ocr_texts" in state["ocr"]:
+                    ocr_texts = state["ocr"]["ocr_texts"] # is a dict with kind -> text
+                    ocr_texts_all.append(ocr_texts)
+            # combine all ocr texts
+            ocr_combined = ""
+            for ocr_texts in ocr_texts_all:
+                for kind, text in ocr_texts.items():
+                    ocr_combined += f"{kind}: {text} | "
         current_state = self._emulator.state_parser.get_agent_state(screen)
-        if current_state == AgentState.IN_BATTLE:
-            final_message = final_message + "\nYou are currently in a battle."
-        elif current_state == AgentState.IN_MENU:
-            final_message = final_message + "\nYou are currently in a menu."
         observation = {
             "screen": screen,
-            "messages": final_message.strip()
+            "action_buffer": self.action_buffer_to_str(),
+            "ocr": ocr_combined,
+            "state": current_state
         }
         return observation
-
 
     def render_obs(self, action=None, action_kwargs=None, transition_states=None, action_success=None): # Might cause issues if you try to render() as well
         """
@@ -238,8 +225,10 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
             screens = [info["core"]["current_frame"]]
         for screen in screens:
             self._screen_render(screen)
-        obs = self.get_observation(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success)
-        log_info(f"Messages: {obs['messages']}", self._parameters)
+        obs = self.get_observation(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success, add=False)
+        obs.pop("screen")
+        log_info(f"Obs Strings:", self._parameters)
+        log_dict(obs, parameters=self._parameters)
 
     def render_info(self, action=None, action_kwargs=None, transition_states=None, action_success=None):
         info = self.get_info()
