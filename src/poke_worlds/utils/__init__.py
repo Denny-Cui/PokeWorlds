@@ -104,6 +104,6 @@ def show_frames(frames: np.ndarray, titles: List[str]=None, save=False, paramete
             plt.title(titles[i])
         if save:
             filename = os.path.join(save_dir, titles[i].replace(" ", "_").replace("/", "_") + ".png")
-            plt.imsave(filename, frames[i])
+            plt.imsave(filename, frames[i], cmap='gray')
         else:
             plt.show()
