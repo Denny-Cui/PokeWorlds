@@ -10,9 +10,10 @@ import click
 @click.command()
 @click.option("--play_mode", type=click.Choice(["human", "random", "restricted_random", "grouped_random"]), default="random", help="Play mode: 'random' for random actions.")
 @click.option("--environment_variant", type=str, default="charmander_enthusiast", help="The environment variant to use.")
+@click.option("--init_state", type=str, default="starter", help="Initial state to start the environment in (if supported).")
 @click.option("--render", type=bool, default=False, help="Whether to render the environment with PyGame.")
 @click.option("--save_video", type=bool, default=None, help="Whether to save a video of the gameplay. If not specified, uses default from config.")
-def main(play_mode, environment_variant, render, save_video):
+def main(play_mode, environment_variant, init_state, render, save_video):
     if play_mode == "random":
         controller = LowLevelController()
     elif play_mode == "restricted_random":
@@ -23,7 +24,7 @@ def main(play_mode, environment_variant, render, save_video):
         controller = LowLevelPlayController()
     if play_mode != "human":
         environment = get_pokemon_environment(game_variant="pokemon_red", controller=controller, save_video=save_video,
-                                    environment_variant=environment_variant, max_steps=500, headless=True)
+                                    environment_variant=environment_variant, max_steps=500, headless=True, init_state=init_state)
         steps = 0
         max_steps = 500
         pbar = tqdm(total=max_steps)
@@ -50,7 +51,7 @@ def main(play_mode, environment_variant, render, save_video):
     else:
         environment = get_pokemon_environment(game_variant="pokemon_red", environment_variant=environment_variant,
                                               controller=PokemonStateWiseController(), save_video=save_video,
-                                              max_steps=500, headless=True, init_state="starter")
+                                              max_steps=500, headless=True, init_state=init_state)
         environment.human_step_play()
 
 if __name__ == "__main__":
