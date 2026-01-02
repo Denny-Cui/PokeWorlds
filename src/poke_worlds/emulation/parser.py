@@ -3,7 +3,7 @@ warnings.filterwarnings("ignore", message=".*SDL2 binaries.*")
 # To suppress pyBoy SDL2 warnings on some systems
 from pyboy import PyBoy
 from abc import ABC, abstractmethod
-from poke_worlds.utils import log_error, log_warn, verify_parameters
+from poke_worlds.utils import log_error, log_warn, verify_parameters, show_frames
 
 
 import numpy as np
@@ -634,11 +634,16 @@ class StateParser(ABC):
             row_image = np.concatenate(row_cells, axis=1)
             rows.append(row_image)
         new_rows = []
-        # This part is super hacky. I have no clue why we skip the last row when len(rows) > 1. It seems to work though.
+        
         if len(rows) == 1:
             new_rows.append(rows[0])
         else:
-            for item in range(len(rows)-2, -1, -1):
+            # This part is super hacky. 
+            # Sometimes, the last and second last row are the exact same. In that case, skip the last row. I don't know man.
+            #show_frames(rows)
+            is_same = rows[-1].shape != rows[-2].shape
+            back_offset = 2 if is_same else 1
+            for item in range(len(rows)-back_offset, -1, -1):
                 new_rows.append(rows[item])
         full_image = np.concatenate(new_rows, axis=0)
         return full_image

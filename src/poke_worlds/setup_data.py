@@ -5,6 +5,11 @@ Run with:
 python -m poke_worlds.setup_data --help
 ```
 
+or
+```bash
+python -m poke_worlds.setup_data push --variant pokemon_red
+```
+
 or perhaps:
 ```bash
 python -m poke_worlds.setup_data pull --variant pokemon_red
