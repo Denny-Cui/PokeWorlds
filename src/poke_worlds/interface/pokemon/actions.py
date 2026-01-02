@@ -3,7 +3,7 @@ from poke_worlds.interface.action import HighLevelAction
 from poke_worlds.emulation.pokemon.parsers import AgentState, PokemonStateParser
 from poke_worlds.emulation.pokemon.trackers import CorePokemonTracker
 from poke_worlds.emulation import LowLevelActions
-from abc import ABC
+from abc import ABC, abstractmethod
 from typing import List, Tuple, Dict
 from poke_worlds.utils import show_frames
 import numpy as np
@@ -384,6 +384,16 @@ class PokemonCrystalBagActions:
 
 
 class LocateAction(HighLevelAction):
+    """
+    Locates a target in the current screen using VLM inference.
+    1. Divides the screen into grid cells.
+    2. Recursively divides the grid cells into quadrants and checks each quadrant for the target.
+    3. If a quadrant contains the target, further divides it into smaller quadrants until the smallest grid cells are reached.
+    4. Returns the grid cell coordinates that may contain the target.
+    
+    Uses VLM inference to check each grid cell for the target.
+    """
+
     prompt = """
     You are playing Pokemon and are given a screen capture of the game. 
     Your job is to locate the target that best fits the description `[TARGET]`
@@ -395,7 +405,6 @@ class LocateAction(HighLevelAction):
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
     _MAX_NEW_TOKENS = 60
-    _CUTOFF_QUADRANT_LIMIT = 20
 
     def is_valid(self, target: str = None):
         return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
@@ -496,9 +505,42 @@ class LocateAction(HighLevelAction):
         if not found:
             ret_dict["action_success_message"] = "Not Found"
         else:
-            ret_dict["action_success_message"] = f"FOUND:\nPotential Cells: {potential_cells}\nDefinitive Cells: {definitive_cells}"
+            message = f"FOUND {target}!\n"
+            if set(potential_cells) == set(definitive_cells):
+                message += f"Definitive Cells: {definitive_cells}"
+            else:
+                message += f"Potential Cells: {potential_cells}\nDefinitive Cells: {definitive_cells}"
+            ret_dict["action_success_message"] = message
         return [ret_dict], 0
-
+    
+class LocateSpecificAction(LocateAction, ABC):
+    def is_valid(self):
+        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
+    
+    def get_action_space(self):
+        return Discrete(1)
+    
+    def parameters_to_space(self):
+        return 0
+    
+    def space_to_parameters(self, space_action: int):
+        return {}
+    
+    @abstractmethod
+    def _execute(self):
+        raise NotImplementedError()
+    
+class LocateItemAction(LocateSpecificAction):
+    def _execute(self):
+        return super()._execute(target="a greyscale pokeball sprite")
+    
+class LocateNPCAction(LocateSpecificAction):
+    def _execute(self):
+        return super()._execute(target="a human character sprite")
+    
+class LocateGrassAction(LocateSpecificAction):
+    def _execute(self):
+        return super()._execute(target="a patch of grass")
 
 class TestAction(HighLevelAction):
     REQUIRED_STATE_PARSER = PokemonStateParser

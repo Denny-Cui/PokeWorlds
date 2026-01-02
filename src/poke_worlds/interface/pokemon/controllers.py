@@ -1,12 +1,12 @@
 from poke_worlds.utils import log_error, log_info
-from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction
+from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, LocateGrassAction, LocateItemAction, LocateNPCAction
 from poke_worlds.interface.controller import Controller
 from poke_worlds.interface.action import HighLevelAction
 from typing import Dict, Any
 
 
 class PokemonStateWiseController(Controller):
-    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction]
+    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, LocateNPCAction, LocateItemAction, LocateGrassAction]
 
     def _parse_distance(self, distance_str):
         if distance_str.count(":") != 1:
@@ -37,6 +37,16 @@ class PokemonStateWiseController(Controller):
             return PassDialogueAction, {}
         elif input_str == "t":
             return TestAction, {}
+        elif input_str.startswith("l-"):
+            rest = input_str[2:].strip()
+            if rest == "grass":
+                return LocateGrassAction, {}
+            elif rest == "item":
+                return LocateItemAction, {}
+            elif rest == "npc":
+                return LocateNPCAction, {}
+            else:
+                return None, None
         elif input_str.startswith("l "):
             return LocateAction, {"target": input_str[2:].strip()}
         if ":" in input_str:
@@ -61,7 +71,7 @@ class PokemonStateWiseController(Controller):
         
     def get_action_strings(self):
         msg = f"""
-        <direction(u,d,r,l)>: <steps(int)> or <menu(m_u, m_d, m_r, m_l, m_a, m_b, m_o)> or <interaction(a)> or <pass_dialogue(p)> or <test(t)> or <locate(l)>
+        <direction(u,d,r,l)>: <steps(int)> or <menu(m_u, m_d, m_r, m_l, m_a, m_b, m_o)> or <interaction(a)> or <pass_dialogue(p)> or <test(t)> or <locate(l <string>)> or <locate-grass(l-grass)> or <locate-item(l-item)> or <locate-npc(l-npc)>
         """
         return msg    
     
