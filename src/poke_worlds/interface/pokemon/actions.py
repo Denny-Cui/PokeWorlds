@@ -480,12 +480,11 @@ class LocateAction(HighLevelAction):
                         found_in_quadrant, quadrant_potentials, recursive_quadrant_definites = self.get_cells_found(prompt, cells)
                         if len(recursive_quadrant_definites) > 0:
                             quadrant_definites.extend(recursive_quadrant_definites)
-                        else:
-                            if found_in_quadrant: # then there is some potential, so add the quadrants potentials. 
-                                if len(quadrant_potentials) != 0:
-                                    potential_cells.extend(quadrant_potentials)
-                                else:
-                                    potential_cells.append(self.get_centroid(cells))
+                        if found_in_quadrant: # then there is some potential, so add the quadrants potentials. 
+                            if len(quadrant_potentials) != 0:
+                                potential_cells.extend(quadrant_potentials)
+                            else:
+                                potential_cells.append(self.get_centroid(cells))
             return True, potential_cells, quadrant_definites
     
     def _execute(self, target: str):
@@ -494,50 +493,10 @@ class LocateAction(HighLevelAction):
         found, potential_cells, definitive_cells = self.get_cells_found(percieve_prompt, grid_cells)
         self._emulator.step() # just to ensure state tracker is populated.
         ret_dict = self._state_tracker.report()
-        ret_dict["action_success_message"] = (found, potential_cells, definitive_cells)
-        return [ret_dict], 0
-    
-class GridLocateAction(HighLevelAction):
-    prompt = """
-    You are playing Pokemon and are trying to identify whether you have found the target `[TARGET]` in the current screen. 
-    Output YES if the image provided has the target, and NO otherwise.
-    Give a one sentence reasoning for your decision before you do so.
-    Output format:
-    Reasoning: extremely brief reasoning here
-    Final Answer: YES or NO
-    [STOP]
-    """
-
-    REQUIRED_STATE_PARSER = PokemonStateParser
-    REQUIRED_STATE_TRACKER = CorePokemonTracker
-
-    def is_valid(self, target: str = None, quadrant: str = None):
-        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM and quadrant in ["tr", "tl", "br", "bl"]
-    
-    def get_action_space(self):
-        return Text(max_length=50) # the expected action space is a concatenation with | quadrant at the end
-    
-    def parameters_to_space(self, target: str, quadrant: str):
-        return f"{target}|{quadrant}"
-    
-    def space_to_parameters(self, space_action: str):
-        target, quadrant = space_action.split("|")
-        return {"target": target, "quadrant": quadrant}
-    
-    def _execute(self, target: str, quadrant: str):
-        percieve_prompt = self.prompt.replace("[TARGET]", target)
-        cells = self._emulator.state_parser.capture_grid_cells(self._emulator.get_current_frame(), quadrant=quadrant)
-        keys = list(cells.keys())
-        images = [cells[key] for key in keys]
-        texts = [percieve_prompt] * len(images)
-        output = perform_vlm_inference(texts=texts, images=images, max_new_tokens=256, batch_size=len(texts))
-        hits = []
-        for i, out in enumerate(output):
-            if "final answer: yes" in out.lower():
-                hits.append(keys[i])
-        self._emulator.step() # just to ensure state tracker is populated. THIS FAILS IN DIALOGUE STATES. 
-        ret_dict = self._state_tracker.report()
-        ret_dict["action_success_message"] = str(hits)
+        if not found:
+            ret_dict["action_success_message"] = "Not Found"
+        else:
+            ret_dict["action_success_message"] = f"FOUND:\nPotential Cells: {potential_cells}\nDefinitive Cells: {definitive_cells}"
         return [ret_dict], 0
 
 
