@@ -421,6 +421,15 @@ class LocateAction(HighLevelAction):
                 founds.append(False)
         return founds
     
+    def get_centroid(self, cells: Dict[Tuple[int, int], np.ndarray]) -> Tuple[float, float]:
+        min_x = min([coord[0] for coord in cells.keys()])
+        min_y = min([coord[1] for coord in cells.keys()])
+        max_x = max([coord[0] for coord in cells.keys()])
+        max_y = max([coord[1] for coord in cells.keys()])
+        centroid_x = (min_x + max_x) // 2
+        centroid_y = (min_y + max_y) // 2
+        return (centroid_x, centroid_y)
+    
     def get_cells_found(self, prompt: str, grid_cells: Dict[Tuple[int, int], np.ndarray]) -> Tuple[bool, List[Tuple[int, int]], List[Tuple[int, int]]]:
         """
         Recursively divides the grid cells into quadrants and checks each quadrant for the target.
@@ -452,14 +461,13 @@ class LocateAction(HighLevelAction):
             return False, [], []
         else:
             potential_cells = []
-            all_cells_found = []
             quadrant_definites = []
             for i in range(len(quadrant_keys)):
                 quadrant = quadrant_keys[i]
                 if quadrant_founds[i]:
                     cells = quadrants[quadrant]["cells"]
                     if len(cells) < 4:
-                        potential_cells.extend(cells.keys())
+                        potential_cells.append(self.get_centroid(cells))
                         cell_keys = list(cells.keys())
                         cell_screens = [cells[key] for key in cell_keys]
                         cell_founds = self.check_for_target(prompt, cell_screens)
@@ -469,16 +477,16 @@ class LocateAction(HighLevelAction):
                             else:
                                 pass                        
                     else:
-                        found_in_quadrant, quadrant_potentials, quadrant_definites = self.get_cells_found(prompt, cells)
-                        if len(quadrant_definites) > 0:
-                            all_cells_found.extend(quadrant_definites)
+                        found_in_quadrant, quadrant_potentials, recursive_quadrant_definites = self.get_cells_found(prompt, cells)
+                        if len(recursive_quadrant_definites) > 0:
+                            quadrant_definites.extend(recursive_quadrant_definites)
                         else:
-                            if found_in_quadrant: # then there is some potential
+                            if found_in_quadrant: # then there is some potential, so add the quadrants potentials. 
                                 if len(quadrant_potentials) != 0:
                                     potential_cells.extend(quadrant_potentials)
                                 else:
-                                    potential_cells.extend(cells.keys())
-            return True, potential_cells, all_cells_found
+                                    potential_cells.append(self.get_centroid(cells))
+            return True, potential_cells, quadrant_definites
     
     def _execute(self, target: str):
         percieve_prompt = self.prompt.replace("[TARGET]", target)
