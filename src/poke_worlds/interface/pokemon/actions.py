@@ -1,5 +1,5 @@
 from poke_worlds.utils import log_error, perform_vlm_inference
-from poke_worlds.interface.action import HighLevelAction
+from poke_worlds.interface.action import HighLevelAction, SingleHighLevelAction
 from poke_worlds.emulation.pokemon.parsers import AgentState, PokemonStateParser
 from poke_worlds.emulation.pokemon.trackers import CorePokemonTracker
 from poke_worlds.emulation import LowLevelActions
@@ -27,7 +27,7 @@ def _plot(past: np.ndarray, current: np.ndarray):
     plt.show()
 
 
-class PassDialogueAction(HighLevelAction):
+class PassDialogueAction(SingleHighLevelAction):
     """
     This only triggers in the gaps 
     Is just a skip through dialogue action.
@@ -46,18 +46,9 @@ class PassDialogueAction(HighLevelAction):
         # if we are still in dialogue, its a fail:
         action_success = 0 if self._emulator.state_parser.get_agent_state(frames[-1]) == AgentState.IN_DIALOGUE else -1
         return [self._state_tracker.report()], action_success
-    
-    def get_action_space(self):
-        return Discrete(1)
-    
-    def parameters_to_space(self):
-        return 0
-    
-    def space_to_parameters(self, space_action):
-        return {}
 
 
-class InteractAction(HighLevelAction):
+class InteractAction(SingleHighLevelAction):
     """
     Handles interaction actions in the Pokemon environment.
     Currently only supports the "interact" action, which presses the A button.
@@ -92,15 +83,6 @@ class InteractAction(HighLevelAction):
         if action_success == 0:
             action_success = -1 # I guess? For some reason the previous thing doesn't catch same frames
         return [self._state_tracker.report()], action_success # 0 means something maybe happened. 1 means def happened.
-    
-    def get_action_space(self):
-        return Discrete(1)
-    
-    def parameters_to_space(self):
-        return 0
-    
-    def space_to_parameters(self, space_action):
-        return {}
     
 
 
@@ -597,6 +579,55 @@ class LocateReferenceAction(LocateAction, ABC):
     def _execute(self, image_reference: str):
         description = self.descriptions[image_reference]
         return self.do_location(target=description, image_reference=self.image_references[image_reference])    
+
+
+class CheckInteractionAction(SingleHighLevelAction):
+    """
+    Checks whether a target object is in the interaction sphere of the agent.
+    Uses VLM inference to check each grid cell for the target.
+    """
+    orientation_prompt = """
+    You are playing Pokemon and are given a screen capture of the player. Which direction is the player facing?
+    Do not give any explanation, just your answer. 
+    Answer with one of: UP, DOWN, LEFT, RIGHT and then [STOP]
+    Output:
+    """
+
+    percieve_prompt = """
+    You are playing Pokemon and are given a screen capture of the grid cell in front of the player. 
+    Briefly describe what you see in the image, is it an item, or NPC that can be interacted with? Or is it a door or cave that can be entered? If the cell seems empty (or a background texture), say so.
+    Give only a single sentence response, and then [STOP]
+    Output:
+    """
+    def is_valid(self, **kwargs):
+        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
+    
+    def _execute(self):
+        current_frame = self._emulator.get_current_frame()
+        grid_cells = self._emulator.state_parser.capture_grid_cells(current_frame=current_frame)
+
+        orientation_output = perform_vlm_inference(texts=[self.orientation_prompt], images=[grid_cells[(0, 0)]], max_new_tokens=5)[0]
+        cardinal = None
+        if "up" in orientation_output.lower():
+            cardinal = (0, 1)
+        elif "down" in orientation_output.lower():
+            cardinal = (0, -1)
+        elif "left" in orientation_output.lower():
+            cardinal = (-1, 0)
+        elif "right" in orientation_output.lower():
+            cardinal = (1, 0)
+        if cardinal is None:
+            return [self._state_tracker.report()], -1 # This should not happen. It is a VLM failure. 
+        cardinal_screen = grid_cells[cardinal]
+        percieve_output = perform_vlm_inference(texts=[self.percieve_prompt], images=[cardinal_screen], max_new_tokens=50)[0]
+        action_success = 0
+        ret_dict = self._state_tracker.report()
+        ret_dict["action_success_message"] = percieve_output
+        return [ret_dict], action_success
+
+        
+
+
 
 
 class TestAction(HighLevelAction):

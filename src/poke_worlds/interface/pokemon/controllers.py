@@ -1,12 +1,12 @@
 from poke_worlds.utils import log_error, log_info
-from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction,LocateSpecificAction, LocateReferenceAction
+from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction,LocateSpecificAction, LocateReferenceAction, CheckInteractionAction
 from poke_worlds.interface.controller import Controller
 from poke_worlds.interface.action import HighLevelAction
 from typing import Dict, Any
 
 
 class PokemonStateWiseController(Controller):
-    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, LocateSpecificAction, LocateReferenceAction]
+    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, LocateSpecificAction, LocateReferenceAction, CheckInteractionAction]
 
     def _parse_distance(self, distance_str):
         if distance_str.count(":") != 1:
@@ -37,6 +37,8 @@ class PokemonStateWiseController(Controller):
             return PassDialogueAction, {}
         elif input_str == "t":
             return TestAction, {}
+        elif input_str == "c":
+            return CheckInteractionAction, {}
         elif input_str.startswith("ls"):
             rest = input_str[2:].strip()
             if rest == "grass":
@@ -74,7 +76,7 @@ class PokemonStateWiseController(Controller):
         
     def get_action_strings(self):
         msg = f"""
-        <direction(u,d,r,l)>: <steps(int)> or <menu(m_u, m_d, m_r, m_l, m_a, m_b, m_o)> or <interaction(a)> or <pass_dialogue(p)> or <test(t)> or <locate(l <string>)> or <locate_specific(ls <grass/item/npc/etc>)> or <locate_reference(lr <item/grass/sign/etc>)>
+        <direction(u,d,r,l)>: <steps(int)> or <menu(m_u, m_d, m_r, m_l, m_a, m_b, m_o)> or <interaction(a)> or <pass_dialogue(p)> or <test(t)> or <locate(l <string>)> or <locate_specific(ls <grass/item/npc/etc>)> or <locate_reference(lr <item/grass/sign/etc>)> or <check_interaction(c)>
         """
         return msg    
     

@@ -169,6 +169,24 @@ class HighLevelAction(ABC):
         parameters = self.space_to_parameters(space_action)
         return self.execute(**parameters)
 
+
+class SingleHighLevelAction(HighLevelAction):
+    def space_to_parameters(self, space_action):
+        return {}
+    
+    def parameters_to_space(self):
+        return 0
+    
+    def get_action_space(self):
+        return Discrete(1)
+    
+    def get_all_valid_parameters(self):
+        if self.is_valid():
+            return [{}]
+        else:
+            return []
+
+
 class LowLevelAction(HighLevelAction):
     """ A high level action that directly maps to a single low level action. """
 
