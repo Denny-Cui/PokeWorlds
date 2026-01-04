@@ -225,7 +225,7 @@ class OCRMetric(MetricGroup, ABC):
     def start(self):
         """
         Assumes the child has initialized a dict called self.kinds which tracks the various kinds of OCR that could be done. 
-                self.kinds should be in the form: {kind: region_name} where region_name is the name of the region to OCR for that kind.
+                self.kinds should be in the form: {kind: (region_name, prompt/None)} where region_name is the name of the region to OCR for that kind and prompt is the specialized prompt used to elicit an OCR response, or None for the default.
                 Will track ocr results in form of list of dictionaries where these kinds are keys. 
         """
         super().start()
@@ -233,6 +233,18 @@ class OCRMetric(MetricGroup, ABC):
             log_error("OCRMetrics must declare self.kinds dictionary", self._parameters)
         elif not isinstance(self.kinds, dict):
             log_error("self.kinds must be a dictionary", self._parameters)
+        self.kinds: dict
+        for item in self.kinds:
+            if not isinstance(item, str):
+                log_error("self.kinds keys must be strings", self._parameters)
+            region_info, prompt = self.kinds[item]
+            if not isinstance(region_info, str):
+                log_error("self.kinds values must be region names (strings)", self._parameters)
+            if region_info not in self.state_parser.named_screen_regions:
+                log_error(f"OCR region name {region_info} not found in state parser named regions. Available options: {self.state_parser.named_screen_regions}", self._parameters)
+            if prompt is not None and not isinstance(prompt, str):
+                log_error("self.kinds values must be region names (strings) and prompts (strings or None)", self._parameters)
+
 
     def read_kind(self, current_frame: np.ndarray, kind: str) -> Optional[str]:
         """
@@ -255,12 +267,12 @@ class OCRMetric(MetricGroup, ABC):
         """
         if kinds not in self.kinds:
             log_error(f"OCR kind {kinds} not found in self.kinds", self._parameters)
-        region = self.kinds[kinds]
+        region, prompt = self.kinds[kinds]
         captured_regions = []
         for frame in frames:
             captured_region = self.state_parser.capture_named_region(current_frame=frame, name=region)
             captured_regions.append(captured_region)
-        ocr_results = ocr(captured_regions, do_merge=merge)
+        ocr_results = ocr(captured_regions, text_prompt=prompt, do_merge=merge)
         if merge:
             ocr_results = [res.strip() for res in ocr_results if res.strip() != ""]
             if len(ocr_results) == 0:

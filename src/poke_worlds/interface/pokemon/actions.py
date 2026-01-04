@@ -691,7 +691,9 @@ class BattleMenuAction(HighLevelAction):
             self.go_to_pokemon_menu()
             success = 0 if self._emulator.state_parser.is_in_pokemon_menu(self._emulator.get_current_frame()) else -1
         elif option == "run":
+            state_reports = []
             self.go_to_run()
+            state_reports.append(self._state_tracker.report())
             current_frame = self._emulator.get_current_frame()
             got_away_safely = self._emulator.state_parser.named_region_matches_multi_target(current_frame, "dialogue_box_middle", "got_away_safely")
             cannot_escape = self._emulator.state_parser.named_region_matches_multi_target(current_frame, "dialogue_box_middle", "cannot_escape")
@@ -708,6 +710,8 @@ class BattleMenuAction(HighLevelAction):
                 self._emulator.step(LowLevelActions.PRESS_BUTTON_B) # Twice, to clear the dialogue
             else:
                 pass # Should never happen, but might. 
+            state_reports.append(self._state_tracker.report())
+            return state_reports, success
         elif option == "progress":
             current_frame = self._emulator.get_current_frame()
             self.go_to_battle_menu()
@@ -756,11 +760,17 @@ class PickAttackAction(HighLevelAction):
         # then go down option times
         for time in range(option):
             self._emulator.step(LowLevelActions.PRESS_ARROW_DOWN)
+        state_reports = []
         self._emulator.step(LowLevelActions.PRESS_BUTTON_A) # confirm option
+        state_reports.append(self._state_tracker.report())
         if self._emulator.state_parser.tried_no_pp_move(self._emulator.get_current_frame()):
             self._emulator.step(LowLevelActions.PRESS_BUTTON_B) # to clear the no PP dialogue
-            return [self._state_tracker.report()], 1 # tried to use a move with no PP
-        return [self._state_tracker.report()], 0
+            state_reports.append(self._state_tracker.report())
+            return state_reports, 1 # tried to use a move with no PP
+        else:
+            self._emulator.step(LowLevelActions.PRESS_BUTTON_B) # to get through any attack animation dialogue
+            state_reports.append(self._state_tracker.report())
+        return state_reports, 0
 
 
 class TestAction(HighLevelAction):

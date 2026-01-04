@@ -223,22 +223,25 @@ def _ocr_merge(texts: List[str]) -> List[str]:
                 final_strings.append(text)
     return final_strings
 
-def ocr(images: List[np.ndarray], do_merge: bool=True) -> List[str]:
+def ocr(images: List[np.ndarray], *, text_prompt = "If there is no text in the image, just say NONE. Otherwise, perform OCR and state the text in this image:", do_merge: bool=True) -> List[str]:
     """
     Performs OCR on the given images using the VLM.
 
     Args:
         images: List of images in numpy array format (H x W x C)
+        text_prompt: The prompt to use for the OCR model.
         do_merge: Whether to merge similar OCR results. Use this if images are sequential frames from a game.
     Returns:
         List of extracted text strings. May contain duplicates if images have frames containing the same text.
     """
     parameters = project_parameters
-    text_prompt = "If there is no text in the image, just say NONE. Otherwise, perform OCR and state the text in this image:"
     texts = [text_prompt] * len(images)
     batch_size = parameters["ocr_batch_size"]
     max_new_tokens = parameters["ocr_max_new_tokens"]
     ocred = perform_vlm_inference(texts=texts, images=images, max_new_tokens=max_new_tokens, batch_size=batch_size)
+    for i, res in enumerate(ocred):
+        if res.strip().lower() == "none":
+            log_warn(f"Got NONE as output from OCR. Could this have been avoided?\nimages statistics: {images[i].max(), images[i].min(), images[i].mean()}", project_parameters)
     ocred = [text.strip() for text in ocred if text.strip().lower() != "none"]
     if do_merge:
         ocred = _ocr_merge(ocred)
