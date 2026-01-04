@@ -223,7 +223,7 @@ def _ocr_merge(texts: List[str]) -> List[str]:
                 final_strings.append(text)
     return final_strings
 
-def ocr(images: List[np.ndarray], *, text_prompt = "If there is no text in the image, just say NONE. Otherwise, perform OCR and state the text in this image:", do_merge: bool=True) -> List[str]:
+def ocr(images: List[np.ndarray], *, text_prompt=None, do_merge: bool=True) -> List[str]:
     """
     Performs OCR on the given images using the VLM.
 
@@ -234,6 +234,8 @@ def ocr(images: List[np.ndarray], *, text_prompt = "If there is no text in the i
     Returns:
         List of extracted text strings. May contain duplicates if images have frames containing the same text.
     """
+    if text_prompt is None:
+        text_prompt = "If there is no text in the image, just say NONE. Otherwise, perform OCR and state the text in this image:"
     parameters = project_parameters
     texts = [text_prompt] * len(images)
     batch_size = parameters["ocr_batch_size"]
