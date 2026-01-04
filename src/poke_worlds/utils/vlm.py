@@ -234,11 +234,12 @@ def ocr(images: List[np.ndarray], do_merge: bool=True) -> List[str]:
         List of extracted text strings. May contain duplicates if images have frames containing the same text.
     """
     parameters = project_parameters
-    text_prompt = "Perform OCR and state the text in this image:"
+    text_prompt = "If there is no text in the image, just say NONE. Otherwise, perform OCR and state the text in this image:"
     texts = [text_prompt] * len(images)
     batch_size = parameters["ocr_batch_size"]
     max_new_tokens = parameters["ocr_max_new_tokens"]
     ocred = perform_vlm_inference(texts=texts, images=images, max_new_tokens=max_new_tokens, batch_size=batch_size)
+    ocred = [text.strip() for text in ocred if text.strip().lower() != "none"]
     if do_merge:
         ocred = _ocr_merge(ocred)
     return ocred
