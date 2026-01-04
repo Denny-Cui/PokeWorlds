@@ -671,16 +671,16 @@ class BattleMenuAction(HighLevelAction):
 
 
     def go_to_fight_menu(self):
-        self.button_sequence([LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_LEFT])
+        return self.button_sequence([LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_LEFT])
 
     def go_to_bag_menu(self):
-        self.button_sequence([LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_LEFT])
+        return self.button_sequence([LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_LEFT])
 
     def go_to_pokemon_menu(self):
-        self.button_sequence([LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_RIGHT])
+        return self.button_sequence([LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_RIGHT])
 
     def go_to_run(self):
-        self.button_sequence([LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_RIGHT])
+        return self.button_sequence([LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_RIGHT])
     
     def _execute(self, option):
         success = -1
