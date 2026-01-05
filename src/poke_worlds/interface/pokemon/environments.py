@@ -108,7 +108,7 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
     REQUIRED_STATE_TRACKER = PokemonOCRTracker
     REQUIRED_EMULATOR = PokemonEmulator
 
-    def __init__(self, action_buffer_max_size: int = 5, ocr_buffer_max_size: int = 10, **kwargs):
+    def __init__(self, action_buffer_max_size: int = 3, ocr_buffer_max_size: int = 10, **kwargs):
         """
         Initializes the DummyEnvironment with the given emulator and controller.
 
@@ -116,6 +116,7 @@ class PokemonHighLevelEnvironment(DummyEnvironment):
         """
         super().__init__(**kwargs)
         self.action_buffer_max_size = action_buffer_max_size
+        self.ocr_buffer_max_size = ocr_buffer_max_size
         screen_shape = self._emulator.screen_shape
         screen_space = spaces.Box(low=0, high=255, shape=(screen_shape[1], screen_shape[0], 1), dtype=np.uint8)
         action_buffer = spaces.Text(max_length=512)

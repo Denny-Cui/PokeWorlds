@@ -29,9 +29,9 @@ class PokemonStateWiseController(Controller):
             specific_options = LocateSpecificAction.options.keys()
             # prefer the image_references if both match
             if item in image_references:
-                return LocateReferenceAction, {"option": item}
+                return LocateReferenceAction, {"image_reference": item}
             elif item in specific_options:
-                return LocateSpecificAction, {"option": item}
+                return LocateSpecificAction, {"target": item}
             else:
                 return None, None # Could go to the generic LocateAction, but for now I don't trust the VLM lol. 
         if action_name == "battlemenu":
@@ -77,6 +77,7 @@ class PokemonStateWiseController(Controller):
         }
         dialogue_action_strings = {
             PassDialogueAction: "passdialogue(): Advance the dialogue by one step.",
+            PassDialogueAction: "passdialogue(): Advance the dialogue by one step.",
         }
         battle_action_strings = {
             BattleMenuAction: "battlemenu(<fight, pokemon, bag, run or progress>): Navigate the battle menu to select an option. Fight to choose an attack, Pokemon to switch Pokemon, Bag to use an item, Run to attempt to flee the battle, and Progress to continue dialogue or other battle events.",
@@ -85,6 +86,7 @@ class PokemonStateWiseController(Controller):
             PickAttackAction: "pickattack(<1-4>): Select an attack option in the battle fight menu.",
         }
         menu_action_strings = {
+            MenuAction: "menu(<up, down, confirm or back>): Navigate the game menu.",
             MenuAction: "menu(<up, down, confirm or back>): Navigate the game menu.",
         }
         if return_all:
