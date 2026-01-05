@@ -29,9 +29,9 @@ class PokemonStateWiseController(Controller):
             specific_options = LocateSpecificAction.options.keys()
             # prefer the image_references if both match
             if item in image_references:
-                return LocateReferenceAction, {"option": item}
+                return LocateReferenceAction, {"image_reference": item}
             elif item in specific_options:
-                return LocateSpecificAction, {"option": item}
+                return LocateSpecificAction, {"target": item}
             else:
                 return None, None # Could go to the generic LocateAction, but for now I don't trust the VLM lol. 
         if action_name == "battlemenu":
@@ -70,22 +70,22 @@ class PokemonStateWiseController(Controller):
         all_options = set(LocateReferenceAction.image_references.keys()).union(LocateSpecificAction.options.keys())
         locate_option_strings = ", ".join(all_options)
         free_roam_action_strings = {
-            LocateReferenceAction: f"Locate(<{locate_option_strings}>): Locate all instances of the specified visual entity in the current screen, and return their coordinates relative to your current position.",
-            MoveStepsAction: "Move(<up, down, left or right>, <steps: int>): Move a specified number of steps in a direction.",
-            CheckInteractionAction: "CheckInteraction(): Check if there is something to interact with in front of you.",
-            InteractAction: "Interact(): Interact with cell directly in front of you. Only works if there is something to interact with.",
+            LocateReferenceAction: f"locate(<{locate_option_strings}>): Locate all instances of the specified visual entity in the current screen, and return their coordinates relative to your current position. Only the entities specified in <> are valid options, anything else will return an error.",
+            MoveStepsAction: "move(<up, down, left or right>, <steps: int>): Move a specified number of steps in a direction.",
+            CheckInteractionAction: "checkinteraction(): Check if there is something to interact with in front of you.",
+            InteractAction: "interact(): Interact with cell directly in front of you. Only works if there is something to interact with.",
         }
         dialogue_action_strings = {
-            PassDialogueAction: "PassDialogue(): Advance the dialogue by one step.",
+            PassDialogueAction: "passdialogue(): Advance the dialogue by one step.",
         }
         battle_action_strings = {
-            BattleMenuAction: "BattleMenu(<fight, pokemon, bag, run or progress>): Navigate the battle menu to select an option. Fight to choose an attack, Pokemon to switch Pokemon, Bag to use an item, Run to attempt to flee the battle, and Progress to continue dialogue or other battle events.",
+            BattleMenuAction: "battleMenu(<fight, pokemon, bag, run or progress>): Navigate the battle menu to select an option. Fight to choose an attack, Pokemon to switch Pokemon, Bag to use an item, Run to attempt to flee the battle, and Progress to continue dialogue or other battle events.",
         }
         pick_attack_action_strings = {
-            PickAttackAction: "PickAttack(<1-4>): Select an attack option in the battle fight menu.",
+            PickAttackAction: "pickAttack(<1-4>): Select an attack option in the battle fight menu.",
         }
         menu_action_strings = {
-            MenuAction: "Menu(<up, down, confirm or back>): Navigate the game menu.",
+            MenuAction: "menu(<up, down, confirm or back>): Navigate the game menu.",
         }
         if return_all:
             actions = {**free_roam_action_strings, **dialogue_action_strings, **battle_action_strings, **pick_attack_action_strings, **menu_action_strings}

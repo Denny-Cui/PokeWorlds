@@ -533,6 +533,7 @@ class LocateAction(HighLevelAction):
                 message += f"Definitive Cells: {definitive_cells}"
             else:
                 message += f"Potential Cells: {potential_cells}\nDefinitive Cells: {definitive_cells}"
+            message += "\nWhile the locate scan may be inaccurate, you should assume this is the best information you can get for finding all the targets. If you move, remember that the coordinates are relative to your position at the time of the locate command, and hence may need to be updated."
         ret_dict["action_success_message"] = message
         action_success = None
         if len(definitive_cells) > 0:
