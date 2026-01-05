@@ -54,14 +54,29 @@ class PokemonStateWiseController(Controller):
             else:
                 return None, None
         if action_name == "move":
-            direction, steps = action_args_str.split(",")
+            x_move, y_move = action_args_str.split(",")
+            x_move = x_move.strip()
+            y_move = y_move.strip()
+            if " " not in x_move or " " not in y_move:
+                return None, None
+            direction, steps = x_move.split(" ")
             direction = direction.strip()
             steps = steps.strip()
-            if direction not in ["up", "down", "left", "right"]:
+            if direction not in ["right", "left"]:
                 return None, None
             if not steps.isnumeric():
                 return None, None
-            return MoveStepsAction, {"direction": direction, "steps": int(steps)}
+            x_arg = int(steps) if direction == "right" else -int(steps)
+            direction, steps = y_move.split(" ")
+            direction = direction.strip()
+            steps = steps.strip()
+            direction, steps = y_move.split(" ")
+            direction = direction.strip()
+            steps = steps.strip()
+            if direction not in ["up", "down"]:
+                return None, None
+            y_arg = int(steps) if direction == "up" else -int(steps)
+            return MoveGridAction, {"x_steps": x_arg, "y_steps": y_arg}
         return None, None
         
     def get_action_strings(self, return_all: bool=False) -> str:
@@ -71,7 +86,7 @@ class PokemonStateWiseController(Controller):
         locate_option_strings = ", ".join(all_options)
         free_roam_action_strings = {
             LocateReferenceAction: f"locate(<{locate_option_strings}>): Locate all instances of the specified visual entity in the current screen, and return their coordinates relative to your current position. Only the entities specified in <> are valid options, anything else will return an error. DO NOT use this action with an input that is not listed in <> (e.g. locate(pokemon) or locate(pokeball) will fail).",
-            MoveStepsAction: "move(<right or left> <steps: int>,<up or down> <steps: int>): Move in grid space by the specified right/left and up/down steps.",
+            MoveGridAction: "move(<right or left> <steps: int>,<up or down> <steps: int>): Move in grid space by the specified right/left and up/down steps.",
             CheckInteractionAction: "checkinteraction(): Check if there is something to interact with in front of you.",
             InteractAction: "interact(): Interact with cell directly in front of you. Only works if there is something to interact with.",
         }
