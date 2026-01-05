@@ -128,7 +128,7 @@ class PokemonStateWiseController(Controller):
         action_success_message = ""
         if action_success == 0:
             action_success_message = "Action performed."
-        if action == MoveStepsAction:
+        if action == MoveStepsAction or action == MoveGridAction:
             if action_success == 1:
                 action_success_message = "You moved until you hit a wall, object, NPC or obstacle. If it is an object or NPC, you can now interact with it or run checkinteraction() to see if its interactable. If it is an obstacle or wall, interacting will do nothing."
             if action_success == -1:
