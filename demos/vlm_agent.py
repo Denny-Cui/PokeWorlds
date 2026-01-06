@@ -11,7 +11,7 @@ import pandas as pd
 import click
 
 
-def get_action_success_message(action, action_kwargs, success_code, action_return):
+def get_action_success_message(action, action_kwargs, action_success, action_return):
     """
     Given an action and its result, return a string message indicating the success or failure of the action.
     Will come with hints to guide the next decision by the VLM. 
@@ -375,6 +375,18 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
         self.steps_taken_for_current_goal = 0
         self.agent_note_buffer = []
         return note
+    
+    def get_previous_action_string(self):
+        action_buffer = self.env.action_buffer
+        msgs = ""
+        total_actions = len(action_buffer)
+        for i, (action, action_kwargs, action_success, action_return) in enumerate(action_buffer):
+            msg = get_action_success_message(action, action_kwargs, action_success, action_return)
+            t = total_actions - 1 - i 
+            if t != 0:
+                msgs += f"Previous Action: {action.__name__}. Status message: {msg}"
+            msgs += f"Step T-{t}: Action: {action.__name__}. Status message: {msg}\n"
+        return msgs
     
     def handle_action(self):
         assert self.note is not None, "Note must be set before calling handle_action."
