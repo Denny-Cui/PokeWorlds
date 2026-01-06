@@ -194,7 +194,7 @@ class vLLMVLM:
 
     
 def perform_object_detection(images: List[np.ndarray], texts: List[List[str]]) -> List[bool]:
-    outputs = perform_vlm_inference(texts=texts, images=images)
+    outputs = perform_vlm_inference(texts=texts, images=images, max_new_tokens=60)
     founds = []
     for i, output in enumerate(outputs):
         if "yes" in output.lower():

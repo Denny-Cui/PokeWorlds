@@ -1,5 +1,5 @@
 from poke_worlds.utils import log_error, log_info
-from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction,LocateSpecificAction, LocateReferenceAction, CheckInteractionAction, BattleMenuAction, PickAttackAction, MoveGridAction
+from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, CheckInteractionAction, BattleMenuAction, PickAttackAction, MoveGridAction, SeekAction
 from poke_worlds.interface.controller import Controller
 from poke_worlds.interface.action import HighLevelAction
 from poke_worlds.emulation.pokemon.parsers import AgentState
@@ -7,7 +7,7 @@ from typing import Dict, Any
 
 
 class PokemonStateWiseController(Controller):
-    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, LocateSpecificAction, LocateReferenceAction, CheckInteractionAction, BattleMenuAction, PickAttackAction, MoveGridAction]
+    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, CheckInteractionAction, BattleMenuAction, PickAttackAction, MoveGridAction, SeekAction]
 
     def string_to_high_level_action(self, input_str):
         input_str = input_str.lower().strip()
@@ -23,17 +23,16 @@ class PokemonStateWiseController(Controller):
         if action_name == "passdialogue":
             return PassDialogueAction, {}
         # Now handle the actions with fixed options
+        if action_name == "seek":
+            item = action_args_str.strip()
+            intent, target = item.split(",")
+            intent = intent.strip()
+            target = target.strip()
+            return SeekAction, {"intent": intent, "target": target}
         if action_name == "locate":
             item = action_args_str.strip()
-            image_references = LocateReferenceAction.image_references.keys()
-            specific_options = LocateSpecificAction.options.keys()
             # prefer the image_references if both match
-            if item in image_references:
-                return LocateReferenceAction, {"image_reference": item}
-            elif item in specific_options:
-                return LocateSpecificAction, {"target": item}
-            else:
-                return None, None # Could go to the generic LocateAction, but for now I don't trust the VLM lol. 
+            return LocateAction, {"target": item}
         if action_name == "battlemenu":
             option = action_args_str.strip()
             if option in ["fight", "pokemon", "bag", "run", "progress"]:
@@ -82,16 +81,16 @@ class PokemonStateWiseController(Controller):
     def get_action_strings(self, return_all: bool=False) -> str:
         available_actions = "Available Actions:\n"
         current_state = self._emulator.state_parser.get_agent_state(self._emulator.get_current_frame())
-        all_options = set(LocateReferenceAction.image_references.keys()).union(LocateSpecificAction.options.keys())
+        all_options = set(LocateAction.image_references.keys()).union(LocateAction.pre_described_options.keys())
         locate_option_strings = ", ".join(all_options)
         free_roam_action_strings = {
-            LocateReferenceAction: f"locate(<{locate_option_strings}>): Locate all instances of the specified visual entity in the current screen, and return their coordinates relative to your current position. Only the entities specified in <> are valid options, anything else will return an error. DO NOT use this action with an input that is not listed in <> (e.g. locate(pokemon) or locate(pokeball) will fail).",
+            LocateAction: f"locate(<{locate_option_strings}>): Locate all instances of the specified visual entity in the current screen, and return their coordinates relative to your current position. Only the entities specified in <> are valid options, anything else will return an error. DO NOT use this action with an input that is not listed in <> (e.g. locate(pokemon) or locate(pokeball) will fail).",
             MoveGridAction: "move(<right or left> <steps: int>,<up or down> <steps: int>): Move in grid space by the specified right/left and up/down steps.",
             CheckInteractionAction: "checkinteraction(): Check if there is something to interact with in front of you.",
+            SeekAction: f"seek(<intent: extremely short string description of intent>, <{locate_option_strings}>): Move towards the nearest instance of the specified visual entity until you are right next to it and facing it. Only the entities specified in <> are valid options, anything else will return an error. DO NOT use this action with an input that is not listed in <> (e.g. seek(pokemon) or seek(pokeball) will fail).",
             InteractAction: "interact(): Interact with cell directly in front of you. Only works if there is something to interact with.",
         }
         dialogue_action_strings = {
-            PassDialogueAction: "passdialogue(): Advance the dialogue by one step.",
             PassDialogueAction: "passdialogue(): Advance the dialogue by one step.",
         }
         battle_action_strings = {
@@ -101,7 +100,6 @@ class PokemonStateWiseController(Controller):
             PickAttackAction: "pickattack(<1-4>): Select an attack option in the battle fight menu.",
         }
         menu_action_strings = {
-            MenuAction: "menu(<up, down, confirm or back>): Navigate the game menu.",
             MenuAction: "menu(<up, down, confirm or back>): Navigate the game menu.",
         }
         if return_all:

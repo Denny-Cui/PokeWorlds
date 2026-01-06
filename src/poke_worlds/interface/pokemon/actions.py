@@ -1,4 +1,4 @@
-from poke_worlds.utils import log_error, perform_vlm_inference, perform_object_detection
+from poke_worlds.utils import log_error, perform_vlm_inference, perform_object_detection, log_warn
 from poke_worlds.interface.action import HighLevelAction, SingleHighLevelAction
 from poke_worlds.emulation.pokemon.parsers import AgentState, PokemonStateParser
 from poke_worlds.emulation.pokemon.trackers import CorePokemonTracker
@@ -325,7 +325,6 @@ class MoveGridAction(BaseMovementAction):
         return Box(low=-HARD_MAX_STEPS//2, high=HARD_MAX_STEPS//2, shape=(2,), dtype=np.int8)
 
     def space_to_parameters(self, space_action):
-        direction = None
         right_action = space_action[0]
         up_action = space_action[1]
         return {"x_steps": right_action, "y_steps": up_action}
@@ -341,11 +340,15 @@ class MoveGridAction(BaseMovementAction):
     def _execute(self, x_steps, y_steps):
         x_direction = "right" if x_steps >=0 else "left"
         y_direction = "up" if y_steps >= 0 else "down"
-        transition_states, status = self.move(direction=x_direction, steps=abs(x_steps))
-        if status != 0:
-            return transition_states, status
-        more_transition_states, status = self.move(direction=y_direction, steps=abs(y_steps))
-        transition_states.extend(more_transition_states)
+        if x_steps != 0:
+            transition_states, status = self.move(direction=x_direction, steps=abs(x_steps))
+            if status != 0:
+                return transition_states, status
+        else:
+            transition_states = []
+        if y_steps != 0:
+            more_transition_states, status = self.move(direction=y_direction, steps=abs(y_steps))
+            transition_states.extend(more_transition_states)
         return transition_states, status
     
     def is_valid(self, x_steps: int=None, y_steps: int=None):
@@ -467,12 +470,23 @@ class LocateAction(HighLevelAction):
     [STOP]
     Output:
     """
-    prompt = """
-    [TARGET]
-    """
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
-    _MAX_NEW_TOKENS = 60
+
+    pre_described_options = {
+        "item": "a pixelated, greyscale Poke Ball sprite, recognizable by its circular shape, white center, black band around the top, and grey body",
+        "pokeball": "a pixelated, greyscale Poke Ball sprite, recognizable by its circular shape, white center, black band around the top, and grey body",
+        "npc": "a pixelated human-like character sprite",
+        "grass": "a pixelated, greyscale patch of grass that resembles wavy dark lines.",
+        "sign": "a pixelated, greyscale white signpost with dots on its face"
+    }    
+
+    image_references = {
+        "item": "pokeball",
+        "pokeball": "pokeball",
+        "grass": "grass",
+        "sign": "sign"
+    }
 
     def coord_to_string(self, coord: Tuple[int, int]) -> str:
         start = "("
@@ -492,7 +506,7 @@ class LocateAction(HighLevelAction):
         coord_strings = [self.coord_to_string(coord) for coord in coords]
         return "[" + ", ".join(coord_strings) + "]"
 
-    def is_valid(self, target: str=None, image_reference: str = None):
+    def is_valid(self, target: str=None):
         return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
     
     def get_action_space(self):
@@ -503,7 +517,6 @@ class LocateAction(HighLevelAction):
     
     def space_to_parameters(self, space_action: str):
         return {"target": space_action}
-        
 
     def check_for_target(self, prompt, screens, image_reference: str = None):
         if image_reference is None:
@@ -597,100 +610,23 @@ class LocateAction(HighLevelAction):
         found, potential_cells, definitive_cells = self.get_cells_found(grid_cells, percieve_prompt, image_reference=image_reference)
         self._emulator.step() # just to ensure state tracker is populated.
         ret_dict = self._state_tracker.report()
-        message = ""
-        if not found:
-            message = "Not Found"
-        else:
-            message = f"FOUND {target}!\n"
-            if set(potential_cells) == set(definitive_cells):
-                message += f"Definitive Cells: {self.coords_to_string(definitive_cells)}"
-            else:
-                message += f"Potential Cells: {self.coords_to_string(potential_cells)}\nDefinitive Cells: {self.coords_to_string(definitive_cells)}"
-            message += "\nTrust this response and assume this is the best information you can get for finding all the targets. If you move, remember that the coordinates are relative to your position at the time of the locate command, and hence may need to be updated. DO NOT RUN this action again without moving, as it will just waste your time and resources."
-        ret_dict["action_success_message"] = message
+        ret_dict["action_return"] = {"found": found, "potential_cells": potential_cells, "definitive_cells": definitive_cells}
         action_success = None
         if len(definitive_cells) > 0:
             action_success = 0
         elif found:
             action_success = 1
         else:
-            action_success = 2
+            action_success = -1
         return [ret_dict], action_success
     
     def _execute(self, target: str):
-        return self.do_location(target=target)
-    
-class LocateSpecificAction(LocateAction, ABC):
-    """
-    Calls on LocateAction class functionality, but for predefined descriptions of specific visual entities of interest. 
-    Has the same validity and action success interpretation. 
-    """
-    options = {
-        "item": "a pixelated, greyscale Poke Ball sprite, recognizable by its circular shape, white center, black band around the top, and grey body",
-        "npc": "a pixelated human-like character sprite",
-        "grass": "a pixelated, greyscale patch of grass that resembles wavy dark lines.",
-        "sign": "a pixelated, greyscale white signpost with dots on its face"
-    }
-    
-    def is_valid(self, target: str = None):
-        if target is not None and target not in self.options.keys():
-            return False
-        return super().is_valid(target=target)
-
-    def get_action_space(self):
-        return Discrete(len(self.options))
-    
-    def parameters_to_space(self, target: str):
-        if target not in self.options.keys():
-            log_error(f"Invalid target option {target}", self._parameters)
-        option_index = list(self.options.keys()).index(target)
-        return option_index
-    
-    def space_to_parameters(self, space_action: int):
-        target = list(self.options.keys())[space_action]
-        return {"target": target}
-    
-    def _execute(self, target: str):
-        target = self.options[target]
-        return super()._execute(target=target)
-    
-class LocateReferenceAction(LocateAction, ABC):
-    """
-    Calls on LocateAction class functionality, but for compares the current screen with presaved image references and descriptions of specific visual entities of interest. 
-    Has the same validity and action success interpretation. 
-    """    
-    descriptions = {
-        "item": " a pixelated, greyscale Poke Ball sprite, recognizable by its circular shape, white center, black band around the top, and grey body",
-        "grass": "a pixelated, greyscale patch of grass that resembles wavy dark lines",
-        "sign": "a pixelated, greyscale white signpost with dots on its face"
-    }
-    image_references = {
-        "item": "pokeball",
-        "grass": "grass",
-        "sign": "sign"
-    }
-    def is_valid(self, image_reference: str = None):
-        if image_reference is not None:
-            # check if image reference exists
-            if image_reference not in self.image_references.keys() or image_reference not in self.descriptions.keys():
-                return False
-            reference = self.image_references[image_reference]
-            if reference not in self._emulator.state_parser.image_references.keys():
-                return False
-        return super().is_valid(image_reference=image_reference)
-
-    def get_action_space(self):
-        return Text(max_length=50)
-    
-    def parameters_to_space(self, image_reference: str):
-        return image_reference
-    
-    def space_to_parameters(self, space_action: str):
-        return {"image_reference": space_action}
-
-    def _execute(self, image_reference: str):
-        description = self.descriptions[image_reference]
-        return self.do_location(target=description, image_reference=self.image_references[image_reference])    
+        if target in self.image_references and False:
+            return self.do_location(target=self.pre_described_options[target], image_reference=self.image_references[target])
+        elif target in self.pre_described_options:
+            return self.do_location(target=self.pre_described_options[target])
+        else:
+            return self.do_location(target=target)
 
 
 class CheckInteractionAction(SingleHighLevelAction):
@@ -747,15 +683,133 @@ class CheckInteractionAction(SingleHighLevelAction):
         percieve_output = perform_vlm_inference(texts=[self.percieve_prompt], images=[cardinal_screen], max_new_tokens=50)[0]
         action_success = 0
         if "answer: yes".lower() in percieve_output.lower():
-            pass
+            percieve_output = percieve_output + " you can use interact() now"
         elif "answer: no".lower() in percieve_output.lower():
             action_success = 1
+            percieve_output += "You cannot use interact() now"
         else:
             action_success = -1
         ret_dict = self._state_tracker.report()
-        ret_dict["action_success_message"] = percieve_output
+        ret_dict["action_return"] = {"orientation": cardinal, "percieve_output": percieve_output}
         return [ret_dict], action_success
 
+
+class SeekAction(LocateAction):
+    """
+    Chains together location, movement and check interaction. 
+    """
+    resolve_prompt = """
+You are playing Pokemon and are given a screen capture of the game. The user is looking for [TARGET] with the intent of [INTENT] and has narrowed it down to the following possible locations:
+[POSSIBLE_CELLS]
+Your job is to reason about the screens and the options and identify the single best candidate cell to move towards. 
+Format your response as follows:
+Picture Reasoning: Look at the screen and describe which area seems to best match the target description and why. State roughly where it is with respect to the player (straight ahead, to the left and forwward, etc.)
+Cell Reasoning: Out of the given possible cells, which cell seems to align best with your picture reasoning and why? You must select one answer by the end, so if you cannot decide, just pick one of them. 
+Final Answer: the single best cell to move towards in the format (<x: int> steps <right or left>, <y: int> steps <up or down>)
+[STOP]
+Output:
+    """
+
+    def is_valid(self, intent: str=None, target: str=None):
+        return LocateAction.is_valid(self, target=target)
+
+    def move(self, **kwargs):
+        return BaseMovementAction.move(self, **kwargs)
+    
+    def get_action_space(self):
+        return LocateAction.get_action_space(self)
+
+    def parameters_to_space(self, intent: str, target: str):
+        return f"{intent} | {target}"
+    
+    def space_to_parameters(self, space_action: str):
+        if "|" not in space_action:
+            return None
+        intent = space_action.split("|")[0].strip()
+        target = space_action.split("|")[1].strip()
+        return {"intent": intent, "target": target}
+    
+    def _execute(self, intent: str, target: str):
+        self.orientation_prompt = CheckInteractionAction.orientation_prompt
+        self.percieve_prompt = CheckInteractionAction.percieve_prompt
+        ret_state_list, locate_status = super()._execute(target=target)
+        location_results = ret_state_list[-1]["action_return"]
+        if not location_results["found"]: #
+            return ret_state_list, -1 # Not found
+        else:
+            # don't discriminate between definitive and potential here. Just use both.
+            possible_cells = list(set(location_results["potential_cells"] + location_results["definitive_cells"]))
+            print(f"Possible cells for seek: {self.coords_to_string(possible_cells)}")
+            if len(possible_cells) > 1:
+                cell_string = ""
+                for i, cell in enumerate(possible_cells):
+                    cell_string += f"Cell {i+1}: {self.coord_to_string(cell)}. "
+                resolve_prompt = self.resolve_prompt.replace("[TARGET]", target)
+                resolve_prompt = resolve_prompt.replace("[INTENT]", intent)
+                resolve_prompt = resolve_prompt.replace("[POSSIBLE_CELLS]", cell_string)
+                resolve_output = perform_vlm_inference(texts=[resolve_prompt], images=[ret_state_list[-1]["core"]["current_frame"]], max_new_tokens=350)[0]
+                error = f"VLM failed to produce final answer in seek action. \nOutput: {resolve_output}"
+                if "final answer:" not in resolve_output.lower():
+                    log_warn(error, self._parameters)
+                    selected_cell = possible_cells[0]
+                else:
+                    final_answer_part = resolve_output.lower().split("final answer:")[-1]
+                    #(x steps right/left, y steps up/down)
+                    if "(" not in final_answer_part or ")" not in final_answer_part:
+                        log_warn(error, self._parameters)
+                        selected_cell = possible_cells[0]
+                    else:
+                        coord_part = final_answer_part.split("(")[-1].split(")")[0]
+                        coord_parts = coord_part.split(",")
+                        if len(coord_parts) != 2:
+                            log_warn(error, self._parameters)
+                            selected_cell = possible_cells[0]
+                        else:
+                            x_part = coord_parts[0].strip()
+                            y_part = coord_parts[1].strip()
+                            if "steps" not in x_part or "steps" not in y_part:
+                                log_warn(error, self._parameters)
+                                selected_cell = possible_cells[0]
+                            else:
+                                x_steps = x_part.split("steps")[0].strip()
+                                y_steps = y_part.split("steps")[0].strip()
+                                if not x_steps.isnumeric() or not y_steps.isnumeric():
+                                    log_warn(error, self._parameters)
+                                    selected_cell = possible_cells[0]
+                                else:
+                                    x_steps = int(x_steps)
+                                    y_steps = int(y_steps)
+                                    if "left" in x_part:
+                                        x_steps = -x_steps
+                                    if "down" in y_part:
+                                        y_steps = -y_steps
+                                    selected_cell = (x_steps, y_steps)
+                                    print(f"Selected cell for seek: {self.coord_to_string(selected_cell)} from VLM output: {resolve_output}")
+            else:
+                selected_cell = possible_cells[0]
+            # Now move to the selected cell
+            x_move = selected_cell[0]
+            y_move = selected_cell[1]
+            print("Moving with args: ", x_move, y_move)
+            transition_states, move_status = MoveGridAction._execute(self, x_steps=x_move, y_steps=y_move)
+            if move_status != 0:
+                # then we stop here, return the movement status shifted up by maximum locate status
+                move_status = move_status + 3
+                # so now, 2 -> no move, 3 -> SHOULD NOT HAPPEN, 4 -> partial move, 5 -> state change
+                return transition_states, move_status
+            check_states, check_status = CheckInteractionAction._execute(self)
+            print("Got check results: ", check_states[-1]["action_return"])
+            transition_states.extend(check_states)
+            if check_status == 0: # we can interact. Hit interact
+                interaction_states, interact_status = InteractAction._execute(self)
+                transition_states.extend(interaction_states)
+                if interact_status == 0:
+                    return transition_states, check_status # 0 should be success here
+                else:
+                    return transition_states, 9 # 9 -> interaction failed after seek. This means checkInteract said we could interact but we couldn't.
+            else:
+                return transition_states, check_status + 7 # So now 6 -> VLM failure, 7 -> Should not happen, 8 -> Nothing to interact with
+            
         
 class BattleMenuAction(HighLevelAction):
     """
