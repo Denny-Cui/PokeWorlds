@@ -769,6 +769,9 @@ Output:
     def move(self, **kwargs):
         return BaseMovementAction.move(self, **kwargs)
     
+    def judge_movement(self, **kwargs):
+        return BaseMovementAction.judge_movement(self, **kwargs)
+    
     def get_action_space(self):
         return LocateAction.get_action_space(self)
 
