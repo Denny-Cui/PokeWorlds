@@ -519,7 +519,7 @@ def do(model_name):
                                         environment_variant="high_level",
                                         save_video=True,
                                             init_state="starter", session_name=f"high_level_{short_model}", headless=True)
-    mission = "Select any one pokeball (can be located as an item on screen) with a starter from the bench to your right, and then leave the building from the entrance below."
+    mission = "Seek out and select any one pokeball with a starter from the bench to your right, and then leave the building from the entrance below."
     vl = VL(environment, mission, model_name=model_name)
     vl.play()
 
