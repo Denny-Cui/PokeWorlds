@@ -396,7 +396,7 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
         else:
             observation = self.observation
         allowed_actions = self.env._controller.get_action_strings(return_all=False)
-        action_buffer_str = observation["action_buffer"]
+        action_buffer_str = self.get_previous_action_string()
         if action_buffer_str == "": # Force empty action buffer on first step
             action_buffer_str = "No previous actions taken."
         screen = observation["screen"]
