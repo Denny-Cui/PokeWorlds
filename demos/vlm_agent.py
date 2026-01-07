@@ -87,7 +87,8 @@ def get_action_success_message(action, action_kwargs, action_success, action_ret
 
 class VL:
     system_prompt = """
-You are playing a Pokemon game and you are trying to achieve the mission [STEP]. 
+You are playing a Pokemon game and the high level plan is as follows: [HIGH_LEVEL_PLAN]. 
+But you are just trying to achieve one particular step as your mission [STEP]. 
 You left yourself the following note for this mission: [NOTE]
     """
 
@@ -168,7 +169,7 @@ You are playing a Pokemon game. Your overall mission is to [MISSION] and you hav
 Your agent has been trying to achieve [STEP_DESCRIPTION], but has not succeeded for too long.
 It has left you the following message regarding its failure: 
 [AGENT_MESSAGE]
-Your job is to now, given the results of your agent's previous actions and the state of the current screen, revise the high-level plan if needed, and then craft a new concise note for your player agent to follow to achieve the next step of this (possibly revised) plan.
+Your job is to now, given the results of your agent's previous actions and the state of the current screen, revise the high-level plan and then craft a new concise note for your player agent to follow to achieve the next step of this plan.
 Format your response as:
 Reasoning: <YOUR REASONING ABOUT WHAT WENT WRONG AND HOW TO FIX IT>
 Revised High Level Plan:
@@ -184,9 +185,16 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE STEP ONE>
 You are playing a Pokemon game. Your overall mission is to [MISSION] and you have come up with the following high-level plan:
 [HIGH_LEVEL_PLAN]
 Your agent has successfully achieved [STEP_DESCRIPTION] and has left you with the following message: [AGENT_MESSAGE]
-Your job is to now, given the results of your agent's previous actions and the state of the current screen, craft a new concise note for your player agent to follow to achieve the next step of this plan.
+Your job is to now, given the results of your agent's previous actions and the state of the current screen, revise the high-level plan, and then craft a new concise note for your player agent to follow to achieve the next step of this plan.
 Format your response as:
-Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
+Reasoning: <YOUR REASONING ABOUT WHAT HAS OCCURED AND WHICH PARTS OF THE MISSION TO FOCUS ON NEXT>
+Revised High Level Plan:
+1. STEP ONE (Simple description of step and Criteria for completion) DO NOT REPEAT STEPS THAT HAVE ALREADY BEEN COMPLETED. Start at what needs to be done next.
+[SEP]
+2. STEP TWO (Simple description of step and Criteria for completion)
+[SEP]
+...
+Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE STEP ONE>
     """
 
 
@@ -291,12 +299,7 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
             return None, None
 
     def parse_supervisor_success(self, output_text):
-        if "note:" in output_text.lower():
-            note = output_text.lower().split("note:")[-1].strip()
-            return note
-        else:
-            print("Failed to parse supervisor success output: ", output_text)
-            return None
+        return self.parse_supervisor_failure(output_text)
         
     def parse_failure_summary(self, output_text):
         return output_text.strip()
@@ -318,7 +321,7 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
             if "critique" in remaining:
                 note, rest = remaining.split("critique", 1)
                 if "action:" in rest:
-                    critique, action_part = rest.split("action:")
+                    critique, action_part = rest.rsplit("action:", 1)
                     action_part = action_part.strip()
                     action_part = action_part.replace("<action>", "")
                     action_part = action_part.replace("</action>", "")
@@ -406,6 +409,8 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
         if recent_ocr == "":
             recent_ocr = "No new messages."
         state = observation["state"]
+        if state.name == "IN_MENU":
+            breakpoint()
         past_ocr = self.env.ocr_buffer
         ocr_buffer_str = ""
         for ocr_step, ocr_texts in past_ocr:
@@ -417,12 +422,12 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
             ocr_buffer_str = "No previous OCR messages."
         if self.steps_taken_for_current_goal > self.max_steps_per_goal:
             # Need to fail and ask supervisor for new note
-            prompt = self.full_failure_summary_prompt.replace("[STEP]", self.high_level_plan[self.current_step_index]).replace("[NOTE]", self.note).replace("[ACTION_BUFFER]", action_buffer_str).replace("[NOTE_BUFFER]", "\n".join(self.agent_note_buffer)).replace("[OCR_BUFFER]", ocr_buffer_str).replace("[OCR]", recent_ocr)
+            prompt = self.full_failure_summary_prompt.replace("[HIGH_LEVEL_PLAN]", self.high_level_plan).replace("[STEP]", self.high_level_plan[self.current_step_index]).replace("[NOTE]", self.note).replace("[ACTION_BUFFER]", action_buffer_str).replace("[NOTE_BUFFER]", "\n".join(self.agent_note_buffer)).replace("[OCR_BUFFER]", ocr_buffer_str).replace("[OCR]", recent_ocr)
             failure_summary = self.infer(prompt, screen)
             return "fail", failure_summary
         else:
             self.steps_taken_for_current_goal += 1
-            prompt = self.full_action_prompt.replace("[STEP]", self.high_level_plan[self.current_step_index]).replace("[NOTE]", self.note).replace("[ACTION_BUFFER]", action_buffer_str).replace("[NOTE_BUFFER]", "\n".join(self.agent_note_buffer[-2:])).replace("[OCR_BUFFER]", ocr_buffer_str).replace("[OCR]", recent_ocr).replace("[STATE]", state.name).replace("[ALLOWED_ACTIONS]", allowed_actions)
+            prompt = self.full_action_prompt.replace("[HIGH_LEVEL_PLAN]", self.high_level_plan).replace("[STEP]", self.high_level_plan[self.current_step_index]).replace("[NOTE]", self.note).replace("[ACTION_BUFFER]", action_buffer_str).replace("[NOTE_BUFFER]", "\n".join(self.agent_note_buffer[-2:])).replace("[OCR_BUFFER]", ocr_buffer_str).replace("[OCR]", recent_ocr).replace("[STATE]", state.name).replace("[ALLOWED_ACTIONS]", allowed_actions)
             action_valid = False
             previous_action_strings = ""
             n_attempts = 0
