@@ -47,6 +47,8 @@ def get_action_success_message(action, action_kwargs, action_success, action_ret
         if action_success == 1:
             action_success_message = "Your interaction led to something."
     elif action == SeekAction:
+        if action_success == 0:
+            action_success_message = "Success! You sought out your target and began an interaction. Procedure through the rest of the game as required."
         if action_success == -1:
             action_success_message = "Could not find the object on screen to seek. You may need to move around, or trust your visual intuition from the screen."
         elif action_success == 1:
@@ -327,7 +329,7 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
                     return mission_complete, ("unable to parse critique, come up with a new one", note.strip(), "passdialogue()")
             else:
                 print(f"Warning: 'critique:' not found in action instruction output. Output was: {output_text}")
-                return mission_complete, ("unable to parse critique, come up with a new one", note, "passdialogue()")
+                return mission_complete, ("unable to parse critique, come up with a new one", "unable to parse note, come up with a new one.", "passdialogue()")
             
     def do_supervisor_start(self):
         allowed_actions = self.env._controller.get_action_strings(return_all=True)
@@ -384,8 +386,8 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE NEXT STEP>
             msg = get_action_success_message(action, action_kwargs, action_success, action_return)
             t = total_actions - 1 - i 
             if t != 0:
-                msgs += f"Previous Action: {action.__name__}. Status message: {msg}"
-            msgs += f"Step T-{t}: Action: {action.__name__}. Status message: {msg}\n"
+                msgs += f"Previous Action: {action.__name__} with kwargs {action_kwargs}. Status message: {msg}"
+            msgs += f"Step T-{t}: Action: {action.__name__} with kwargs {action_kwargs}. Status message: {msg}\n"
         return msgs
     
     def handle_action(self):
@@ -531,7 +533,7 @@ def do(model_name):
                                         environment_variant="high_level",
                                         save_video=True,
                                             init_state="starter", session_name=f"high_level_{short_model}", headless=True)
-    mission = "Seek out and select any one pokeball with a starter from the bench to your right, and then leave the building from the entrance below."
+    mission = "Seek and select any one pokeball with a starter from the bench to your right, and then leave the building from the entrance below."
     vl = VL(environment, mission, model_name=model_name)
     vl.play()
 
