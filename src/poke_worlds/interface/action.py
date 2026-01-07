@@ -18,7 +18,7 @@ class HighLevelAction(ABC):
 
     The docstring of each subclass should specify the interpretation of the action success status.
 
-    The execute() method may also return some additional information in the final state tracker report under the "action_return" key.    
+    The execute() method may also return some additional information in the final state tracker report under the "core" key, "action_return" subkey (usually as a dict itself)   
     """
     REQUIRED_STATE_TRACKER = StateTracker
     """ The state tracker that tracks the minimal state information required for the action to function. """

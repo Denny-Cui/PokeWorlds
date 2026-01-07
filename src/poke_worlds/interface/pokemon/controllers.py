@@ -80,8 +80,7 @@ class PokemonStateWiseController(Controller):
             return MoveGridAction, {"x_steps": x_arg, "y_steps": y_arg}
         return None, None
         
-    def get_action_strings(self, return_all: bool=False) -> str:
-        available_actions = "Available Actions:\n"
+    def get_action_strings(self, return_all: bool=False) -> Dict[HighLevelAction, str]:
         current_state = self._emulator.state_parser.get_agent_state(self._emulator.get_current_frame())
         all_options = set(LocateAction.image_references.keys()).union(LocateAction.pre_described_options.keys())
         locate_option_strings = ", ".join(all_options)
@@ -120,9 +119,7 @@ class PokemonStateWiseController(Controller):
                 actions = menu_action_strings
             else:
                 log_error(f"Unknown agent state {current_state} when getting action strings.")
-        for action_class, action_desc in actions.items():
-            available_actions += f"- {action_desc}\n"
-        return available_actions
+        return actions
     
     def get_action_success_message(self, action: HighLevelAction, action_kwargs: Dict[str, Any], action_success: int) -> str:
         action_success_message = ""

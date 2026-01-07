@@ -219,7 +219,7 @@ class BaseMovementAction(HighLevelAction, ABC):
                 action_success = 0
             else:
                 action_success = 1
-        transition_state_dicts[-1]["action_return"] = {"n_steps_taken": n_successful_steps, "rotated": has_rotated}
+        transition_state_dicts[-1]["core"]["action_return"] = {"n_steps_taken": n_successful_steps, "rotated": has_rotated}
         return transition_state_dicts, action_success 
 
     def is_valid(self, **kwargs):
@@ -643,7 +643,7 @@ class LocateAction(HighLevelAction):
         found, potential_cells, definitive_cells = self.get_cells_found(grid_cells, percieve_prompt, image_reference=image_reference)
         self._emulator.step() # just to ensure state tracker is populated.
         ret_dict = self._state_tracker.report()
-        ret_dict["action_return"] = {"found": found, 
+        ret_dict["core"]["action_return"] = {"found": found, 
                                      "potential_cells": potential_cells, 
                                      "definitive_cells": definitive_cells, 
                                      "potential_cells_str": self.coords_to_string(potential_cells),
@@ -727,7 +727,7 @@ class CheckInteractionAction(SingleHighLevelAction):
         else:
             action_success = -1
         ret_dict = self._state_tracker.report()
-        ret_dict["action_return"] = {"orientation": cardinal, "percieve_output": percieve_output}
+        ret_dict["core"]["action_return"] = {"orientation": cardinal, "percieve_output": percieve_output}
         return [ret_dict], action_success
 
 
@@ -789,7 +789,7 @@ Output:
         self.orientation_prompt = CheckInteractionAction.orientation_prompt
         self.percieve_prompt = CheckInteractionAction.percieve_prompt
         ret_state_list, locate_status = super()._execute(target=target)
-        location_results = ret_state_list[-1]["action_return"]
+        location_results = ret_state_list[-1]["core"]["action_return"]
         if not location_results["found"]: #
             return ret_state_list, -1 # Not found
         else:
@@ -831,19 +831,19 @@ Output:
             x_move = selected_cell[0]
             y_move = selected_cell[1]
             transition_states, move_status = MoveGridAction._execute(self, x_steps=x_move, y_steps=y_move)
-            location_results.update(transition_states[-1]["action_return"])
+            location_results.update(transition_states[-1]["core"]["action_return"])
             if move_status in [-1, 2]: # could not move or state changed
-                transition_states[-1]["action_return"] = location_results
+                transition_states[-1]["core"]["action_return"] = location_results
                 # then we stop here, return the movement status shifted up by maximum locate status
                 move_status = 1 if move_status == -1 else 2
                 return transition_states, move_status
             check_states, check_status = CheckInteractionAction._execute(self)
-            location_results.update(check_states[-1]["action_return"])            
+            location_results.update(check_states[-1]["core"]["action_return"])            
             transition_states.extend(check_states)
             if check_status == 0: # we can interact. Hit interact
                 interaction_states, interact_status = InteractAction._execute(self)
                 # no action_return from interact
-                interaction_states[-1]["action_return"] = location_results
+                interaction_states[-1]["core"]["action_return"] = location_results
                 transition_states.extend(interaction_states)
                 if interact_status == -1: # interaction fail
                     return transition_states, -1
@@ -854,7 +854,7 @@ Output:
                     check_status = 3
                 elif check_status == 1:
                     check_status = 4
-                transition_states[-1]["action_return"] = location_results
+                transition_states[-1]["core"]["action_return"] = location_results
                 return transition_states, check_status
             
         

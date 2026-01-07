@@ -263,11 +263,17 @@ class Controller(ABC):
         """
         raise NotImplementedError
     
-    def get_action_strings(self) -> str:
+    def get_action_strings(self, return_all: bool = False) -> Dict[HighLevelAction, str]:
         """
-        Provide a way to verbalize the allowed high level actions, along with the format of the input parameters
+        Provide a way to verbalize the allowed high level actions, along with the format of the input parameters. 
+        Useful for prompting a VLM to choose an action.
 
         This should match the mapping in string_to_high_level_action
+
+        Args:
+            return_all (bool): If True, returns all possible actions and parameter formats. If False, returns only the actions that are valid in the current state.
+        Returns:
+            Dict[HighLevelAction, str]: A dictionary mapping high level actions to their verbalizations and input formats.
         """
         raise NotImplementedError
 

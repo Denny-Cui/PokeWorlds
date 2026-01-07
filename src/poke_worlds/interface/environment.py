@@ -123,21 +123,49 @@ class Environment(gym.Env, ABC):
     def get_info(self, *, action: Optional[HighLevelAction]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None) -> Dict[str, Dict[str, Any]]:
         """
         Returns the full state information as defined by the emulator's state tracker.
-        Args:
-            previous_action_details (Optional[Tuple[HighLevelAction, Dict[str, Any], List[Dict[str, Dict[str, Any]]], int]]):
-                Details of the previous action taken, including:
-                - HighLevelAction: The high level action type executed.
-                - Dict[str, Any]: The keyword arguments used for the action.
-                - List[Dict[str, Dict[str, Any]]]: The list of state dictionaries observed during the action execution.
-                - int: The action success code.
 
-        Returns:
-            info (dict): The full state information from the state tracker.
+        Creates additional fields: 
+        - "core"/"previous_action_details": A tuple of (action, action_kwargs, transition_states, action_success, action_return)
+        - "core"/"transition_passed_frames": An array of all frames passed during the action execution
+        - "ocr"/"transition_ocr_texts": A list of OCR texts observed during the action execution
+        
+        :param action: HighLevelAction taken
+        :type action: Optional[HighLevelAction]
+        :param action_kwargs: Keyword arguments for the action
+        :type action_kwargs: Optional[dict]
+        :param transition_states: List of states observed during the action execution
+        :type transition_states: Optional[List[Dict[str, Dict[str, Any]]]]
+        :param action_success:  Success code of the action
+        :type action_success: Optional[int]
+        :return: Full state information from the state tracker
+        :rtype: Dict[str, Dict[str, Any]]
         """
         state_info = self._emulator.state_tracker.report()
-        if action is not None:
-            state_info["core"]["previous_action_details"] = (action, action_kwargs, transition_states, action_success)
+        if action is not None: # then transition_states should not be empty
+            # Attach the action details to the info
+            last_state = transition_states[-1]
+            if "action_return" in last_state["core"]:
+                action_return = last_state["core"]["action_return"]
+            else:
+                action_return = None
+                state_info["core"]["previous_action_details"] = (action, action_kwargs, transition_states, action_success, action_return)
+
+            # Aggregate passed frames from transition states            
+            all_passed_frames = transition_states[0]["core"]["passed_frames"]
+            for transition_state in transition_states[1:]:
+                all_passed_frames = np.concatenate([all_passed_frames, transition_state["core"]["passed_frames"]], axis=0)
+            state_info["core"]["transition_passed_frames"] = all_passed_frames # TODO: Should include the current state info last frame as well, but must check.
+            # assert state_info["core"]["passed_frames"][-1] == state_info["core"]["current_frame"]
+
+            # Aggregate OCR texts from transition states
+            all_ocr_texts = []
+            for transition_state in transition_states[:-1]: # exclude last state since its OCR is already in state_info TODO: Verify this
+                if "ocr" in transition_state and "ocr_texts" in transition_state["ocr"]:
+                    all_ocr_texts.append(transition_state["ocr"]["ocr_texts"])
+            if "ocr" in state_info:
+                state_info["ocr"]["transition_ocr_texts"] = all_ocr_texts
         return state_info
+
 
     def get_final_info(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -192,7 +220,16 @@ class Environment(gym.Env, ABC):
             bool: Whether the episode is terminated.
         """
         pass
-        
+                   
+    def get_agent_state(self) -> Any:
+        """
+        Returns a string-like identifier of the current agent state in the environment.
+        Is useful for VLM prompts to describe what the agent is currently doing.
+        Returns:
+            Any: The current agent state identifier.
+        """
+        raise NotImplementedError()
+    
     def before_step(self, action: HighLevelAction, action_kwargs: dict):
         """
         Implement any logic that needs to be executed before each step in the environment.
@@ -260,11 +297,24 @@ class Environment(gym.Env, ABC):
         reward = self.determine_reward(start_state=start_state, action=action, action_kwargs=kwargs, transition_states=transition_states, action_success=action_success)
         return observation, reward, terminated, truncated, current_state
 
+    def string_to_high_level_action(self, input_str: str) -> Tuple[Optional[HighLevelAction], Optional[dict]]:
+        """
+        Attempts to convert an input string representation of an action into a HighLevelAction and its parameters.
+        Useful for human play or VLM interaction.
+        
+        :param input_str: The input string representing the action.
+        :type input_str: str
+        :return: A tuple containing the HighLevelAction and its parameters dictionary. If the input string is invalid, returns (None, None).
+        :rtype: Tuple[HighLevelAction | None, dict | None]
+        """
+        return self._controller.string_to_high_level_action(input_str)
+    
     def step_str(self, input_str: str)  -> Tuple[gym.spaces.Space, float, bool, bool, Dict[str, Dict[str, Any]]]:
         """
-        Attempts to execute an input string representation of an action
+        Attempts to execute an input string representation of an action. 
+        Useful for human play or VLM interaction.
         """
-        action, kwargs = self._controller.string_to_high_level_action(input_str)
+        action, kwargs = self.string_to_high_level_action(input_str)
         if action is None: # not a valid action, will not perform an action and will simply return Nones
             return None, None, None, None, None
         return self.step_high_level_action(action, **kwargs)
@@ -353,6 +403,19 @@ class Environment(gym.Env, ABC):
             action_success (Optional[int]): The success code of the action.
         """
         raise NotImplementedError
+    
+    
+    def get_action_strings(self, return_all: bool = False) -> Dict[HighLevelAction, str]:
+        """
+        Provide a way to verbalize the allowed high level actions, along with the format of the input parameters. 
+        Useful for prompting a VLM to choose an action.
+
+        :param return_all: If True, returns all possible actions and parameter formats. If False, returns only the actions that are valid in the current state.
+        :type return_all: bool
+        :return: A dictionary mapping high level actions to their verbalizations and input formats.
+        :rtype: Dict[HighLevelAction, str]
+        """
+        return self._controller.get_action_strings(return_all=return_all)
     
     
     def human_step_play(self, max_steps: int=50, show_info: bool=False):
