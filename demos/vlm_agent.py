@@ -415,8 +415,6 @@ Note: <CONCISE NOTE FOR PLAYER AGENT TO FOLLOW TO ACHIEVE STEP ONE>
         if recent_ocr == "":
             recent_ocr = "No new messages."
         state = observation["state"]
-        if state.name == "IN_MENU":
-            breakpoint()
         past_ocr = self.env.ocr_buffer
         ocr_buffer_str = ""
         for ocr_step, ocr_texts in past_ocr:
