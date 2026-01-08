@@ -25,7 +25,7 @@ class PokemonStateWiseController(Controller):
         # Now handle the actions with fixed options
         if action_name == "seek":
             item = action_args_str.strip()
-            if "," not in item:
+            if item.count(",") != 1:
                 return None, None
             intent, target = item.split(",")
             intent = intent.strip()
@@ -55,12 +55,16 @@ class PokemonStateWiseController(Controller):
             else:
                 return None, None
         if action_name == "move":
+            if action_args_str.count(",") != 1:
+                return None, None
             x_move, y_move = action_args_str.split(",")
             x_move = x_move.strip()
             y_move = y_move.strip()
-            if " " not in x_move or " " not in y_move:
+            x_split = x_move.split(" ")
+            y_split = y_move.split(" ")
+            if len(x_split) != 2 or len(y_split) != 2:
                 return None, None
-            direction, steps = x_move.split(" ")
+            direction, steps = x_split
             direction = direction.strip()
             steps = steps.strip()
             if direction not in ["right", "left"]:
@@ -68,7 +72,7 @@ class PokemonStateWiseController(Controller):
             if not steps.isnumeric():
                 return None, None
             x_arg = int(steps) if direction == "right" else -int(steps)
-            direction, steps = y_move.split(" ")
+            direction, steps = y_split
             direction = direction.strip()
             steps = steps.strip()
             direction, steps = y_move.split(" ")
