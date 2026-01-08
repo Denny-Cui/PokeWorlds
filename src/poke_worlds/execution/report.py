@@ -139,3 +139,28 @@ class ExecutionReport(ABC):
     def state_info_to_str(self, state_info: dict) -> str:
         """ Converts a state info to a string representation. Useful for VLM Prompting """
         pass
+
+    def get_execution_summary(self) -> List[str]:
+        """
+        Returns a list describing each step taken during the execution.
+        
+        :return: List of strings summarizing each step of the execution.
+        :rtype: List[str]
+        """
+        summary_lines = []
+        actions_taken = self.get_actions_taken()
+        state_infos = self.get_state_infos()
+        for i in range(self.steps_taken):
+            action_string, action_class, action_kwargs, transition_states, success_code, action_return_info, action_message = actions_taken[i]
+            frame_difference, visual_context = self.step_contexts[i + 1]
+            state_info = state_infos[i + 1]
+            plan = self.plans[i + 1]
+            summary_line = f"Step {i + 1}:\n"
+            summary_line += f"Action Taken: {action_string}\n"
+            summary_line += f"Action Message: {action_message}\n"
+            summary_line += f"Change in Game Frame: {frame_difference}\n"
+            summary_line += f"State Info: {self.state_info_to_str(state_info)}\n"
+            summary_line += f"Visual Context: {visual_context}\n"
+            summary_line += f"Plan at this step: {plan}\n"
+            summary_lines.append(summary_line)
+        return summary_lines
