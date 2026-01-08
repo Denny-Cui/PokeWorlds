@@ -142,7 +142,7 @@ class ExecutionReport(ABC):
 
     def get_execution_summary(self) -> List[str]:
         """
-        Returns a list describing each step taken during the execution.
+        Returns a list describing each step taken during the execution and a final line describing the exit reasoning.
         
         :return: List of strings summarizing each step of the execution.
         :rtype: List[str]
@@ -163,4 +163,5 @@ class ExecutionReport(ABC):
             summary_line += f"Visual Context: {visual_context}\n"
             summary_line += f"Plan at this step: {plan}\n"
             summary_lines.append(summary_line)
+        summary_lines.append(f"Execution ended because: {self.exit_reasoning}")
         return summary_lines
