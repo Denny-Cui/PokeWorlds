@@ -87,11 +87,10 @@ class Controller(ABC):
         """
         Interprets a Gym space action into a high level action and its parameters.
 
-        Args:
-            space_action (OneOf): The action in the controller's action space.
-
-        Returns: 
-            Tuple[HighLevelAction, Dict[str, Any]]: The high level action and its parameters.
+        :param space_action: The action in the controller's action space.
+        :type space_action: OneOf
+        :return: The high level action and its parameters.
+        :rtype: Tuple[HighLevelAction, Dict[str, Any]]
         """
         action_index, space_action = space_action
         action = self.actions[action_index]
@@ -147,8 +146,10 @@ class Controller(ABC):
         """
         Returns a list of all valid high level actions (including valid parameter inputs) that can be performed in the current state.
 
-        Will fail if there are high level actions with infinite valid parameterizations.
-        Use get_possibly_valid_high_level_actions() instead if that is the case.
+        WARNING: Will fail if there are high level actions with infinite valid parameterizations. Use get_possibly_valid_high_level_actions() instead if that is the case.
+        
+        :return: A dictionary mapping high level actions to their corresponding valid parameterizations.
+        :rtype: Dict[type[HighLevelAction], List[Dict[str, Any]]]
         """
         valid_actions = {}
         if not self._emulator_running():
@@ -163,9 +164,10 @@ class Controller(ABC):
         """
         Returns a list of valid actions in the controller's action space that can be performed in the current state.
 
-        Returns:
-
-            Dict[HighLevelAction, List[OneOf]]: A dictionary mapping high level actions to their corresponding valid space actions.
+        WARNING: Will fail if there are high level actions with infinite valid parameterizations. Use get_possibly_valid_high_level_actions() instead if that is the case.
+        
+        :return: A dictionary mapping high level actions to their corresponding valid space actions.
+        :rtype: Dict[type[HighLevelAction], List[OneOf]]
         """
         valid_space_actions = {}
         if not self._emulator_running():
@@ -183,7 +185,7 @@ class Controller(ABC):
         Returns a list of valid high level actions that can be performed (with some parameterized input) in the current state.
 
         Returns:
-            List[HighLevelAction]: A list of valid high level actions.
+            List[Type[HighLevelAction]]: A list of valid high level actions.
         """
         if not self._emulator_running():
             return []
@@ -197,15 +199,14 @@ class Controller(ABC):
     def execute_space_action(self, action: OneOf) -> Tuple[Optional[List[Dict[str, Dict[str, Any]]]], Optional[int]]:
         """
         Executes the specified high level action on the emulator after checking for validity.
+        
+        :param action: The action in the controller's action space.
+        :type action: OneOf
+        :return: 
+            - List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
 
-        Args:
-            action (OneOf): The action in the controller's action space.
-
-        Returns:
-
-            List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
-
-            int: Action success status.
+            - int: Action success status.
+        :rtype: Tuple[List[Dict[str, Dict[str, Any]]] | None, int | None]
         """
         action_index, space_action = action
         executing_action: HighLevelAction = self.actions[action_index]
@@ -215,15 +216,15 @@ class Controller(ABC):
         """
         Executes the specified high level action on the emulator after checking for validity.
 
-        Args:
-            action (HighLevelAction): The high level action class to execute.
-            **kwargs: Additional arguments required for the specific high level action.
+        :param action: The HighLevelAction
+        :type action: Type[HighLevelAction]
+        :param kwargs: Additional arguments required for the specific high level action.
+        :type kwargs: Dict[str, Any]
+        :return: 
+            - List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
 
-        Returns:
-
-            List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
-
-            int: Action success status.
+            - int: Action success status.
+        :rtype: Tuple[List[Dict[str, Dict[str, Any]]] | None, int | None]
         """
         if action not in self.ACTIONS:
             log_error("Action not recognized by controller. Are you passing in an instance of the action class?", self._parameters)
@@ -235,19 +236,28 @@ class Controller(ABC):
     def string_to_space_action(self, input_str: str) -> Space:
         """
         Converts a string input to a space action        
+        Args:
+            input_str (str): The string input representing the high level action and its parameters.
+
+        Returns:
+            OneOf: The action in the controller's action space.
         """
         action, kwargs = self.string_to_high_level_action(input_str=input_str)
         return self._high_level_action_to_space_action(action, kwargs)
     
     def execute_string(self, input_str: str) -> Tuple[Optional[List[Dict[str, Dict[str, Any]]]], Optional[int]]:
         """
-        Executes a high level action specified by a string input.
-        Args:
-            input_str (str): The string input representing the high level action and its parameters.
-        Returns:
-            List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
+        Executes the high level action implied by the input string. 
 
-            int: Action success status.
+        :param input_str: String representing the high level action and its parameters.
+        :type input_str: str
+        :param kwargs: Additional arguments required for the specific high level action.
+        :type kwargs: Dict[str, Any]
+        :return: 
+            - List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed. Is None if the input string does not map to a valid action.
+
+            - int: Action success status. Is None if the input string does not map to a valid action.
+        :rtype: Tuple[List[Dict[str, Dict[str, Any]]] | None, int | None]
         """
         action, kwargs = self.string_to_high_level_action(input_str=input_str)
         if action is None:
@@ -269,11 +279,11 @@ class Controller(ABC):
         Useful for prompting a VLM to choose an action.
 
         This should match the mapping in string_to_high_level_action
-
-        Args:
-            return_all (bool): If True, returns all possible actions and parameter formats. If False, returns only the actions that are valid in the current state.
-        Returns:
-            Dict[HighLevelAction, str]: A dictionary mapping high level actions to their verbalizations and input formats.
+        
+        :param return_all: If True, returns all possible actions and parameter formats. If False, returns only the actions that are valid in the current state.
+        :type return_all: bool
+        :return: A dictionary mapping high level actions to their verbalizations and input formats.
+        :rtype: Dict[HighLevelAction, str]
         """
         raise NotImplementedError
 

@@ -4,7 +4,7 @@ import logging
 import importlib.util
 from typing import Dict
 
-def get_logger(level: int = logging.INFO, filename: str = None, add_console: bool = True):
+def get_logger(level: int = logging.INFO, filename: str = None, add_console: bool = True) -> logging.Logger:
     """
     Sets up and returns a logger with specified configurations.
     Args:
@@ -33,7 +33,7 @@ def get_logger(level: int = logging.INFO, filename: str = None, add_console: boo
         logger.propagate = False
     return logger
 
-def meta_dict_to_str(meta_dict: dict, *, print_mode: bool = False, n_indents: int = 1, skip_write_timestamp: bool = True):
+def meta_dict_to_str(meta_dict: dict, *, print_mode: bool = False, n_indents: int = 1, skip_write_timestamp: bool = True) -> str:
     """
     Converts a metadata dictionary to a string representation.
     Args:

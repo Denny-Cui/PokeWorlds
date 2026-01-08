@@ -10,7 +10,7 @@ from PIL import Image
 import os
 import matplotlib.pyplot as plt
 
-def is_none_str(s):
+def is_none_str(s) -> bool:
     """
     Checks if a string is None or represents a null value.
 
@@ -30,7 +30,7 @@ def is_none_str(s):
     return isna(s)
 
 
-def nested_dict_to_str(nested_dict, *, indent=0, indent_char="  "):
+def nested_dict_to_str(nested_dict: dict, *, indent: int=0, indent_char: str="  ") -> str:
     """
     Converts a nested dictionary to a formatted string representation.
     Example Usage: 

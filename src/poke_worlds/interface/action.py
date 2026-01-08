@@ -116,15 +116,14 @@ class HighLevelAction(ABC):
         """
         Executes the specified high level action on the emulator. 
         Does not check for validity
-
-        Args:
-            **kwargs: Additional arguments required for the specific high level action.
-        Returns:
         
-            List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after each low level action executed.
- 
-            int: Action success status.
+        :param self: Description
+        :param kwargs: Additional arguments required for the specific high level action.
+        :return: 
+            - A list of state tracker reports after each low level action executed.
 
+            - Action success status.
+        :rtype: Tuple[List[Dict[str, Dict[str, Any]]], int]
         """
         raise NotImplementedError
     
@@ -182,6 +181,9 @@ class HighLevelAction(ABC):
 
 
 class SingleHighLevelAction(HighLevelAction):
+    """
+    An abstract class for a high level action that has only one possible parameterization.
+    """
     def space_to_parameters(self, space_action):
         return {}
     
@@ -217,16 +219,6 @@ class LowLevelAction(HighLevelAction):
         return low_level_action.value
 
     def _execute(self, low_level_action: LowLevelActions) -> Tuple[List[Dict[str, Dict[str, Any]]], int]:
-        """
-        Executes the specified low level action on the emulator.
-
-        Args:
-            low_level_action (LowLevelActions): The low level action to execute.
-        Returns:
-            List[Dict[str, Dict[str, Any]]]: A list of state tracker reports after the low level action executed.
-            bool: Whether the action was successful or not. (Is often an estimate.)
-
-        """
         self._emulator.step(low_level_action)
         state_report = self._state_tracker.report()
         return [state_report], 0  # Low level actions are always successful in this context.
@@ -245,9 +237,9 @@ class LowLevelAction(HighLevelAction):
     def get_all_valid_parameters(self) -> List[Dict[str, Any]]:
         """
         Returns a list of all valid low level actions in the current state.
-
-        Returns:
-            List[Dict[str, Any]]: A list of valid low level actions.
+        
+        :return: A list of valid low level actions.
+        :rtype: List[Dict[str, Any]]
         """
         return [{"low_level_action": action} for action in LowLevelActions]
 
@@ -287,7 +279,14 @@ class LowLevelPlayAction(HighLevelAction):
 
 
 class RandomPlayAction(HighLevelAction):
-    """ Execution either moves or presses A """
+    """ Execution either moves or presses A 
+    
+    Action Success Interpretation:
+
+    - 0: The frame changed after the action
+    - 1: The frame did not change after the action
+
+    """
 
     def get_action_space(self):
         """

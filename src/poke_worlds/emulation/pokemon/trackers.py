@@ -4,13 +4,18 @@ from poke_worlds.emulation.pokemon.parsers import PokemonStateParser, AgentState
 from typing import Optional, Type
 import numpy as np
 
-from poke_worlds.utils.vlm import ocr
-from abc import ABC
-
 
 class CorePokemonMetrics(MetricGroup):
     """
     Pokémon-specific metrics.
+
+    Reports:
+    - agent_state: The AgentState info. Is either Free Roam, In Dialogue, In Menu or In Battle. 
+
+    Final Reports:
+    - None
+
+
     """
     NAME = "pokemon_core"
     REQUIRED_PARSER = PokemonStateParser
@@ -52,9 +57,51 @@ class CorePokemonMetrics(MetricGroup):
         """
         return {}
 
+class PokemonOCRMetric(OCRMetric):
+    REQUIRED_PARSER = PokemonStateParser
+    def reset(self, first = False):
+        super().reset(first)
+        self.prev_was_in_fight_options = False
+
+    def start(self):
+        self.kinds = {
+            "dialogue": ("dialogue_box_full", None),
+            "battle_attack_options": ("screen_bottom_half", "The following are the attack options available in a Pokémon battle. There are a maximum of four attacks. List the attack names only, in the following format: 1. <attack_name>, 2. <attack_name>, etc. If there are less than four attacks, only list the available ones.")
+        }  
+        super().start()
+
+    def can_read_kind(self, current_frame: np.ndarray, kind: str) -> bool:
+        self.state_parser: PokemonStateParser
+        if kind == "dialogue":
+            in_dialogue = self.state_parser.dialogue_box_open(current_screen=current_frame)
+            dialogue_empty = self.state_parser.dialogue_box_empty(current_screen=current_frame)
+            in_battle_menu = self.state_parser.is_in_base_battle_menu(current_screen=current_frame)
+            in_fight_options = self.state_parser.is_in_fight_options_menu(current_screen=current_frame)
+            in_bag = self.state_parser.is_in_fight_bag(current_screen=current_frame)
+            return in_dialogue and not dialogue_empty and not in_battle_menu and not in_fight_options and not in_bag
+        if kind == "battle_attack_options":
+            in_fight_options = self.state_parser.is_in_fight_options_menu(current_screen=current_frame)
+            if in_fight_options:
+                if self.prev_was_in_fight_options:
+                    self.prev_was_in_fight_options = True
+                    return False
+                else:
+                    self.prev_was_in_fight_options = True
+                    return True
+            else:
+                self.prev_was_in_fight_options = False
+                return False
+        return False
+
 class PokemonRedStarter(MetricGroup):
     """
-    Have some more specific metrics for Pokemon Red.
+    Specific tracking for choice of starter Pokémon in Pokémon Red.
+
+    Reports:
+    - current_starter: The starter Pokémon chosen in the current episode.
+
+    Final Reports:
+    - starter_choices: A dictionary with the total number of times each starter Pokémon was chosen across all episodes.
     """
     NAME = "pokemon_red_starter"
     REQUIRED_PARSER = PokemonRedStateParser
@@ -120,10 +167,28 @@ class PokemonRedStarter(MetricGroup):
         """
         return self.starter_choices
             
-
 class PokemonRedLocation(MetricGroup):
     """
     Reads from memory states to determine the player's current location in Pokemon Red.
+
+    Reports:
+    - direction: The direction the player is facing
+    - has_moved: Whether the player has moved since the last step
+    - current_global_location: (x, y)
+    - current_local_location: (x, y, map_name)
+    - n_walk_steps: Number of walk steps taken in the current episode
+    - unique_locations: List of unique locations visited in the current episode
+    - n_of_unique_locations: Number of unique locations visited in the current episode
+
+    Final Reports:
+    - mean_n_walk_steps_per_episode: Mean number of walk steps taken per episode
+    - mean_n_unique_locations_per_episode: Mean number of unique locations visited per episode
+    - std_n_walk_steps_per_episode: Standard deviation of walk steps taken per episode
+    - std_n_unique_locations_per_episode: Standard deviation of unique locations visited per episode
+    - max_n_walk_steps_per_episode: Maximum number of walk steps taken in a single episode
+    - max_n_unique_locations_per_episode: Maximum number of unique locations visited in a single episode
+
+
     """
     NAME = "pokemon_red_location"
     REQUIRED_PARSER = MemoryBasedPokemonRedStateParser
@@ -214,44 +279,6 @@ class PokemonRedLocation(MetricGroup):
     def close(self):
         pass
     
-
-class PokemonOCRMetric(OCRMetric):
-    REQUIRED_PARSER = PokemonStateParser
-    def reset(self, first = False):
-        super().reset(first)
-        self.prev_was_in_fight_options = False
-
-    def start(self):
-        self.kinds = {
-            "dialogue": ("dialogue_box_full", None),
-            "battle_attack_options": ("screen_bottom_half", "The following are the attack options available in a Pokémon battle. There are a maximum of four attacks. List the attack names only, in the following format: 1. <attack_name>, 2. <attack_name>, etc. If there are less than four attacks, only list the available ones.")
-        }  
-        super().start()
-
-    def can_read_kind(self, current_frame: np.ndarray, kind: str) -> bool:
-        self.state_parser: PokemonStateParser
-        if kind == "dialogue":
-            in_dialogue = self.state_parser.dialogue_box_open(current_screen=current_frame)
-            dialogue_empty = self.state_parser.dialogue_box_empty(current_screen=current_frame)
-            in_battle_menu = self.state_parser.is_in_base_battle_menu(current_screen=current_frame)
-            in_fight_options = self.state_parser.is_in_fight_options_menu(current_screen=current_frame)
-            in_bag = self.state_parser.is_in_fight_bag(current_screen=current_frame)
-            return in_dialogue and not dialogue_empty and not in_battle_menu and not in_fight_options and not in_bag
-        if kind == "battle_attack_options":
-            in_fight_options = self.state_parser.is_in_fight_options_menu(current_screen=current_frame)
-            if in_fight_options:
-                if self.prev_was_in_fight_options:
-                    self.prev_was_in_fight_options = True
-                    return False
-                else:
-                    self.prev_was_in_fight_options = True
-                    return True
-            else:
-                self.prev_was_in_fight_options = False
-                return False
-        return False
-
-
 class PokemonTestMetric(MetricGroup):
     NAME = "pokemon_test"
     REQUIRED_PARSER = PokemonStateParser
@@ -289,9 +316,6 @@ class PokemonTestMetric(MetricGroup):
         return {
         }
 
-
-
-
 class CorePokemonTracker(StateTracker):
     """
     StateTracker for core Pokémon metrics.
@@ -314,7 +338,6 @@ class CorePokemonTracker(StateTracker):
             previous_screens = self.episode_metrics["core"]["passed_frames"]
             if previous_screens is not None:
                 self.episode_metrics["core"]["passed_frames"][-1, :] = screen
-
 
 class PokemonOCRTracker(CorePokemonTracker):
     def start(self):

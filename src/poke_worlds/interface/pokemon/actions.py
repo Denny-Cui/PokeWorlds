@@ -31,12 +31,13 @@ class PassDialogueAction(SingleHighLevelAction):
     """
     Skips dialogue by pressing the B button.
 
-    Is Valid When: In Dialogue State
+    Is Valid When: 
+    - In Dialogue State
 
     Action Success Interpretation:
-        - -1: Frame did not change
-        - 0: Frame changed and no longer in dialogue state
-        - 1: Frame changed but still in dialogue state
+    - -1: Frame did not change
+    - 0: Frame changed and no longer in dialogue state
+    - 1: Frame changed but still in dialogue state
     """
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
@@ -61,11 +62,12 @@ class InteractAction(SingleHighLevelAction):
     """
     Presses the A button to interact with an object in front of the agent.
 
-    Is Valid When: In Free Roam State
+    Is Valid When: 
+    - In Free Roam State
 
     Action Success Interpretation:
-        - -1: Frame did not change or agent still in free roam state
-        - 1: Agent not in free roam state
+    - -1: Frame did not change or agent still in free roam state
+    - 1: Agent not in free roam state
     """
 
     REQUIRED_STATE_PARSER = PokemonStateParser    
@@ -104,17 +106,18 @@ class BaseMovementAction(HighLevelAction, ABC):
     Base class for movement actions in the Pokemon environment.
     Has utility methods for moving in directions.
 
-    Is Valid When: In Free Roam State
+    Is Valid When: 
+    - In Free Roam State
 
     Action Success Interpretation:
-        - -1: Frame did not change, even on the first step
-        - 0: Finished all steps
-        - 1: Took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter). This usually means we ran into an obstacle.
-        - 2: Took some steps, but agent state changed from free roam. This often means we entered a cutscene or battle. 
+    - -1: Frame did not change, even on the first step
+    - 0: Finished all steps
+    - 1: Took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter). This usually means we ran into an obstacle.
+    - 2: Took some steps, but agent state changed from free roam. This often means we entered a cutscene or battle. 
 
     Action Returns:
-        - n_steps_taken (int): Number of steps actually taken
-        - rotated (bool or None): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle. 
+    - `n_steps_taken` (`int`): Number of steps actually taken
+    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle. 
     """
     REQUIRED_STATE_TRACKER = CorePokemonTracker
     REQUIRED_STATE_PARSER = PokemonStateParser
@@ -233,16 +236,17 @@ class MoveStepsAction(BaseMovementAction):
     """
     Moves the agent in a specified cardinal direction for a specified number of steps.
 
-    Is Valid When: In Free Roam State
+    Is Valid When: 
+    - In Free Roam State
     Action Success Interpretation:
-        - -1: Frame did not change, even on the first step
-        - 0: Finished all steps
-        - 1: Took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter). This usually means we ran into an obstacle.
-        - 2: Took some steps, but agent state changed from free roam. This often means we entered a cutscene or battle.
+    - -1: Frame did not change, even on the first step
+    - 0: Finished all steps
+    - 1: Took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter). This usually means we ran into an obstacle.
+    - 2: Took some steps, but agent state changed from free roam. This often means we entered a cutscene or battle.
 
     Action Returns:
-        - n_steps_taken (int): Number of steps actually taken
-        - rotated (bool or None): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.         
+    - `n_steps_taken` (`int`): Number of steps actually taken
+    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.         
     """
 
     def get_action_space(self):
@@ -320,16 +324,17 @@ class MoveGridAction(BaseMovementAction):
     """
     Moves the agent on both axes. Will always try to move right first and then up. 
 
-    Is Valid When: In Free Roam State
+    Is Valid When: 
+    - In Free Roam State
     Action Success Interpretation:
-        - -1: Frame did not change, even on the first step
-        - 0: Finished all steps
-        - 1: Took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter). This usually means we ran into an obstacle.
-        - 2: Took some steps, but agent state changed from free roam. This often means we entered a cutscene or battle.
+    - -1: Frame did not change, even on the first step
+    - 0: Finished all steps
+    - 1: Took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter). This usually means we ran into an obstacle.
+    - 2: Took some steps, but agent state changed from free roam. This often means we entered a cutscene or battle.
 
     Action Returns:
-        - n_steps_taken (int): Number of steps actually taken
-        - rotated (bool or None): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle. 
+    - `n_steps_taken` (`int`): Number of steps actually taken
+    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle. 
     """
 
     def get_action_space(self):
@@ -383,14 +388,15 @@ class MenuAction(HighLevelAction):
     """
     Allows simple navigation and option selection of menus. 
 
-    Is Valid When: In Menu State
+    Is Valid When: 
+    - In Menu State
 
     Action Success Interpretation:
-        - -1: Frame did not change.
-        - 0: Frame changed. 
+    - -1: Frame did not change.
+    - 0: Frame changed. 
 
     TODO: Unfortunately, since PokemonCrystal based games has a bag with submenus, I need to add left right actions as well.
-    Perhaps I can add a bag actions class later and separate these out. 
+    Perhaps I can add a bag actions class later and separate these out. Until then, the bag is not really usable in PokemonCrystal games.
     """
 
     REQUIRED_STATE_PARSER = PokemonStateParser    
@@ -474,12 +480,18 @@ class LocateAction(HighLevelAction):
     
     Uses VLM inference to check each grid cell for the target.
 
-    Is Valid When: In Free Roam State
+    Is Valid When: 
+    - In Free Roam State
     
     Action Success Interpretation:
-            - 0: Object found definitively
-            - 1: Object found but only potentially
-            - 2: Object not found
+    - 0: Object found definitively
+    - 1: Object found but only potentially
+    - 2: Object not found
+
+    Action Returns:
+    - `found` (`bool`): whether the target was found in any of the grid cells at any point.
+    - `potential_cells` (`List[Tuple[int, int]]`): list of grid cell coordinates that may contain the target.
+    - `definitive_cells` (`List[Tuple[int, int]]`): list of grid cell coordinates that, with high confidence, contain the target.
     """
 
     prompt = """
@@ -673,12 +685,17 @@ class CheckInteractionAction(SingleHighLevelAction):
     1. Checks the orientation of the agent using VLM inference.
     2. Captures the grid cell in front of the agent and uses VLM inference to describe what is in the cell.
 
-    Is Valid When: In Free Roam State
+    Is Valid When: 
+    - In Free Roam State
 
     Action Success Interpretation:
-        - -1: VLM failure: Could not parse yes or no from response
-        - 0: There is something to interact with in front of the agent.
-        - 1: There is nothing to interact with in front of the agent.
+    - -1: VLM failure: Could not parse yes or no from response
+    - 0: There is something to interact with in front of the agent.
+    - 1: There is nothing to interact with in front of the agent.
+
+    Action Returns:
+    - `orientation` (`Tuple[int, int]`): The orientation of the agent.
+    - `percieve_output` (`str`): The output of the percieve prompt.
 
     """
     orientation_prompt = """
@@ -735,21 +752,24 @@ class SeekAction(LocateAction):
     """
     Chains together location, movement and check interaction. 
 
-    Is Valid When: In Free Roam State
+    Is Valid When: 
+    - In Free Roam State
+
     Action Success Interpretation:
-        - -1: Could not find target
-        - 0: Moved to target successfully and interacted
-        - 1: Could not move to target (obstacle completely blocking path)
-        - 2: State changed before reaching target (battle, cutscene, etc)
-        - 3: CheckInteraction VLM failure
-        - 4: CheckInteraction found nothing to interact with at target location
-        - 5: Interaction action failed
+    - -1: Could not find target
+    - 0: Moved to target successfully and interacted
+    - 1: Could not move to target (obstacle completely blocking path)
+    - 2: State changed before reaching target (battle, cutscene, etc)
+    - 3: CheckInteraction VLM failure
+    - 4: CheckInteraction found nothing to interact with at target location
+    - 5: Interaction action failed
+
     Action Returns:
-        - n_steps_taken (int): Number of steps actually taken during movement
-        - rotated (bool or None): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.
-        Optional:
-        - percieve_output (str): The output of the CheckInteractionAction percieve prompt at the target location.
-        - orientation (Tuple[int, int]): The orientation of the agent at the target location.
+    - `n_steps_taken` (`int`): Number of steps actually taken during movement
+    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.
+    Optional:
+    - `percieve_output` (`str`): The output of the CheckInteractionAction percieve prompt at the target location.
+    - `orientation` (`Tuple[int, int]`): The orientation of the agent at the target location.
     """
     resolve_prompt = """
 You are playing Pokemon and are given a screen capture of the game. The user is looking for [TARGET] with the intent of [INTENT] and has narrowed it down to the following possible locations:
@@ -862,13 +882,14 @@ class BattleMenuAction(HighLevelAction):
     """
     Allows navigation of the battle menu.
 
-    Is Valid When: In Battle State
+    Is Valid When: 
+    - In Battle State
 
     Action Success Interpretation:
-        - -1: Navigation Failure. Screen did not end up in expected end state. 
-        - 0: Navigation Success. Screen ended up in expected end state. For run, got away safely.
-        - 1: Run Attempt Failed (cannot escape wild pokemon)
-        - 2: Run Attempt Failed (cannot escape trainer battle)
+    - -1: Navigation Failure. Screen did not end up in expected end state. 
+    - 0: Navigation Success. Screen ended up in expected end state. For run, got away safely.
+    - 1: Run Attempt Failed (cannot escape wild pokemon)
+    - 2: Run Attempt Failed (cannot escape trainer battle)
     """
     _OPTIONS = ["fight", "bag", "pokemon", "run", "progress"]
     def is_valid(self, option: str = None):
@@ -974,12 +995,13 @@ class PickAttackAction(HighLevelAction):
     """
     Selects an attack option in the battle fight menu.
 
-    Is Valid When: In Battle State, In Fight Menu
+    Is Valid When: 
+    - In Battle State AND In Fight Menu
 
     Action Success Interpretation:
-        - -1: Navigation Failure. Either could not get to the top of the attack menu (this should not happen) or the option index was too high (more likely the cause of failure).
-        - 0: Used attack successfully.
-        - 1: Tried to use a move with no PP remaining.
+    - -1: Navigation Failure. Either could not get to the top of the attack menu (this should not happen) or the option index was too high (more likely the cause of failure).
+    - 0: Used attack successfully.
+    - 1: Tried to use a move with no PP remaining.
     """
     def get_action_space(self):
         return Discrete(4)

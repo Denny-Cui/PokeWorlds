@@ -21,6 +21,9 @@ class ExecutorVLM:
 
     @staticmethod
     def start():
+        """
+        Initializes the Executor VLM model and processor if not already done.
+        """
         if ExecutorVLM._MODEL is not None:
             return
         if not project_parameters["full_importable"] or project_parameters["debug_skip_lm"]:
@@ -44,7 +47,13 @@ class ExecutorVLM:
     @staticmethod
     def infer(text: str, image: np.ndarray, max_new_tokens: int) -> str:
         """
-        Performs inference with the given text and image        
+        Performs inference with the given text and image  
+
+        :param text: The input text prompt.
+        :param image: The input image as a numpy array.
+        :param max_new_tokens: The maximum number of new tokens to generate.
+        :return: The generated text output.
+        :rtype: str      
         """
         if ExecutorVLM._MODEL is None:
             ExecutorVLM.start()
@@ -55,9 +64,15 @@ class ExecutorVLM:
         return HuggingFaceVLM.do_infer(ExecutorVLM._MODEL, ExecutorVLM._PROCESSOR, [text], [image], max_new_tokens, 1)[0]
     
     @staticmethod
-    def multi_infer(text: str, images: List[np.ndarray], max_new_tokens: int) -> List[str]:
+    def multi_infer(text: str, images: List[np.ndarray], max_new_tokens: int) -> str:
         """
         Performs inference with the given text and multiple images        
+
+        :param text: The input text prompt.
+        :param images: The list of input images as numpy arrays.
+        :param max_new_tokens: The maximum number of new tokens to generate.
+        :return: The generated text output.
+        :rtype: str
         """
         if ExecutorVLM._MODEL is None:
             ExecutorVLM.start()

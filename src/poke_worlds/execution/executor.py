@@ -123,14 +123,26 @@ Response:
                                         plan=plan)
         
     def get_execution_report(self) -> ExecutionReport:
-        """ Returns the execution report for this executor. """
+        """ 
+        Returns the execution report for this executor. 
+        
+        :return: The execution report.
+        :rtype: ExecutionReport
+        """
         return deepcopy(self._execution_report)
     
     def get_additional_context(self, state_info: dict) -> str:
-        """ Returns any additional context to provide when describing screen changes. """
+        """ 
+        Returns any additional context to provide when describing screen changes. 
+        
+        Args:
+            state_info (dict): The state information from the environment after taking an action.
+        Returns:
+            str: The additional context string.
+        """
         return ""
     
-    def get_actions_and_changes(self, new_action_details: Tuple[str, HighLevelAction, Dict[str, Any], Dict[str, Dict[str, Any]], int, dict, str] = None, last_action_hint: bool = False) -> List[str]:
+    def get_actions_and_changes(self, new_action_details: Tuple[str, Type[HighLevelAction], Dict[str, Any], Dict[str, Dict[str, Any]], int, dict, str] = None, last_action_hint: bool = False) -> List[str]:
         """
         Returns a string summarizing the past self.action_buffer_size actions taken and their resulting changes.
 
@@ -158,7 +170,7 @@ Response:
             actions_and_changes.append(f"Previous Action: {new_action_str} | Status Message: {new_action_message}")
         return actions_and_changes
     
-    def _describe_screen_change(self, *, next_frame: np.ndarray, action_details: Tuple[str, HighLevelAction, dict, Dict[str, Dict[str, Any]], int, dict], additional_context: str) -> Tuple[str, str]:
+    def _describe_screen_change(self, *, next_frame: np.ndarray, action_details: Tuple[str, Type[HighLevelAction], dict, Dict[str, Dict[str, Any]], int, dict], additional_context: str) -> Tuple[str, str]:
         prompt = self._screen_description_prompt.replace("[PICTURE_1_VISUAL_CONTEXT]", self._visual_context).replace("[ADDITIONAL_CONTEXT]", additional_context)
         next_action_str, next_high_level_action, next_high_level_action_kwargs, transition_states, action_success, action_return = action_details
         action_message = self.get_action_message(action=next_high_level_action, action_kwargs=next_high_level_action_kwargs, action_success=action_success, action_return=action_return)
@@ -174,7 +186,7 @@ Response:
         visual_context_part = visual_context_part.strip()
         return changes_part, visual_context_part
     
-    def _execute_next_action(self) -> Tuple[str, str, Tuple[str, HighLevelAction, dict, int, dict, str], dict]:
+    def _execute_next_action(self) -> Tuple[str, str, Tuple[str, Type[HighLevelAction], dict, int, dict, str], dict]:
         if self._execution_report.steps_taken == 0:
             prompt = self._first_execution_prompt
         else:
@@ -255,6 +267,16 @@ Response:
             return self._default_str, False
 
     def execute(self, step_limit: int, show_progress: bool = True) -> ExecutionReport:
+        """
+        Executes the immediate task within the environment up to the step limit.
+        
+        :param step_limit: The maximum number of steps to execute.
+        :type step_limit: int
+        :param show_progress: Whether to display a progress bar during execution.
+        :type show_progress: bool
+        :return: The execution report.
+        :rtype: ExecutionReport
+        """
         n_steps = -1
         environment_done = False
         error_out = False
@@ -310,8 +332,21 @@ Response:
                 continue
             
     @abstractmethod
-    def get_action_message(self, *, action: HighLevelAction, action_kwargs: dict, action_success: int, action_return: dict, last_action_hint: bool=False) -> str:
-        """ Returns a string message describing the action taken and its status. 
-        last_action_hint: If True, formats the message as if it is for the previous action taken. This can include a hint to guide the next action. 
+    def get_action_message(self, *, action: Type[HighLevelAction], action_kwargs: dict, action_success: int, action_return: dict, last_action_hint: bool=False) -> str:
+        """
+        Returns a string message describing the action taken and its status. 
+        
+        :param action: The high level action taken.
+        :type action: Type[HighLevelAction]
+        :param action_kwargs: The execution arguments used for the action.
+        :type action_kwargs: dict
+        :param action_success: Success code of the action
+        :type action_success: int
+        :param action_return: Return information from the action
+        :type action_return: dict
+        :param last_action_hint: Whether to format the message as a hint for the next action. If True, includes guidance for the next action. This can include a hint to guide the next action.
+        :type last_action_hint: bool
+        :return: The action message string.
+        :rtype: str
         """
         pass

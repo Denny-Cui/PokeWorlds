@@ -9,12 +9,11 @@ import numpy as np
 class PokemonEmulator(Emulator):
     """
     Almost the exact same as Emulator, but forces the agent to not mess with the menu options cursor.
-    Also, skips all dialogue automatically (by clicking 'B'). 
     """
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
     _MAXIMUM_DIALOGUE_PRESSES = 2000 # For now set a crazy high value
-    """ Maximum number of times the agent will click B to get through a dialogue. """
+    """ Maximum number of times the agent will click B to get through a dialogue. This isn't used rn, we don't skip dialouge"""
 
     def step(self, action=None) -> Tuple[np.ndarray, bool]:
         frames, done = super().step(action)
@@ -46,7 +45,11 @@ class PokemonEmulator(Emulator):
             self._update_listeners_after_actions(frames)
         return frames, done
     
-    def run_action_on_emulator(self, *args, **kwargs):
-        if not kwargs.get("render", True):
-            log_error(f"PokemonEmulator requires render to be True", self._parameters)
-        return super().run_action_on_emulator(*args, **kwargs)
+    def _open_to_first_state(self):
+        self._pyboy.tick(10000, False) # get to opening menu
+        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A) # press A to get past opening menu
+        self._pyboy.tick(1000, False) # wait for load
+        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A) # press A to load game
+        self._pyboy.tick(1000, False) # wait for file select
+        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A) # press A to confirm load
+        self._pyboy.tick(5000, False) # wait for game to load        

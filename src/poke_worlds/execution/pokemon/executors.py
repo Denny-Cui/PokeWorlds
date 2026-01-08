@@ -7,7 +7,7 @@ from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, I
 class PokemonExecutor(Executor):
     REQUIRED_CONTROLLER = PokemonStateWiseController
 
-    def get_action_message(self, *, action: HighLevelAction, action_kwargs: dict, action_success: int, action_return: dict, last_action_hint: bool=False):
+    def get_action_message(self, *, action, action_kwargs: dict, action_success: int, action_return: dict, last_action_hint: bool=False):
         interaction_advice = f"If you want to try to interact with it, use interact() or checkinteraction() to get an estimate on whether or not you can interact with it."
         path_blocked_advice = f"If you are trying to go somewhere, then this direction is blocked. Try moving around it or going a different way."
         locate_advice = f"You may need to move around, or trust your visual intuition from the screen."

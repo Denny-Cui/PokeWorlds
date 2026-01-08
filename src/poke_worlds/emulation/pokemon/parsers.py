@@ -1,6 +1,6 @@
 """
 Pokemon specific game state parser implementations for both PokemonRed and PokemonCrystal.
-While this code base started from: Borrowing heavily from https://github.com/PWhiddy/PokemonRedExperiments/ (v2) and was initially read from memory states https://github.com/thatguy11325/pokemonred_puffer/blob/main/pokemonred_puffer/global_map.py, this is no longer the case as we have moved to visual based state parsing.
+While this code base started from: https://github.com/PWhiddy/PokemonRedExperiments/ (v2) and was initially read from memory states https://github.com/thatguy11325/pokemonred_puffer/blob/main/pokemonred_puffer/global_map.py, this is no longer the case as we have moved to visual based state parsing.
 This decision was primarily made to facilitate easier extension to other games and rom hacks in the future, as well as to avoid reliance on specific memory addresses which may vary between different versions of the game.
 
 However, the code base supports reading from memory addresses to extract game state information, which can be useful for incorporating domain knowledge into reward structures or other aspects of the environment. See the MemoryBasedPokemonRedStateParser class for examples of how to read game state information from memory addresses.
@@ -10,7 +10,7 @@ Ensure that your agents DO NOT change the frame settings in the game, or the sta
 
 CORE DESIGN PRINCIPLE: Never branch the parser subclasses for a given variant. The inheritance tree for a parser after the game variant parser should always be a tree with only one child per layer. 
 This is to ensure that we don't double effort, any capability added to a parser will always be valid for that game variant. 
-If this principle is followed, any state tracker can always use the STRONGEST parser for a given variant without concern for missing functionality.
+If this principle is followed, any state tracker can always use the STRONGEST (lowest level) parser for a given variant without concern for missing functionality.
 """
 
 from poke_worlds.emulation.parser import NamedScreenRegion
@@ -31,11 +31,10 @@ from bidict import bidict
 
 class AgentState(Enum):
     """
-    Enum representing different agent states in the Pokemon game.
-    1. FREE_ROAM: The agent is freely roaming the game world.
-    2. IN_DIALOGUE: The agent is currently in a dialogue state. (including reading signs, talking to NPCs, etc.)
-    3. IN_MENU: The agent is currently in a menu state. (including PC, Name Entry, Pokedex, etc.)
-    4. IN_BATTLE: The agent is currently in a battle state.
+    0. FREE_ROAM: The agent is freely roaming the game world.
+    1. IN_DIALOGUE: The agent is currently in a dialogue state. (including reading signs, talking to NPCs, etc.)
+    2. IN_MENU: The agent is currently in a menu state. (including PC, Name Entry, Pokedex, etc.)
+    3. IN_BATTLE: The agent is currently in a battle state.
     """
     FREE_ROAM = 0
     IN_DIALOGUE = 1
@@ -45,12 +44,13 @@ class AgentState(Enum):
 def _get_proper_regions(override_regions: List[Tuple[str, int, int, int, int]], base_regions: List[Tuple[str, int, int, int, int]]) -> List[Tuple[str, int, int, int, int]]:
     """
     Merges base regions with override regions, giving precedence to override regions.
-    Args:
-        override_regions (List[Tuple[str, int, int, int, int]]): List of override region tuples.
-        base_regions (List[Tuple[str, int, int, int, int]]): List of base region tuples.
-
-    Returns:
-        List[Tuple[str, int, int, int, int]]: Merged list of region tuples.
+    
+    :param override_regions: List of override region tuples.
+    :type override_regions: List[Tuple[str, int, int, int, int]]
+    :param base_regions: List of base region tuples.
+    :type base_regions: List[Tuple[str, int, int, int, int]]
+    :return: Merged list of region tuples.
+    :rtype: List[Tuple[str, int, int, int, int]]
     """
     if len(override_regions) == 0:
         return base_regions
@@ -84,42 +84,65 @@ class PokemonStateParser(StateParser, ABC):
                 ("map_bottom_right", 140, 130, 10, 10),
     ]
     """ List of common named screen regions for Pokemon games. 
-    dialogue_bottom_right: Bottom right of dialogue box when interacting with NPCs, signs, etc. Speak to an NPC to capture this.
+    - dialogue_bottom_right: Bottom right of dialogue box when interacting with NPCs, signs, etc. Speak to an NPC to capture this.
     
-    menu_top_right: Top right of the screen when the player start menu is open. Open the start menu to capture this.
+    - menu_top_right: Top right of the screen when the player start menu is open. Open the start menu to capture this.
     
-    pc_top_left: Top left of the screen when the PC is open. Open the PC to capture this.
+    - pc_top_left: Top left of the screen when the PC is open. Open the PC to capture this.
     
-    battle_enemy_hp_text: Region showing the text 'HP' for the enemy Pokémon in battle. Engage in a battle to capture this.
+    - battle_enemy_hp_text: Region showing the text 'HP' for the enemy Pokémon in battle. Engage in a battle to capture this.
     
-    battle_player_hp_text: Region showing the text 'HP' for the player's Pokémon in battle. Engage in a battle to capture this.
+    - battle_player_hp_text: Region showing the text 'HP' for the player's Pokémon in battle. Engage in a battle to capture this.
     
-    dialogue_choice_bottom_right: Bottom right of the choice dialogue box when answering choice questions (e.g. Yes/No prompts). Trigger a choice dialogue to capture this (e.g. confirmation of starter choice)
+    - battle_base_menu_top_left: Top left of the battle base menu. Engage in a battle to capture this.
+
+    - battle_fight_options_top_right: Top right of the fight options menu in battle. Engage in a battle and open the fight options to capture this.
+
+    - battle_fight_options_cursor_on_top: Region showing the cursor on the top attack option in the fight options menu. Engage in a battle, open the fight options and move the cursor to the top option to capture this.
     
-    name_entity_top_left: Top left of the screen when naming a character or Pokémon. Catch a pokemon and give it a nickname to capture this.
+    - dialogue_choice_bottom_right: Bottom right of the choice dialogue box when answering choice questions (e.g. Yes/No prompts). Trigger a choice dialogue to capture this (e.g. confirmation of starter choice)
     
-    player_card_middle: Middle of the player card screen. Go to this from start menu -> player name
+    - name_entity_top_left: Top left of the screen when naming a character or Pokémon. Catch a pokemon and give it a nickname to capture this.
     
-    map_bottom_right: Bottom right of the map screen when the town map is open.  Open the town map to capture this.
+    - player_card_middle: Middle of the player card screen. Go to this from start menu -> player name
+    
+    - map_bottom_right: Bottom right of the map screen when the town map is open.  Open the town map to capture this.
     """
 
     COMMON_MULTI_TARGET_REGIONS = [
-        ("screen", 0, 0, 150, 140), # Most of the screen except for the very edges
-        ("dialogue_box_middle", 10, 105, 120, 30), # Middle of the dialogue box, but not on that spot where the blinking arrow cursor appears. Useful for catching particular dialogues.         
-        ("dialogue_box_full", 5, 100, 150, 40), # Full dialogue box area, is useful to capture for OCR purposes
-        ("screen_bottom_half", 5, 70, 150, 70), # Bottom half of the screen, useful for OCR of dialogue and other text
-        ("screen_quadrant_1", 85, 0, 60, 60), # Top right quadrant of the screen
-        ("screen_quadrant_2", 0, 0, 60, 60), # Top left quadrant of the screen
-        ("screen_quadrant_3", 0, 70, 60, 70), # Bottom left quadrant of the screen
-        ("screen_quadrant_4", 85, 70, 60, 70), # Bottom right quadrant of the screen
+        ("screen", 0, 0, 150, 140),
+        ("dialogue_box_middle", 10, 105, 120, 30), 
+        ("dialogue_box_full", 5, 100, 150, 40),
+        ("screen_bottom_half", 5, 70, 150, 70),
+        ("screen_quadrant_1", 85, 0, 60, 60), 
+        ("screen_quadrant_2", 0, 0, 60, 60), 
+        ("screen_quadrant_3", 0, 70, 60, 70),
+        ("screen_quadrant_4", 85, 70, 60, 70),
     ]
-    """ List of common multi-target named screen regions for Pokemon games."""
+    """ List of common multi-target named screen regions for Pokemon games.
+    
+    - screen: Most of the screen except for the very edges. Useful for general state parsing.
+    - dialogue_box_middle: Middle of the dialogue box, but not on that spot where the blinking arrow cursor appears. Useful for catching particular dialogues.
+    - dialogue_box_full: Full dialogue box area, is useful to capture for OCR purposes.
+    - screen_bottom_half: Bottom half of the screen, useful for OCR of dialogue and other text.
+    - screen_quadrant_1: Top right quadrant of the screen.
+    - screen_quadrant_2: Top left quadrant of the screen.
+    - screen_quadrant_3: Bottom left quadrant of the screen.
+    - screen_quadrant_4: Bottom right quadrant of the screen.
+    """
 
     COMMON_MULTI_TARGETS = {
         "dialogue_box_middle": ["got_away_safely", "cannot_escape", "cannot_run_from_trainer", 
                                 "no_pp_for_move"],
     }
-    """ Common multi-targets for the common multi-target named screen regions. """
+    """ Common multi-targets for the common multi-target named screen regions. 
+    - dialogue_box_middle:
+        - got_away_safely: Run successfully from a wild battle.
+        - cannot_escape: Fail to run from a wild Pokemon
+        - cannot_run_from_trainer: Try to run from a trainer battle and get an error message
+        - no_pp_for_move: Try to use a move with no PP remaining.
+
+    """
 
 
     def __init__(self, variant: str, pyboy: PyBoy, parameters: dict, 
@@ -390,17 +413,18 @@ class BasePokemonRedStateParser(PokemonStateParser, ABC):
                 ("battle_bag_options_bottom_left", 32, 96, 5, 5),
             ]
     """ Additional named screen regions specific to Pokemon Red games.
-    pokedex_top_left: Top left of the screen when the Pokedex is open. Open the Pokedex to capture this.
-    pokedex_info_mid_left: Middle left of the screen when viewing a Pokémon's info in the Pokedex. Open a Pokémon's info in the Pokedex to capture this.
-    pokemon_list_hp_text: Region showing the text 'HP' for the player's Pokémon in the Pokémon list. Open the Pokémon list from the start menu to capture this.
-    pokemon_stats_line: A line in the Pokémon stats screen. Open a Pokémon's stats from the start menu -> pokemon menu to capture this.
+    - pokedex_top_left: Top left of the screen when the Pokedex is open. Open the Pokedex to capture this.
+    - pokedex_info_mid_left: Middle left of the screen when viewing a Pokémon's info in the Pokedex. Open a Pokémon's info in the Pokedex to capture this.
+    - pokemon_list_hp_text: Region showing the text 'HP' for the player's Pokémon in the Pokémon list. Open the Pokémon list from the start menu to capture this.
+    - pokemon_stats_line: A line in the Pokémon stats screen. Open a Pokémon's stats from the start menu -> pokemon menu to capture this.
+    - battle_bag_options_bottom_left: The bottom left part of the menu when you open the items option from the battle menu. 
     """
 
     MULTI_TARGET_REGIONS = [
         ("menu_box_middle", 89, 13, 30, 100), 
     ]
     """ Additional multi-target named screen regions specific to Pokemon Red games. 
-    menu_box_middle: Middle of the menu box when the start menu is open. Open the start menu to capture this. 
+    - menu_box_middle: Middle of the menu box when the start menu is open. Open the start menu to capture this. 
     """
 
     def __init__(self, pyboy: PyBoy, variant: str, parameters: dict, override_regions: List[Tuple[str, int, int, int, int]] = [], override_multi_target_regions: List[Tuple[str, int, int, int, int]] = [], override_multi_targets: Dict[str, List[str]] = {}):
@@ -437,19 +461,19 @@ class BasePokemonCrystalStateParser(PokemonStateParser, ABC):
         ("bag_text", 18, 0, 6, 6),
     ]
     """ Additional named screen regions specific to Pokemon Crystal games.
-    pokemon_list_hp_text: Region showing the text 'HP' for the player's Pokémon in the Pokémon list. Open the Pokémon list from the start menu to capture this.
-    pokedex_seen_text: Region showing the 'SEEN' text in the Pokedex. Open the Pokedex to capture this.
-    pokedex_info_height_text: Region showing the 'HEIGHT' text in the Pokedex info screen. Open a Pokémon's info in the Pokedex to capture this.
-    pokegear_top_left: Top left of the screen when the Pokegear is open. Open the Pokegear to capture this.
-    pokemon_stats_lvl_text: Region showing the 'LV' text in the Pokémon stats screen. Open a Pokémon's stats from the start menu -> pokemon menu to capture this.
-    bag_text: Top left of the screen when the Bag is open. Open the Bag to capture this.
+    - pokemon_list_hp_text: Region showing the text 'HP' for the player's Pokémon in the Pokémon list. Open the Pokémon list from the start menu to capture this.
+    - pokedex_seen_text: Region showing the 'SEEN' text in the Pokedex. Open the Pokedex to capture this.
+    - pokedex_info_height_text: Region showing the 'HEIGHT' text in the Pokedex info screen. Open a Pokémon's info in the Pokedex to capture this.
+    - pokegear_top_left: Top left of the screen when the Pokegear is open. Open the Pokegear to capture this.
+    - pokemon_stats_lvl_text: Region showing the 'LV' text in the Pokémon stats screen. Open a Pokémon's stats from the start menu -> pokemon menu to capture this.
+    - bag_text: Top left of the screen when the Bag is open. Open the Bag to capture this.
     """
 
     MULTI_TARGET_REGIONS = [
         ("menu_box_middle", 89, 13, 30, 120),
     ]
     """ Additional multi-target named screen regions specific to Pokemon Crystal games. 
-    menu_box_middle: Middle of the menu box when the start menu is open. Open the start menu to capture this. 
+    - menu_box_middle: Middle of the menu box when the start menu is open. Open the start menu to capture this. 
     """
 
     def __init__(self, pyboy: PyBoy, variant: str, parameters: dict, override_regions: List[Tuple[str, int, int, int, int]] = [], override_multi_target_regions: List[Tuple[str, int, int, int, int]] = [], override_multi_targets: Dict[str, List[str]] = {}):
@@ -465,6 +489,9 @@ class BasePokemonCrystalStateParser(PokemonStateParser, ABC):
         return self.named_region_matches_target(current_screen, "bag_text")
     
     def is_in_fight_bag(self, current_screen: np.ndarray) -> bool:
+        """
+        For PokemonCrystal, this is just the same as in bag. 
+        """
         return self.is_in_bag(current_screen)
     
     def is_in_pokegear(self, current_screen: np.ndarray) -> bool:

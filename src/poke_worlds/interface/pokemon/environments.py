@@ -22,6 +22,9 @@ class PokemonEnvironment(DummyEnvironment):
 
 
 class PokemonRedChooseCharmanderFastEnv(Environment):
+    """
+    An environment where the agent must choose Charmander as their starter as quickly as possible.
+    """
     REQUIRED_TRACKER = PokemonRedStarterTracker    
 
     def __init__(self, emulator: PokemonEmulator, controller: Controller, parameters: Optional[dict]=None):
@@ -104,7 +107,7 @@ class PokemonRedChooseCharmanderFastEnv(Environment):
 
 
 class PokemonHighLevelEnvironment(DummyEnvironment):
-    """ A dummy environment that does nothing special. """
+    """ A dummy Pokemon environment that does nothing special. """
     REQUIRED_STATE_TRACKER = PokemonOCRTracker
     REQUIRED_EMULATOR = PokemonEmulator
 

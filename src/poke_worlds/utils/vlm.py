@@ -31,8 +31,8 @@ else:
     pass
 
 if project_parameters["use_vllm"]:
+    raise NotImplementedError(f"vLLM just doesn't work. Need to sort out installation issues.")
     if project_parameters["vllm_importable"]:
-        raise NotImplementedError(f"vLLM just doesn't work. Need to sort out installation issues.")
         from vllm import LLM, SamplingParams, EngineArgs
         
     elif project_parameters["full_importable"]:
@@ -205,6 +205,16 @@ class vLLMVLM:
 
     
 def perform_object_detection(images: List[np.ndarray], texts: List[List[str]]) -> List[bool]:
+    """
+    Performs object detection on the given images with the given texts.
+    
+    :param images: List of images that may contain the object described in texts
+    :type images: List[np.ndarray]
+    :param texts: Prompts that not only describe the object to be detected, but also instruct the VLM to answer Yes or No if the object is present in the corresponding image.
+    :type texts: List[List[str]]
+    :return: List of booleans indicating whether the object was detected in each image.
+    :rtype: List[bool]
+    """
     outputs = perform_vlm_inference(texts=texts, images=images, max_new_tokens=60)
     founds = []
     for i, output in enumerate(outputs):
@@ -217,9 +227,20 @@ def perform_object_detection(images: List[np.ndarray], texts: List[List[str]]) -
 
 
 
-def perform_vlm_inference(texts: List[str], images: List[np.array], max_new_tokens: int, batch_size: int = None):
+def perform_vlm_inference(texts: List[str], images: List[np.array], max_new_tokens: int, batch_size: int = None) -> List[str]:
     """
     Routes to the correct VLM class and performs inference
+    
+    :param texts: Input prompts
+    :type texts: List[str]
+    :param images: Input images
+    :type images: List[np.array]
+    :param max_new_tokens: maximum number of new tokens to generate
+    :type max_new_tokens: int
+    :param batch_size: Batch size for inference
+    :type batch_size: int
+    :return: List of output strings from the VLM
+    :rtype: List[str]
     """
     parameters = project_parameters
     if parameters["use_vllm"]:
@@ -286,6 +307,13 @@ def ocr(images: List[np.ndarray], *, text_prompt=None, do_merge: bool=True) -> L
 def identify_matches(description: str, screens: List[np.ndarray], reference: Image.Image) -> List[bool]:
     """
     Identifies which screens match the given reference image based on the description.
+    Args:
+        description: A textual description of the target object.
+        screens: A list of screen images in numpy array format (H x W x C).
+        reference: A PIL Image of the reference object.
+
+    Returns:
+        A list of booleans indicating whether each screen contains the target object.
     """
     texts = [f"The target, described as {description} is shown as reference in Picture 1. Does Picture 2 contain the object from Picture 1 in it? Answer in the following format: \nExplanation: <briefly describe what is in Picture 2, with reference to the image in Picture 1>\nAnswer: <Yes or No>[STOP]" for _ in screens]
     images = []

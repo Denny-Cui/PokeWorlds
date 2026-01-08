@@ -49,7 +49,7 @@ class ReleaseActions(Enum):
         LowLevelActions.PRESS_BUTTON_START: WindowEvent.RELEASE_BUTTON_START}
 
 
-class Emulator():
+class Emulator:
     """
     Handles the running of the GameBoy emulator, including loading ROMs, managing state, performing low level actions and calling the tracker. 
     Subclasses will likely only be needed to manually force the execution of specific button sequences when certain states are detected. (e.g. short-circuiting specific menus, etc.)
@@ -330,54 +330,29 @@ class Emulator():
         """
         return self.state_parser
 
-    def run_action_on_emulator(self, action: LowLevelActions = None, *, profile: bool = False, render: bool = True) -> Optional[np.ndarray]:
+    def run_action_on_emulator(self, action: LowLevelActions = None) -> Optional[np.ndarray]:
         """ 
         
         Performs the given action on the emulator by pressing and releasing the corresponding button.
 
         Args:
             action (LowLevelActions): Lowest level action to perform on the emulator.
-            profile (bool, optional): Whether to profile the action execution time. 
-            render (bool, optional): Whether to render the emulator screen during action execution. Is always True in PokemonEnvs project. 
         Returns:
-            Optional[np.ndarray]: The stack of frames that passed while performing the action, if rendering is enabled. Is of shape [n_frames (3 right now), height, width, channels]. Otherwise, None.
+            Optional[np.ndarray]: The stack of frames that passed while performing the actions. Is of shape [n_frames (3 right now), height, width, channels]. Otherwise, None.
         """
-        #log_info(f"Running action: {action}", self.parameters)        
         frames = None
         if action is not None:
-            if render == True:
-                frames = []
-            if profile:
-                start_time = perf_counter()
+            frames = []
             self._pyboy.send_input(action.value)
-            if profile:
-                end_time = perf_counter()
-                # Action LowLevelActions.PRESS_ARROW_LEFT took 0.01 ms or 0.00 s
-
-            # disable rendering when we don't need it
-            if render is not None:
-                render_screen = render
-            else:
-                render_screen = self.save_video or not self.headless or self.render_headless 
             press_step = self.press_step
-            self._pyboy.tick(press_step, render_screen)
-            if render:
-                frames.append(self.get_current_frame())
-            if profile:
-                start_time = perf_counter()
+            self._pyboy.tick(press_step, True)
+            frames.append(self.get_current_frame())
             self._pyboy.send_input(ReleaseActions.release_actions.value[action])
-            if profile:
-                mid_time = perf_counter()
-            self._pyboy.tick(self.act_freq - press_step - 1, render_screen)
-            if render:
-                frames.append(self.get_current_frame())
-            if profile:
-                end_time = perf_counter()
-            # Releasing action LowLevelActions.PRESS_ARROW_LEFT took 0.00 ms, followed by 16.13 ms for remaining ticks
+            self._pyboy.tick(self.act_freq - press_step - 1, True)
+            frames.append(self.get_current_frame())
             self._pyboy.tick(1, True)
-            if render:
-                frames.append(self.get_current_frame())
-                frames = np.stack(frames, axis=0)
+            frames.append(self.get_current_frame())
+            frames = np.stack(frames, axis=0)
         else:
             self._pyboy.tick(self.act_freq, True)
             frames = [self.get_current_frame()]
@@ -733,6 +708,7 @@ class Emulator():
         """
         Loads a .sav file into the emulator and saves the corresponding .state file. 
         Use this if you want to manually create .sav files and convert them to .state files for use as initial states.
+        Requires `_open_to_first_state` to be implemented in the subclass to get past opening menus.
 
         Args:
             save_file (str or None): Path to the .sav file to load. If None, looks for a .sav file in the same directory as the ROM with the same base name.
@@ -764,13 +740,7 @@ class Emulator():
             window="null",
         )
         self._pyboy.set_emulation_speed(0)
-        self._pyboy.tick(10000, False) # get to opening menu
-        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=False) # press A to get past opening menu
-        self._pyboy.tick(1000, False) # wait for load
-        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=False) # press A to load game
-        self._pyboy.tick(1000, False) # wait for file select
-        self.run_action_on_emulator(LowLevelActions.PRESS_BUTTON_A, render=False) # press A to confirm load
-        self._pyboy.tick(5000, False) # wait for game to load
+        self._open_to_first_state()
         self.save_state(state_file)
         self._pyboy.stop(save=False)
         log_info("State saved successfully. Exiting now to avoid issues ...", self._parameters)
@@ -779,6 +749,13 @@ class Emulator():
             os.remove(save_destination)
         sys.exit(0)
             
+    def _open_to_first_state(self):
+        """
+        Presses buttons on the emulator to get past the opening menus and into the game itself. 
+        You don't really need to implement this method, but if you do, you can use _sav_to_state to create state files from mGBA sav files. 
+        """
+        raise NotImplementedError
+    
     def get_env_variant(self) -> str:
         """        
         Returns a string identifier for the particular environment variant being used.

@@ -272,7 +272,6 @@ class Environment(gym.Env, ABC):
                 state_info["ocr"] = {"transition_ocr_texts": all_ocr_texts}
         return state_info
 
-
     def get_final_info(self) -> Dict[str, Dict[str, Any]]:
         """
         Returns the final state information from the emulator when all episodes are done.
@@ -337,13 +336,13 @@ class Environment(gym.Env, ABC):
         """
         raise NotImplementedError()
     
-    def before_step(self, action: HighLevelAction, action_kwargs: dict):
+    def before_step(self, action: Type[HighLevelAction], action_kwargs: dict):
         """
         Implement any logic that needs to be executed before each step in the environment.
         """
         return
 
-    def after_step(self, start_state: Dict[str, Dict[str, Any]], action: HighLevelAction, action_kwargs: dict, transition_states: List[Dict[str, Dict[str, Any]]], action_success: int):
+    def after_step(self, start_state: Dict[str, Dict[str, Any]], action: Type[HighLevelAction], action_kwargs: dict, transition_states: List[Dict[str, Dict[str, Any]]], action_success: int):
         """
         Implement any logic that needs to be executed after each step in the environment.
 
@@ -374,20 +373,25 @@ class Environment(gym.Env, ABC):
         high_level_action, kwargs = self._controller._space_action_to_high_level_action(action)
         return self.step_high_level_action(high_level_action, **kwargs)
 
-    def step_high_level_action(self, action: HighLevelAction, **kwargs) -> Tuple[gym.spaces.Space, float, bool, bool, Dict[str, Dict[str, Any]]]:
+    def step_high_level_action(self, action: Type[HighLevelAction], **kwargs) -> Tuple[gym.spaces.Space, float, bool, bool, Dict[str, Dict[str, Any]]]:
         """
         Executes the given High Level action in the environment via the controller.
 
-        Args:
-            action (HighLevelAction): The high level action to execute.
-            **kwargs: Additional keyword arguments to pass to the action.
+        :param action: The high level action class to execute.
+        :type action: Type[HighLevelAction]
+        :param kwargs: Additional arguments required for the specific high level action.
+        :type kwargs: Dict[str, Any]
+        :return: 
+            - observation (gym.spaces.Space): The observation after executing the action.
 
-        Returns:
-            observation (gym.spaces.Space): The observation after executing the action.
-            reward (float): The reward obtained from executing the action.
-            terminated (bool): Whether the episode has ended (reached the terminal state of the MDP).
-            truncated (bool): Whether the episode was truncated (exceeded the maximum allowed steps).
-            info (Dict[str, Dict[str, Any]]): Full state information.
+            - reward (float): The reward obtained from executing the action.
+
+            - terminated (bool): Whether the episode has ended (reached the terminal state of the MDP).
+
+            - truncated (bool): Whether the episode was truncated (exceeded the maximum allowed steps).
+
+            - info (Dict[str, Dict[str, Any]]): Full state information.
+        :rtype: Tuple[Space, float, bool, bool, Dict[str, Dict[str, Any]]]
         """
         if self._emulator.check_if_done():
             log_error("Cannot step environment because emulator indicates done. Please reset the environment.", self._parameters)
@@ -405,27 +409,42 @@ class Environment(gym.Env, ABC):
         self._history._update(next_observation=observation, next_info=current_state, next_reward=reward)
         return observation, reward, terminated, truncated, current_state
 
-    def string_to_high_level_action(self, input_str: str) -> Tuple[Optional[HighLevelAction], Optional[dict]]:
+    def step_str(self, input_str: str)  -> Tuple[gym.spaces.Space, float, bool, bool, Dict[str, Dict[str, Any]]]:
+        """
+        Attempts to execute an input string representation of an action. 
+        Useful for human play or VLM interaction.
+
+        :param input_str: The input string representing the action.
+        :type input_str: str
+        :return: 
+            - observation (gym.spaces.Space): The observation after executing the action.
+
+            - reward (float): The reward obtained from executing the action.
+
+            - terminated (bool): Whether the episode has ended (reached the terminal state of the MDP).
+
+            - truncated (bool): Whether the episode was truncated (exceeded the maximum allowed steps).
+
+            - info (Dict[str, Dict[str, Any]]): Full state information.
+        :rtype: Tuple[Space, float, bool, bool, Dict[str, Dict[str, Any]]]        
+        """
+        action, kwargs = self.string_to_high_level_action(input_str)
+        if action is None: # not a valid action, will not perform an action and will simply return Nones
+            return None, None, None, None, None
+        return self.step_high_level_action(action, **kwargs)
+    
+    def string_to_high_level_action(self, input_str: str) -> Tuple[Optional[Type[HighLevelAction]], Optional[dict]]:
         """
         Attempts to convert an input string representation of an action into a HighLevelAction and its parameters.
         Useful for human play or VLM interaction.
         
         :param input_str: The input string representing the action.
         :type input_str: str
-        :return: A tuple containing the HighLevelAction and its parameters dictionary. If the input string is invalid, returns (None, None).
-        :rtype: Tuple[HighLevelAction | None, dict | None]
+        :return: A tuple containing the HighLevelAction class and its execution parameters dictionary. If the input string is invalid, returns (None, None).
+        :rtype: Tuple[Type[HighLevelAction] | None, dict | None]
         """
         return self._controller.string_to_high_level_action(input_str)
     
-    def step_str(self, input_str: str)  -> Tuple[gym.spaces.Space, float, bool, bool, Dict[str, Dict[str, Any]]]:
-        """
-        Attempts to execute an input string representation of an action. 
-        Useful for human play or VLM interaction.
-        """
-        action, kwargs = self.string_to_high_level_action(input_str)
-        if action is None: # not a valid action, will not perform an action and will simply return Nones
-            return None, None, None, None, None
-        return self.step_high_level_action(action, **kwargs)
     
     def close(self):
         """
@@ -484,33 +503,33 @@ class Environment(gym.Env, ABC):
         """
         self._controller.seed(seed)
 
-    def render_obs(self, *, action: Optional[HighLevelAction]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None, action_return: Optional[Dict[str, Any]] = None):
+    def render_obs(self, *, action: Optional[Type[HighLevelAction]]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None, action_return: Optional[Dict[str, Any]] = None):
         """
         Provide a way to render the output of get_observation to a human. 
         Implement if you want to use the human_step_play method.
 
         Args:
-            action (Optional[HighLevelAction]): The previous action taken.
+            action (Optional[Type[HighLevelAction]]): The previous action taken.
             action_kwargs (dict): The keyword arguments used for the action.
             transition_states (Optional[List[Dict[str, Dict[str, Any]]]]): The states observed during the action execution.
             action_success (Optional[int]): The success code of the action.
         """
         raise NotImplementedError
     
-    def render_info(self, *, action: Optional[HighLevelAction]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None, action_return: Optional[Dict[str, Any]] = None):
+    def render_info(self, *, action: Optional[Type[HighLevelAction]]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None, action_return: Optional[Dict[str, Any]] = None):
         """
         Provide a way to render the output of get_info to a human. 
         Implement if you want to use the human_step_play method with show_info=True
 
         Args:
-            action (Optional[HighLevelAction]): The previous action taken.
+            action (Optional[Type[HighLevelAction]]): The previous action taken.
             action_kwargs (dict): The keyword arguments used for the action.
             transition_states (Optional[List[Dict[str, Dict[str, Any]]]]): The states observed during the action execution.
             action_success (Optional[int]): The success code of the action.
         """
         raise NotImplementedError
     
-    def get_action_strings(self, return_all: bool = False) -> Dict[HighLevelAction, str]:
+    def get_action_strings(self, return_all: bool = False) -> Dict[Type[HighLevelAction], str]:
         """
         Provide a way to verbalize the allowed high level actions, along with the format of the input parameters. 
         Useful for prompting a VLM to choose an action.
@@ -518,7 +537,7 @@ class Environment(gym.Env, ABC):
         :param return_all: If True, returns all possible actions and parameter formats. If False, returns only the actions that are valid in the current state.
         :type return_all: bool
         :return: A dictionary mapping high level actions to their verbalizations and input formats.
-        :rtype: Dict[HighLevelAction, str]
+        :rtype: Dict[Type[HighLevelAction], str]
         """
         return self._controller.get_action_strings(return_all=return_all)
     
