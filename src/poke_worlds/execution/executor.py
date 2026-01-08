@@ -23,10 +23,10 @@ You are playing [GAME], trying to achieve the immediate task of [IMMEDIATE_TASK]
 
 Picture 2 is the later snapshot, taken after the action. This picture comes with the following additional context: [ADDITIONAL_CONTEXT].
 
-Describe, very briefly, what has changed between Picture 1 and Picture 2. Focus on any changes in location, player position, text, menus, characters, or significant visual elements that indicate a change in the game state. Provide only an extremely short and concise summary of the differences. If nothing has changed, say "No Change".
+Describe, very briefly, what has changed between Picture 1 and Picture 2. Focus on any changes in location, player position, text, menus, characters, or significant visual elements that indicate a change in the game state. Provide only an extremely short and concise summary of the differences. 
 Then, create a concise description of the visual context of Picture 2, focusing on the most important elements that define the current game state.
 Structure your response as follows:
-Changes: A very brief summary of the changes between Picture 1 and Picture 2.
+Changes: A very brief summary of the most salient changes between Picture 1 and Picture 2. 
 Visual Context: A concise description of the visual context of Picture 2.
     """
 
@@ -143,7 +143,7 @@ Response:
         actions_and_changes = []
         max_actions = self._action_buffer_size - 1 if new_action_details is not None else self._action_buffer_size
         all_actions = self._execution_report.get_actions_taken()[-max_actions:]
-        all_frame_differences = [item[0] for item in self._execution_report.step_contexts[-max_actions:]]
+        all_frame_differences = [item[0] for item in self._execution_report.step_contexts[1:][-max_actions:]] # Skip the first
         if len(all_actions) == 0:
             log_error(f"This shouldn't be happening: trying to get actions and changes but no actions taken yet.", self._parameters)
         if len(all_frame_differences) != len(all_actions):
@@ -152,19 +152,21 @@ Response:
         for i, (action_str, action, action_kwargs, transition_states, action_success, action_return, action_message) in enumerate(all_actions):
             actions_and_changes.append(f"{total_actions - 1*(new_action_details is not None) - i} Actions ago: {action_str} | Status Message: {action_message} | Change in screen: {all_frame_differences[i]}\n")
         if new_action_details is not None:
+            breakpoint()
             new_action_str, new_high_level_action, new_high_level_action_kwargs, new_actions_transition_states, new_action_success, new_action_return, _ = new_action_details
             new_action_message = self.get_action_message(new_high_level_action, new_high_level_action_kwargs, new_action_success, new_action_return, last_action_hint=last_action_hint)
             actions_and_changes.append(f"Previous Action: {new_action_str} | Status Message: {new_action_message}")
         return actions_and_changes
     
-    def _describe_screen_change(self, *, next_frame: np.ndarray, action_details: Tuple[str, HighLevelAction, dict, int, dict, str], additional_context: str) -> Tuple[str, str]:
+    def _describe_screen_change(self, *, next_frame: np.ndarray, action_details: Tuple[str, HighLevelAction, dict, Dict[str, Dict[str, Any]], int, dict], additional_context: str) -> Tuple[str, str]:
         prompt = self._screen_description_prompt.replace("[PICTURE_1_VISUAL_CONTEXT]", self._visual_context).replace("[ADDITIONAL_CONTEXT]", additional_context)
-        next_action_str, next_high_level_action, next_high_level_action_kwargs, action_success, action_return, action_message = action_details
-        action_message = self.get_action_message(next_high_level_action, next_high_level_action_kwargs, action_success, action_return)
+        next_action_str, next_high_level_action, next_high_level_action_kwargs, transition_states, action_success, action_return = action_details
+        action_message = self.get_action_message(action=next_high_level_action, action_kwargs=next_high_level_action_kwargs, action_success=action_success, action_return=action_return)
         action_str = f"Action Taken: {next_action_str} | Status Message: {action_message}"
         prompt = prompt.replace("[ACTION_AND_STATUS]", action_str)
         images = [self._previous_screen, next_frame]
-        response = self._vlm.infer(prompt, images, max_new_tokens=250)
+        response = self._vlm.multi_infer(prompt, images, max_new_tokens=250)
+        print(f"Describe Screen Response: \n{response}\nXXXXXXXXXXXX")
         if response.count("Visual Context:") != 1:
             log_warn(f"Unable to parse screen change description response: {response}", self._parameters)
             return self._default_str, self._default_str
@@ -180,7 +182,7 @@ Response:
             prompt = self._execution_prompt
         prompt = prompt.replace("[PLAN]", self._plan)
         current_state_str = self._environment.get_agent_state()
-        prompt = prompt.replace("[CURRENT_STATE]", current_state_str)
+        prompt = prompt.replace("[CURRENT_STATE]", str(current_state_str))
         allowed_actions = self._environment.get_action_strings()
         allowed_actions_str = "Allowed Actions:\n"
         for action_class, action_desc in allowed_actions.items():
@@ -192,9 +194,8 @@ Response:
             actions_and_changes_str = "\n".join(actions_and_changes)
             prompt = prompt.replace("[ACTIONS_AND_CHANGES]", actions_and_changes_str)
             prompt = prompt.replace("[NEXT_ACTION_THOUGHTS]", self._next_action_thoughts) # should be set already
-            last_action_details = self._execution_report.actions_taken[-1]
-            last_action_str, last_high_level_action, last_high_level_action_kwargs, last_action_success, last_action_return, _ = last_action_details
-            last_action_message = self.get_action_message(last_high_level_action, last_high_level_action_kwargs, last_action_success, last_action_return, last_action_hint=True)
+            last_action_str, last_high_level_action, last_high_level_action_kwargs, last_action_transition_states, last_action_success, last_action_return, _ = self._execution_report.get_actions_taken()[-1]
+            last_action_message = self.get_action_message(action=last_high_level_action, action_kwargs=last_high_level_action_kwargs, action_success=last_action_success, action_return=last_action_return, last_action_hint=True)
             last_action_full_str = f"Action Taken: {last_action_str} | Status Message: {last_action_message}"
             prompt = prompt.replace("[LAST_ACTION]", last_action_full_str)
         # Now need to parse the response into plan, action, reasoning
@@ -206,7 +207,8 @@ Response:
         while n_tries < self._max_retries_per_action:
             n_tries += 1
             final_prompt = prompt.replace("[SYSTEM]", system_prompt)
-            response = self._vlm.infer(final_prompt, [self._previous_screen], max_new_tokens=500)
+            response = self._vlm.infer(final_prompt, self._previous_screen, max_new_tokens=500)
+            print(f"Execute Action Response: \n{response}\nXXXXXXXXXXXX")
             if "Action:" not in response or "Next Action Reasoning:" not in response:
                 system_prompt += "\n[IMPORTANT SYSTEM MESSAGE] Your previous response could not be parsed correctly, it did not contain Action: or Next Action Reasoning:. Remember to follow the specified format exactly. Try again. Make sure your output is not too long, so that it fits within the token limit."
                 continue
@@ -236,11 +238,11 @@ Response:
 
     def _check_exit_conditions(self) -> Tuple[str, bool]:
         prompt = self._exit_condition_prompt.replace("[VISUAL_CONTEXT]", self._visual_context)
-        action_details = self._execution_report.get_actions_taken()[-self._action_buffer_size:]
-        actions_and_changes = self.get_actions_and_changes(new_action_details=action_details, last_action_hint=False)
+        actions_and_changes = self.get_actions_and_changes(last_action_hint=False)
         actions_and_changes = "\n".join(actions_and_changes)
         prompt = prompt.replace("[ACTIONS_AND_CHANGES]", actions_and_changes)
-        response = self._vlm.infer(prompt, [self._previous_screen], max_new_tokens=250)
+        response = self._vlm.infer(prompt, self._previous_screen, max_new_tokens=250)
+        print(f"Exit Condition: \n{response}\nXXXXXXXXXXXX")   
         if "Decision:" not in response:
             log_warn(f"Unable to parse exit condition response: {response}", self._parameters)
             return self._default_str, False
@@ -260,7 +262,7 @@ Response:
         environment_done = False
         error_out = False
         if show_progress:
-            pbar = tqdm(total=step_limit, desc=f"Execution Task: {self._immediate_task}")
+            pbar = tqdm(total=step_limit, desc=f"\nExecuting Task: {self._immediate_task}")
         while True:
             n_steps += 1
             if show_progress:

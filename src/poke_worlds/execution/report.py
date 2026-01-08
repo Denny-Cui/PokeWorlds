@@ -20,10 +20,13 @@ class ExecutionReport(ABC):
     def __init__(self, *, environment: Environment, high_level_goal: str, immediate_task: str, initial_plan: str, visual_context: str, exit_conditions: List[str], parameters: dict):
         verify_parameters(parameters)
         self._parameters = parameters
-        self._environment = environment
-        if not issubclass(type(environment._emulator.state_tracker), self.REQUIRED_STATE_TRACKER):
+        if environment is not None and not issubclass(type(environment._emulator.state_tracker), self.REQUIRED_STATE_TRACKER):
             log_error(f"Environment's state tracker {type(environment._emulator.state_tracker)} is not compatible with required {self.REQUIRED_STATE_TRACKER} for this ExecutionReport.", parameters)
-        self._history_starting_index = len(environment._history) - 1
+        self._environment = environment
+        if environment is None:
+            self._history_starting_index = None
+        else:
+            self._history_starting_index = len(environment._history) - 1
         self._history: History = None
         """ The history object from the environment at the start of the execution. Is only set when close() is called. Use get_history to access safely. """
         self.high_level_goal = high_level_goal
@@ -44,6 +47,30 @@ class ExecutionReport(ABC):
         self._action_messages: List[str] = []
         """ List of action messages received during the execution. """
 
+    def __deepcopy__(self, memo):
+        if self in memo:
+            return memo[self]
+        freshReport = type(self)(
+            environment=None,
+            high_level_goal=self.high_level_goal,
+            immediate_task=self.immediate_task,
+            initial_plan=self.plans[0],
+            visual_context=self.step_contexts[0][1],
+            exit_conditions=self.exit_conditions,
+            parameters=self._parameters
+        )
+        memo[self] = freshReport
+        freshReport.steps_taken = deepcopy(self.steps_taken, memo)
+        freshReport.step_contexts = deepcopy(self.step_contexts, memo)
+        freshReport.plans = deepcopy(self.plans, memo)
+        freshReport.exit_reasoning = deepcopy(self.exit_reasoning, memo)
+        freshReport._action_strings = deepcopy(self._action_strings, memo)
+        freshReport._action_messages = deepcopy(self._action_messages, memo)
+        freshReport._history = deepcopy(self.get_history(), memo)
+        freshReport._history_starting_index = self._history_starting_index
+        return freshReport
+
+
     def _add_step(self, *, action_string: str, action_messages: str, frame_difference: str, visual_context: str, plan: str):
         """ Adds a step to the execution report. """
         self.steps_taken += 1
@@ -53,10 +80,10 @@ class ExecutionReport(ABC):
         self.plans.append(plan)
 
     def get_history(self) -> History:
-        if self.history is None:
+        if self._history is None:
             history = self._environment._history[self._history_starting_index: ]
         else:
-            history = deepcopy(self.history)
+            history = deepcopy(self._history)
         return history
  
     def get_observations(self) -> List[Any]:
@@ -100,9 +127,9 @@ class ExecutionReport(ABC):
     def _close(self, exit_reasoning: str):
         """ Closes the execution report with the given exit reasoning. """
         self.exit_reasoning = exit_reasoning
-        if self.history is not None:
+        if self._history is not None:
             log_error("ExecutionReport is already closed.", self._parameters)
-        self.history = self.get_history()
+        self._history = self.get_history()
 
     def get_state_info_strings(self) -> List[str]:
         """ Returns the list of state info strings for all state infos in the report. """
