@@ -253,7 +253,7 @@ class Environment(gym.Env, ABC):
                 action_return = last_state["core"]["action_return"]
             else:
                 action_return = None
-                state_info["core"]["previous_action_details"] = (action, action_kwargs, transition_states, action_success, action_return)
+            state_info["core"]["previous_action_details"] = (action, action_kwargs, transition_states, action_success, action_return)
 
             # Aggregate passed frames from transition states            
             all_passed_frames = transition_states[0]["core"]["passed_frames"]
@@ -485,7 +485,7 @@ class Environment(gym.Env, ABC):
         """
         self._controller.seed(seed)
 
-    def render_obs(self, *, action: Optional[HighLevelAction]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None):
+    def render_obs(self, *, action: Optional[HighLevelAction]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None, action_return: Optional[Dict[str, Any]] = None):
         """
         Provide a way to render the output of get_observation to a human. 
         Implement if you want to use the human_step_play method.
@@ -498,7 +498,7 @@ class Environment(gym.Env, ABC):
         """
         raise NotImplementedError
     
-    def render_info(self, *, action: Optional[HighLevelAction]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None):
+    def render_info(self, *, action: Optional[HighLevelAction]=None, action_kwargs:Optional[dict]=None, transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None, action_success: Optional[int] = None, action_return: Optional[Dict[str, Any]] = None):
         """
         Provide a way to render the output of get_info to a human. 
         Implement if you want to use the human_step_play method with show_info=True
@@ -550,10 +550,10 @@ class Environment(gym.Env, ABC):
             if possible_obs is not None:
                 observation, reward, terminated, truncated, info = possible_obs, possible_reward, possible_terminated, possible_truncated, possible_info
                 rewards.append(reward)
-                action, action_kwargs, transition_states, action_success = info["core"]["previous_action_details"]
+                action, action_kwargs, transition_states, action_success, action_return = info["core"]["previous_action_details"]
                 if show_info:
-                    self.render_info(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success)
-                self.render_obs(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success)
+                    self.render_info(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success, action_return=action_return)
+                self.render_obs(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success, action_return=action_return)
             else:
                 log_warn("That was not a valid input. did nothing", self._parameters)
             if terminated or truncated:
@@ -588,15 +588,9 @@ class DummyEnvironment(Environment):
     def determine_terminated(self, state):
         return 0.0
 
-    def render_obs(self, action=None, action_kwargs=None, transition_states=None, action_success=None): # Might cause issues if you try to render() as well
+    def render_obs(self, action=None, action_kwargs=None, transition_states=None, action_success=None, action_return = None): # Might cause issues if you try to render() as well
         """
         Renders the observation space by displaying all the frames passed during the action execution.
-
-        Args:
-            action (Optional[HighLevelAction]): The previous action taken.
-            action_kwargs (dict): The keyword arguments used for the action.
-            transition_states (Optional[List[Dict[str, Dict[str, Any]]]]): The states observed during the action execution.
-            action_success (Optional[int]): The success code of the action.
         """
         info = self.get_info()
         if transition_states is not None and len(transition_states) > 0:
@@ -609,8 +603,13 @@ class DummyEnvironment(Environment):
             screens = [info["core"]["current_frame"]]
         for screen in screens:
             self._screen_render(screen)
+        obs = self.get_observation(action=action, action_kwargs=action_kwargs, transition_states=transition_states, action_success=action_success)
+        obs.pop("screen")
+        obs["action_info"] = (action, action_kwargs, action_success, action_return)
+        log_info(f"Obs Strings + Action Info:", self._parameters)
+        log_dict(obs, parameters=self._parameters)
 
-    def render_info(self, action=None, action_kwargs=None, transition_states=None, action_success=None):
+    def render_info(self, action=None, action_kwargs=None, transition_states=None, action_success=None, action_return = None):
         info = self.get_info()
         info["core"].pop("current_frame")
         info["core"].pop("passed_frames")
