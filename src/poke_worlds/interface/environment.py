@@ -79,10 +79,9 @@ class History:
         :rtype: List[Tuple[HighLevelAction, Dict[str, Any], int, str]]
         """
         action_details = []
-        for obs in self.infos:
-            if "previous_action_details" in obs["core"]:
-                action, action_kwargs, transition_states, action_success, action_return = obs["core"]["previous_action_details"]
-                action_details.append((action, action_kwargs, transition_states, action_success, action_return))
+        for obs in self.infos[1:]: # starting from 1 ensures theres always a prior action, and also that we don't count the prior action of the start state (in case of slice)
+            action, action_kwargs, transition_states, action_success, action_return = obs["core"]["previous_action_details"]
+            action_details.append((action, action_kwargs, transition_states, action_success, action_return))
         return action_details
     
     def get_ocr_history(self) -> List[List[Dict[str, str]]]:

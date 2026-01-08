@@ -166,7 +166,6 @@ Response:
         prompt = prompt.replace("[ACTION_AND_STATUS]", action_str)
         images = [self._previous_screen, next_frame]
         response = self._vlm.multi_infer(prompt, images, max_new_tokens=250)
-        print(f"Describe Screen Response: \n{response}\nXXXXXXXXXXXX")
         if response.count("Visual Context:") != 1:
             log_warn(f"Unable to parse screen change description response: {response}", self._parameters)
             return self._default_str, self._default_str
@@ -208,7 +207,6 @@ Response:
             n_tries += 1
             final_prompt = prompt.replace("[SYSTEM]", system_prompt)
             response = self._vlm.infer(final_prompt, self._previous_screen, max_new_tokens=500)
-            print(f"Execute Action Response: \n{response}\nXXXXXXXXXXXX")
             if "Action:" not in response or "Next Action Reasoning:" not in response:
                 system_prompt += "\n[IMPORTANT SYSTEM MESSAGE] Your previous response could not be parsed correctly, it did not contain Action: or Next Action Reasoning:. Remember to follow the specified format exactly. Try again. Make sure your output is not too long, so that it fits within the token limit."
                 continue
@@ -242,7 +240,6 @@ Response:
         actions_and_changes = "\n".join(actions_and_changes)
         prompt = prompt.replace("[ACTIONS_AND_CHANGES]", actions_and_changes)
         response = self._vlm.infer(prompt, self._previous_screen, max_new_tokens=250)
-        print(f"Exit Condition: \n{response}\nXXXXXXXXXXXX")   
         if "Decision:" not in response:
             log_warn(f"Unable to parse exit condition response: {response}", self._parameters)
             return self._default_str, False

@@ -91,13 +91,9 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
         self.actions = self.env.actions
         self.high_level_plan = None
         self.current_step_index = 0
-        self.note = None
-        self.agent_note = None
         self.max_steps_per_executor = max_steps_per_executor
         self.steps_taken_for_current_goal = 0
-        self.agent_note_buffer = []
         self.observation = None
-        self.max_total_steps = max_total_steps
         self.prev_action = None
         self.all_inputs = []
         self.all_outputs = []
@@ -182,7 +178,6 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
         output_text = self.infer(prompt, current_frame)
         steps, note = self.parse_supervisor_start(output_text)
         self.high_level_plan = steps
-        self.note = note
         self.executor_return_analysis_prompt = self.executor_return_analysis_prompt.replace("[MISSION]", self.mission).replace("[ALLOWED_ACTIONS]", allowed_actions_str).replace("[HIGH_LEVEL_PLAN]", "\n".join(self.high_level_plan))
         self.executor_information_construction_prompt = self.executor_information_construction_prompt.replace("[MISSION]", self.mission).replace("[ALLOWED_ACTIONS]", allowed_actions_str).replace("[HIGH_LEVEL_PLAN]", "\n".join(self.high_level_plan))
         return note
