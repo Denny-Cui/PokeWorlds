@@ -53,14 +53,12 @@ Another major hurdle to progress is the difficulty of learning how abstract acti
   - [Reward Engineering](#I-want-to-engineer-my-own-reward-functions)
   - [Adding New ROMs](#I-want-to-add-a-new-ROM-Hack)
 
-- [Our Paper](#Check-Out-Our-Paper)
-
 # Installation
 
 The installation consists of four steps:
 1. Environment Setup
-2. ROM Setup
-3. (Optional) Storage Directory Configuration
+2. Storage Directory Configuration
+3. ROM Setup
 4. Final test
 
 ## Environment Setup
@@ -84,16 +82,39 @@ Then, clone the <img src="assets/logo.png" width="70"> repo and install it as a 
 ```
 git clone https://github.com/DhananjayAshok/PokeWorlds
 cd PokeWorlds
-uv pip install -e .
+uv pip install -e ".[full]"
 ```
 
-If you are in a headless environment, this may fail. In that case try:
+You can also do a minimal installation with `uv pip install -e .` 
+This doesn't install the packages needed for Vision Language Model inference (`torch`, `transformers`, etc.), but you can still do a [lot](https://www.youtube.com/watch?v=DcYLT37ImBY&t=1s) with a setup of this nature. 
+
+If you are in a headless environment, running with this configuration may fail. In that case try:
 ```
 uv pip uninstall opencv-python
 uv pip install opencv-python-headless
 ```
 
-You can now `import poke_worlds` from anywhere.
+You can now `import poke_worlds` from anywhere. But you can't really run anything just yet. 
+
+## Storage Directory Configuration
+
+By default, this project assumes that you can store files and emulator outputs (logs, screenshots, video captures etc.) in the `storage` folder under the root directory of the project. Some people may want to store this in a different location (e.g. if your storage on the root system is limited). If you wish to set a different location for storage, edit the appropriate configuration setting in the [config file](configs/private_vars.yaml).
+
+When you are happy with the `storage` destination, run the following command:
+```python
+bash sync_all.sh
+```
+If you do not have `bash` (e.g. on Windows), run:
+```python
+python -m poke_worlds.setup_data pull --game pokemon_red
+python -m poke_worlds.setup_data pull --game pokemon_brown
+python -m poke_worlds.setup_data pull --game pokemon_starbeasts
+python -m poke_worlds.setup_data pull --game pokemon_crystal
+python -m poke_worlds.setup_data pull --game pokemon_prism
+python -m poke_worlds.setup_data pull --game pokemon_fools_gold
+```
+
+
 ## ROM Setup
 
 Next, you must legally acquire ROMs for Pokémon from Nintendo (perhaps by dumping the ROM file from your own catridge). Despite how easy they are to obtain, we discourage any attempts to use <img src="assets/logo.png" width="70"> with unofficialy downloaded ROMs. The following base game ROMs are supported:
@@ -106,12 +127,7 @@ Additionally, our testing environment uses several Pokémon ROM patches / hacks 
 * [Pokémon Fool's Gold](https://www.pokecommunity.com/threads/pok%C3%A9mon-fools-gold-a-hack-of-crystal-where-everything-is-familiar-yet-different.433723/) (save as `PokemonFoolsGold.gbc`)
 * [Pokémon Star Beasts](https://www.pokecommunity.com/threads/star-beasts-asteroid-version.530552/) (save as `PokemonStarBeasts.gb`)
 
-Once you have a ROM (`.gb` or `.gbc` file), place it in the appropriate path. For example, the ROM for Pokémon Red should be placed in `rom_data/pokemon_red/PokemonRed.gb`. See the [config folder](configs/) for the expected path to each supported game. 
-
-
-
-## Storage Directory Configuration
-By default, this project assumes that you can store emulator outputs (logs, screenshots, video captures etc.) in the `storage` folder under the root directory of the project. If you wish to set a different location for storage, edit the appropriate configuration setting in the [config file](configs/private_vars.yaml).
+Once you have a ROM (`.gb` or `.gbc` file), place it in the appropriate path. For example, the ROM for Pokémon Red should be placed in `<path_to_storage_directory_from_config>/rom_data/pokemon_red/PokemonRed.gb`. See the [config folder](configs/) for the expected path to each supported game. 
 
 ## Test
 
@@ -130,6 +146,11 @@ The video gets saved to the `sessions` folder of your `storage_dir` directory.
 You can also test the Gym compatible environment version of this with:
 ```bash
 python demos/environment.py --play_mode random # run with --render True to see the screen
+```
+
+To test all the supported variants, run:
+```bash
+bash quick_tests.sh
 ```
 
 
@@ -270,8 +291,6 @@ You'll likely want to gather as much state and trajectory information as possibl
 {NOTE ON WHERE THE REWARD GOES}
 
 
-
-# Citation
 
 ```bibtex
 ```
