@@ -17,7 +17,7 @@ python -m poke_worlds.setup_data pull --variant pokemon_red
 """
 
 from poke_worlds.utils import log_error, log_info, log_warn, load_parameters
-from poke_worlds import AVAILABLE_POKEMON_VARIANTS
+from poke_worlds import AVAILABLE_GAMES
 import click
 from huggingface_hub import HfApi
 import os
@@ -26,8 +26,8 @@ loaded_parameters = load_parameters()
 repo_namespace = "DJ-Research"
 
 def check_variant(variant, parameters):
-    if variant not in AVAILABLE_POKEMON_VARIANTS:
-        log_error(f"Variant {variant} is not in the list of available variants: {AVAILABLE_POKEMON_VARIANTS}. Add it before you proceed.", parameters)
+    if variant not in AVAILABLE_GAMES:
+        log_error(f"Variant {variant} is not in the list of available variants: {AVAILABLE_GAMES}. Add it before you proceed.", parameters)
     if f"{variant}_rom_data_path" not in parameters:
         log_error(f"{variant}_rom_data not found in parameters. You must add it to a config file.", parameters)
 
