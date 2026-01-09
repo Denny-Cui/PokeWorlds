@@ -12,7 +12,8 @@ from typing import List, Tuple, Dict, Any, Type
 
 
 class ExecutionReport(ABC):
-    """ Holds the report of an execution run. 
+    """ 
+    Holds the report of an execution run. 
     """
     REQUIRED_STATE_TRACKER = StateTracker
     """ The required state tracker class for this execution report (needed to guarantee safety of state_info_to_str). """

@@ -8,7 +8,7 @@ import numpy as np
 
 class PokemonEmulator(Emulator):
     """
-    Almost the exact same as Emulator, but forces the agent to not mess with the menu options cursor.
+    Almost the exact same as Emulator, but forces the agent to not mess with the menu options cursor. Also auto skips naming screens.
     """
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker

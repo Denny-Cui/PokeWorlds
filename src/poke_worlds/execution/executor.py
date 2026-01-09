@@ -15,6 +15,34 @@ from tqdm import tqdm
 import numpy as np
 
 class Executor(ABC):
+    """
+    A VLM Agent that can execute high level actions in an environment to accomplish an immediate task. 
+    This is essentially an attempt to create a generic prompt engineered workflow that gives reasonable results across a variety of games/environments.     
+
+    At the start, the executor is given:
+    - `high_level_goal`: The overall high level goal that the one calling the executor wants to achieve, beyond just the immediate task the Executor will be asked to tackle. This is (hopefully) to help guide the Executor's decisions towards actions that not only accomplish the immediate task, but also contribute to the overall high level goal.
+    - `immediate_task`: The specific task that the Executor is to meant to accomplish within the environment.
+    - `initial_plan`: A string representing the initial plan to guide the Executor in accomplishing the immediate task.
+    - `visual_context`: A description of the initial visual context of the environment.
+    - `exit_conditions`: Conditions under which the Executor should exit early. The system prompt always includes achieving the immediate task, exceeding the immediate task towards the high level goal, or encountering unexpected situations that make the immediate task irrelevant or unachievable.
+
+    Each step involves a couple of stages. 
+    Action Prediction:
+
+        Given: the current visual context, plan, past actions and observed changes, current state and allowed actions.
+        Produces: A revised plan, reasoning for next action, and the next high level action to take.
+    
+    Change Description:
+        Given: The previous visual context and screen, the action taken and its status message, and the new screen after taking the action.
+        Produces: A brief description of the changes observed between the two screens, and a concise description of the new visual context.
+
+    Exit Condition Check:
+        Given: The current visual context, high level goal, immediate task, and past actions and observed changes.
+        Produces: A reasoning and decision on whether any exit conditions have been met.
+
+    The Executor loops through these stages until either an exit condition is met, the environment signals done, or the step limit is reached.
+    """
+
     REQUIRED_CONTROLLER = Controller
     """ The required controller class for this executor (needed to guarantee safety of get_action_message). """
 
