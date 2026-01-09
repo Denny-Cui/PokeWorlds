@@ -25,22 +25,22 @@ import os
 loaded_parameters = load_parameters()
 repo_namespace = "DJ-Research"
 
-def check_variant(variant, parameters):
-    if variant not in AVAILABLE_GAMES:
-        log_error(f"Variant {variant} is not in the list of available variants: {AVAILABLE_GAMES}. Add it before you proceed.", parameters)
-    if f"{variant}_rom_data_path" not in parameters:
-        log_error(f"{variant}_rom_data not found in parameters. You must add it to a config file.", parameters)
+def check_variant(game, parameters):
+    if game not in AVAILABLE_GAMES:
+        log_error(f"Game {game} is not in the list of available variants: {AVAILABLE_GAMES}. Add it to the emulation registry before you proceed.", parameters)
+    if f"{game}_rom_data_path" not in parameters:
+        log_error(f"{game}_rom_data not found in parameters. You must add it to a config file.", parameters)
 
 @click.command()
-@click.option("--variant", type=str, required=True, help="The game or game variant to create the repo for.")
+@click.option("--game", type=str, required=True, help="The game or game variant to create the repo for.")
 @click.pass_obj
-def create_hub_repo(parameters, variant):
+def create_hub_repo(parameters, game):
     """
     Create a new repo on the Hugging Face Hub. This should only be called once for each game_variant. 
     Once set up, the repo will contain a mirror of what we expect (not including the ROM file itself) in the rom_data directory of that variant.
     """
-    check_variant(variant, parameters)
-    repo_name = f"GameBoy-{variant}"
+    check_variant(game, parameters)
+    repo_name = f"GameBoy-{game}"
     repo_id = f"{repo_namespace}/{repo_name}"
     api = parameters["api"]
     api.create_repo(
@@ -52,17 +52,17 @@ def create_hub_repo(parameters, variant):
 
 
 @click.command()
-@click.option("--variant", type=str, required=True, help="The game or game variant to sync the repo for.")
+@click.option("--game", type=str, required=True, help="The game or game variant to sync the repo for.")
 @click.pass_obj
-def sync(parameters, variant):
+def sync(parameters, game):
     """
     Update the local repo with data from the HuggingFace Hub. 
     """
-    check_variant(variant, parameters)    
-    repo_name = f"GameBoy-{variant}"
+    check_variant(game, parameters)    
+    repo_name = f"GameBoy-{game}"
     repo_id = f"{repo_namespace}/{repo_name}"
     
-    rom_data_path = parameters[f"{variant}_rom_data_path"] + "/"
+    rom_data_path = parameters[f"{game}_rom_data_path"] + "/"
     if not os.path.exists(rom_data_path):
         os.makedirs(rom_data_path)
     api = parameters["api"]
@@ -71,17 +71,17 @@ def sync(parameters, variant):
 
 
 @click.command()
-@click.option("--variant", type=str, required=True, help="The game or game variant to push the repo for.")
+@click.option("--game", type=str, required=True, help="The game or game variant to push the repo for.")
 @click.pass_obj
-def push_data_to_hub(parameters, variant):
+def push_data_to_hub(parameters, game):
     """
     Upload local data to the Hugging Face Hub.
     """
-    check_variant(variant, parameters)    
-    repo_name = f"GameBoy-{variant}"
+    check_variant(game, parameters)    
+    repo_name = f"GameBoy-{game}"
     api = parameters["api"]
     repo_id = f"{repo_namespace}/{repo_name}"
-    rom_data_path = parameters[f"{variant}_rom_data_path"] + "/"
+    rom_data_path = parameters[f"{game}_rom_data_path"] + "/"
     if not os.path.exists(rom_data_path):
         log_error(f"Rom data path {rom_data_path} does not exist. Cannot push to hub.", parameters)
     api.upload_large_folder(repo_id=repo_id, repo_type="dataset", folder_path=rom_data_path, ignore_patterns=["*.gb", "*.gbc"])
