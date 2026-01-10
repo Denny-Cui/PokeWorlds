@@ -845,8 +845,10 @@ Output:
                                 selected_cell = possible_cells[0]
                             else:
                                 selected_cell = possible_cells[option_number - 1]
-            else:
+            elif len(possible_cells) == 1:
                 selected_cell = possible_cells[0]
+            else: # then its 0, which ?? I guesss is possible. 
+                return ret_state_list, -1
             # Now move to the selected cell
             x_move = selected_cell[0]
             y_move = selected_cell[1]
