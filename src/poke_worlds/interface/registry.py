@@ -9,7 +9,7 @@ from typing import Dict, Type, Optional, Union
 from poke_worlds.utils import log_error, load_parameters, log_warn
 from poke_worlds.emulation.registry import get_emulator, AVAILABLE_GAMES, infer_game
 from poke_worlds.interface.controller import Controller, _ALWAYS_VALID_CONTROLLERS
-from poke_worlds.interface.environment import Environment
+from poke_worlds.interface.environment import Environment, DummyEnvironment
 from poke_worlds.interface.pokemon.environments import PokemonEnvironment, PokemonRedChooseCharmanderFastEnv, PokemonOCREnvironment
 from poke_worlds.interface.pokemon.controllers import PokemonStateWiseController
 
@@ -17,6 +17,7 @@ _project_parameters = load_parameters()
 
 AVAILABLE_ENVIRONMENTS: Dict[str, Dict[str, Type[Environment]]] = {
     "pokemon_red": {
+        "dummy": DummyEnvironment,
         "default": PokemonOCREnvironment,
         "basic": PokemonEnvironment,
         "charmander_enthusiast": PokemonRedChooseCharmanderFastEnv,

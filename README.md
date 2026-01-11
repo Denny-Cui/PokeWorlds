@@ -154,11 +154,10 @@ bash quick_tests.sh
 
 It doesn't take much to get started in <img src="assets/logo.png" width="70">. Below is a simple [example](demos/environment.py) of an agent that takes random actions in Pokémon Red:
 ```python
-from poke_worlds import get_pokemon_environment, LowLevelController, RestrictedRandomController
+from poke_worlds import get_environment
 
-controller = LowLevelController()
-# Get the Pokémon Red emulator
-environment = get_pokemon_environment(game_variant="pokemon_red", controller=controller, headless=True) 
+# Get the Pokémon Red environment
+environment = get_environment(game="pokemon_red", environment_variant="dummy", controller_variant="low_level", headless=True) 
 # set headless=False to see the screen
 
 # Run an episode in the environment
@@ -174,7 +173,12 @@ print(f"Done with episode:")
 print(environment.get_final_info())
 ```
 
-This agent seems to open the menus a lot. We can avoid this by abstracting away the action space to a higher level. To do this, simply switch the `LowLevelController` for the `RestrictedRandomController`. 
+This agent seems to open the menus a lot. We can avoid this by abstracting away the action space to a higher level. To do this, simply switch the `controller_variant` to `low_level_play`.
+
+This is a really simple abstraction though, for a demo of the most powerful high level actions available, run:
+```bash
+python demos/vlm_agent.py
+```
 
 
 # Development
