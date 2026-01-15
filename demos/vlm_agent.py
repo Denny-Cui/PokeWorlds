@@ -1,9 +1,8 @@
 from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
 import torch
 from poke_worlds import AVAILABLE_GAMES, get_environment
-from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, MoveGridAction, BattleMenuAction, PickAttackAction, CheckInteractionAction, LocateAction, SeekAction
 from poke_worlds.utils import load_parameters
-from poke_worlds.utils.vlm import HuggingFaceVLM
+from poke_worlds.utils.vlm import ExecutorVLM
 from tqdm import tqdm
 from PIL import Image
 import numpy as np
@@ -76,10 +75,10 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
 """
     def __init__(self, env, model_name = f"Qwen/Qwen3-VL-32B-Instruct", max_steps_per_executor=15):
         backbone_model_name = load_parameters()['backbone_vlm_model']
-        HuggingFaceVLM.start()
+        ExecutorVLM.start()
         if backbone_model_name == model_name: # then load just one model
-            self.model = HuggingFaceVLM._MODEL
-            self.processor = HuggingFaceVLM._PROCESSOR
+            self.model = ExecutorVLM._MODEL
+            self.processor = ExecutorVLM._PROCESSOR
         else:
             self.model = Qwen3VLForConditionalGeneration.from_pretrained(
                 model_name,

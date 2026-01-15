@@ -4,7 +4,7 @@ from copy import deepcopy
 from poke_worlds.interface import Controller
 from poke_worlds.execution.report import ExecutionReport
 from poke_worlds.execution.vlm import ExecutorVLM
-from poke_worlds.utils.vlm import HuggingFaceVLM
+from poke_worlds.utils.vlm import ExecutorVLM
 from poke_worlds.utils import load_parameters, log_error, log_warn, log_info
 from poke_worlds.interface import Environment, HighLevelAction
 from typing import List, Tuple, Type, Dict, Any
@@ -363,6 +363,8 @@ Response:
     def get_action_message(self, *, action: Type[HighLevelAction], action_kwargs: dict, action_success: int, action_return: dict, last_action_hint: bool=False) -> str:
         """
         Returns a string message describing the action taken and its status. 
+
+        Should work for both HighLevelAction and the available ExecutorAction types. 
         
         :param action: The high level action taken.
         :type action: Type[HighLevelAction]

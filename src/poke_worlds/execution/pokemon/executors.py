@@ -1,8 +1,8 @@
 from poke_worlds.interface.pokemon.controllers import PokemonStateWiseController
 from poke_worlds.interface import HighLevelAction
 from poke_worlds.execution.executor import Executor
-from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, MoveGridAction, BattleMenuAction, PickAttackAction, CheckInteractionAction, LocateAction, SeekAction
-
+from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, MoveGridAction, BattleMenuAction, PickAttackAction
+from poke_worlds.execution.pokemon.executor_actions import PokemonLocateAction, CheckInteractionAction
 
 class PokemonExecutor(Executor):
     REQUIRED_CONTROLLER = PokemonStateWiseController
@@ -31,7 +31,7 @@ class PokemonExecutor(Executor):
         elif action == CheckInteractionAction:
             percieve_output = action_return["percieve_output"]
             action_success_message = percieve_output            
-        elif action == LocateAction:
+        elif action == PokemonLocateAction:
             if action_success == -1:
                 action_success_message = f"Could not locate the target on screen. {locate_advice}"
             else:
@@ -43,21 +43,6 @@ class PokemonExecutor(Executor):
                 action_success_message = "There was nothing to interact with in front of you. Make sure you are facing an object or character and are right next to it. Move into an object or NPC to face them."
             if action_success == 1:
                 action_success_message = "Your interaction led to something."
-        elif action == SeekAction:
-            if action_success == 0:
-                action_success_message = "Success! You sought out your target and began an interaction. Procedure through the rest of the game as required."
-            if action_success == -1:
-                action_success_message = f"Could not find the object on screen to seek. {locate_advice}"
-            elif action_success == 1:
-                action_success_message = f"Could not move to the target location because there is an obstacle completely blocking the path. {path_blocked_advice}"
-            elif action_success == 2:
-                action_success_message = "You were interupted before reaching the target location by a battle, dialogue or cutscene."
-            elif action_success == 3:
-                action_success_message = "The CheckInteraction VLM failed when trying to see if you could interact with the target at the location. This may be a VLM error. Just try running Interact()"
-            elif action_success == 4:
-                action_success_message = "When you reached the target location, there was nothing to interact with. Make sure you are going to the right place. You could also just try interact() to be sure. "
-            elif action_success == 5:
-                action_success_message = "When you tried to interact with the target at the location, the interaction failed. Make sure you are right next to and facing the object or NPC. Reposition with move() and try again."
         elif action == PassDialogueAction:
             if action_success == -1:
                 action_success_message = "There was no dialogue to pass through. Check the state"

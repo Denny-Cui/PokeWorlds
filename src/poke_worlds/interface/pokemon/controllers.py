@@ -1,5 +1,5 @@
 from poke_worlds.utils import log_error, log_info
-from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, CheckInteractionAction, BattleMenuAction, PickAttackAction, MoveGridAction, SeekAction
+from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, BattleMenuAction, PickAttackAction, MoveGridAction
 from poke_worlds.interface.controller import Controller
 from poke_worlds.interface.action import HighLevelAction
 from poke_worlds.emulation.pokemon.parsers import AgentState
@@ -7,7 +7,7 @@ from typing import Dict, Any
 
 
 class PokemonStateWiseController(Controller):
-    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, LocateAction, CheckInteractionAction, BattleMenuAction, PickAttackAction, MoveGridAction, SeekAction]
+    ACTIONS = [MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, TestAction, BattleMenuAction, PickAttackAction, MoveGridAction]
 
     def string_to_high_level_action(self, input_str):
         input_str = input_str.lower().strip()
@@ -16,25 +16,11 @@ class PokemonStateWiseController(Controller):
         action_name = input_str.split("(")[0].strip()
         action_args_str = input_str.split("(")[1].split(")")[0].strip()
         # First handle the no arg actions
-        if action_name == "checkinteraction":
-            return CheckInteractionAction, {}
         if action_name == "interact":
             return InteractAction, {}
         if action_name == "passdialogue":
             return PassDialogueAction, {}
         # Now handle the actions with fixed options
-        if action_name == "seek":
-            item = action_args_str.strip()
-            if item.count(",") != 1:
-                return None, None
-            intent, target = item.split(",")
-            intent = intent.strip()
-            target = target.strip()
-            return SeekAction, {"intent": intent, "target": target}
-        if action_name == "locate":
-            item = action_args_str.strip()
-            # prefer the image_references if both match
-            return LocateAction, {"target": item}
         if action_name == "battlemenu":
             option = action_args_str.strip()
             if option in ["fight", "pokemon", "bag", "run", "progress"]:
@@ -86,13 +72,8 @@ class PokemonStateWiseController(Controller):
         
     def get_action_strings(self, return_all: bool=False) -> Dict[HighLevelAction, str]:
         current_state = self._emulator.state_parser.get_agent_state(self._emulator.get_current_frame())
-        all_options = set(LocateAction.image_references.keys()).union(LocateAction.pre_described_options.keys())
-        locate_option_strings = ", ".join(all_options)
         free_roam_action_strings = {
-            SeekAction: f"seek(<intent: extremely short string description of intent>, <{locate_option_strings}>): Move towards the nearest instance of the specified visual entity until you are right next to it and facing it. Only the entities specified in <> are valid options, anything else will return an error. ",
-            #LocateAction: f"locate(<{locate_option_strings}>): Locate all instances of the specified visual entity in the current screen, and return their coordinates relative to your current position. Only the entities specified in <> are valid options, anything else will return an error. DO NOT use this action with an input that is not listed in <> (e.g. locate(pokemon) or locate(pokeball) will fail).",
             MoveGridAction: "move(<right or left> <steps: int>,<up or down> <steps: int>): Move in grid space by the specified right/left and up/down steps.",
-            CheckInteractionAction: "checkinteraction(): Check if there is something to interact with in front of you.",
             InteractAction: "interact(): Interact with cell directly in front of you. Only works if there is something to interact with.",
         }
         dialogue_action_strings = {
