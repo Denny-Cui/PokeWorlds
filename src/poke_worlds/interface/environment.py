@@ -21,7 +21,7 @@ import pygame
 class History:
     """ 
     A simple class to hold history of observations, rewards and infos etc.
-    Has getter functions to extract useful information like frames, action details, ocr history etc. 
+    Has getter functions to extract useful information like frames, action details, ocr region capture history etc. 
     All attribute lists have length equal to number of steps taken + 1
     """
     def __init__(self, observation, info, parameters=None):
@@ -84,9 +84,9 @@ class History:
             action_details.append((action, action_kwargs, transition_states, action_success, action_return))
         return action_details
     
-    def get_ocr_history(self) -> List[List[Dict[str, str]]]:
+    def get_ocr_history(self) -> List[List[Dict[str, np.ndarray]]]:
         """
-        Get a list of all OCR results seen during each action execution.
+        Get a list of all OCR region captures seen during each action execution.
         List length is equal to number of steps taken + 1.
 
         :return: Description
@@ -94,10 +94,10 @@ class History:
         """
         ocr_history = []
         for obs in self.infos:
-            if "ocr" in obs and "transition_ocr_texts" in obs["ocr"]:
-                ocr_history.append(obs["ocr"]["transition_ocr_texts"].copy())
-            elif "ocr" in obs and "ocr_texts" in obs["ocr"]:
-                ocr_history.append([obs["ocr"]["ocr_texts"]])
+            if "ocr" in obs and "transition_ocr_regions" in obs["ocr"]:
+                ocr_history.append(obs["ocr"]["transition_ocr_regions"].copy())
+            elif "ocr" in obs and "ocr_regions" in obs["ocr"]:
+                ocr_history.append([obs["ocr"]["ocr_regions"]])
             else:
                 ocr_history.append([])
         return ocr_history
@@ -228,7 +228,7 @@ class Environment(gym.Env, ABC):
         Creates additional fields: 
         - "core"/"previous_action_details": A tuple of (action, action_kwargs, transition_states, action_success, action_return)
         - "core"/"transition_passed_frames": An array of all frames passed during the action execution
-        - "ocr"/"transition_ocr_texts": A list of OCR texts observed during the action execution
+        - "ocr"/"transition_ocr_regions": A list of OCR regions captured during the action execution
         
         :param action: HighLevelAction taken
         :type action: Optional[HighLevelAction]
@@ -259,14 +259,14 @@ class Environment(gym.Env, ABC):
             # assert state_info["core"]["passed_frames"][-1] == state_info["core"]["current_frame"]
 
             # Aggregate OCR texts from transition states
-            all_ocr_texts = []
+            all_ocr_regions = []
             for transition_state in transition_states:
-                if "ocr" in transition_state and "ocr_texts" in transition_state["ocr"]:
-                    all_ocr_texts.append(transition_state["ocr"]["ocr_texts"])
+                if "ocr" in transition_state and "ocr_regions" in transition_state["ocr"]:
+                    all_ocr_regions.append(transition_state["ocr"]["ocr_regions"])
             if "ocr" in state_info:
-                state_info["ocr"]["transition_ocr_texts"] = all_ocr_texts
+                state_info["ocr"]["transition_ocr_regions"] = all_ocr_regions
             else:
-                state_info["ocr"] = {"transition_ocr_texts": all_ocr_texts}
+                state_info["ocr"] = {"transition_ocr_regions": all_ocr_regions}
         return state_info
 
     def get_final_info(self) -> Dict[str, Dict[str, Any]]:

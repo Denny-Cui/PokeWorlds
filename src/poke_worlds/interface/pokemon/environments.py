@@ -21,7 +21,7 @@ class PokemonEnvironment(DummyEnvironment):
     
 class PokemonOCREnvironment(DummyEnvironment):
     """ 
-    A Pokemon Environment that includes OCR observations and agent state.
+    A Pokemon Environment that includes OCR region captures and agent state.
     """
     REQUIRED_STATE_TRACKER = PokemonOCRTracker
     REQUIRED_EMULATOR = PokemonEmulator
@@ -30,15 +30,13 @@ class PokemonOCREnvironment(DummyEnvironment):
         super().__init__(**kwargs)
         screen_shape = self._emulator.screen_shape
         screen_space = spaces.Box(low=0, high=255, shape=(screen_shape[1], screen_shape[0], 1), dtype=np.uint8)
-        ocr = spaces.Text(max_length=512)
         state = spaces.Discrete(4) # In Dialogue, In Menu, Battle, Free Roam
 
         self.observation_space = spaces.Dict({
             "screen": screen_space,
-            "ocr": ocr,
             "state": state
         })
-        """ The observation space is the raw pixel values of the emulator's screen and messages with OCR text. """
+        """ The observation space is the raw pixel values of the emulator's screen and agent state. """
 
     @staticmethod
     def override_emulator_kwargs(emulator_kwargs: dict) -> dict:
@@ -59,29 +57,11 @@ class PokemonOCREnvironment(DummyEnvironment):
         if transition_states is None:
             current_state = self.get_info()
             screen = current_state["core"]["current_frame"]
-            # Will not try to add to OCR buffers, because no transition states should only be called on init. 
-            if "ocr" in current_state and "ocr_texts" in current_state["ocr"]:
-                ocr_texts = current_state["ocr"]["ocr_texts"] # is a dict with kind -> text
-                ocr_combined = " | ".join([f"{kind}: {text}" for kind, text in ocr_texts.items()])
-            else:
-                ocr_combined = ""
         else:
             screen = transition_states[-1]["core"]["current_frame"]
-            ocr_texts_all = []
-            for state in transition_states:
-                if "ocr" in state and "ocr_texts" in state["ocr"]:
-                    ocr_texts = state["ocr"]["ocr_texts"] # is a dict with kind -> text
-                    ocr_step = state["ocr"]["step"]
-                    ocr_texts_all.append(ocr_texts)
-            # combine all ocr texts
-            ocr_combined = ""
-            for ocr_texts in ocr_texts_all:
-                for kind, text in ocr_texts.items():
-                    ocr_combined += f"{kind}: {text} | "
         current_state = self._emulator.state_parser.get_agent_state(screen)
         observation = {
             "screen": screen,
-            "ocr": ocr_combined,
             "state": current_state,
         }
         return observation

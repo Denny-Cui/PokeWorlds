@@ -1,5 +1,5 @@
 from poke_worlds.utils import log_info
-from poke_worlds.emulation.tracker import MetricGroup, StateTracker, OCRMetric
+from poke_worlds.emulation.tracker import MetricGroup, StateTracker, OCRegionMetric
 from poke_worlds.emulation.pokemon.parsers import PokemonStateParser, AgentState, MemoryBasedPokemonRedStateParser, PokemonRedStateParser
 from typing import Optional, Type
 import numpy as np
@@ -57,7 +57,7 @@ class CorePokemonMetrics(MetricGroup):
         """
         return {}
 
-class PokemonOCRMetric(OCRMetric):
+class PokemonOCRMetric(OCRegionMetric):
     REQUIRED_PARSER = PokemonStateParser
     def reset(self, first = False):
         super().reset(first)
@@ -65,8 +65,8 @@ class PokemonOCRMetric(OCRMetric):
 
     def start(self):
         self.kinds = {
-            "dialogue": ("dialogue_box_full", None),
-            "battle_attack_options": ("screen_bottom_half", "The following are the attack options available in a Pokémon battle. There are a maximum of four attacks. List the attack names only, in the following format: 1. <attack_name>, 2. <attack_name>, etc. If there are less than four attacks, only list the available ones.")
+            "dialogue": "dialogue_box_full",
+            "battle_attack_options": "screen_bottom_half"
         }  
         super().start()
 
