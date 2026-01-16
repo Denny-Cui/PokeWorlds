@@ -95,7 +95,9 @@ def show_frames(frames: np.ndarray, titles: List[str]=None, save=False, paramete
         if titles is None:
             log_error(f"Cannot save frames without titles specified.", parameters)    
     if titles is not None:
-        if len(titles) == 1 and len(frames) > 1:
+        if ((isinstance(titles, list) and len(titles) == 1) or isinstance(titles, str)) and len(frames) > 1:
+            if isinstance(titles, str):
+                titles = [titles]
             titles = [titles[0] + f"_{i}" for i in range(len(frames))]
     if titles is not None and len(titles) != len(frames):
         log_error(f"Length of titles {len(titles)} does not match number of frames {len(frames)}", parameters)

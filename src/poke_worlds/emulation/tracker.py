@@ -231,11 +231,11 @@ class OCRegionMetric(MetricGroup, ABC):
     Children implementing this must define self.kinds in `start()` and then call on `super().start()`.
 
     Reports:
-    - `ocr_regions`: A dictionary mapping kinds to captured regions that had OCR-eligible text detected in them. The keys are kinds of OCR regions, and the values are the captured screen regions as numpy arrays of shape (num_captures, height, width, channels).
+    - `ocr_regions`: A dictionary mapping kinds to captured regions that had OCR-eligible text detected in them. The keys are kinds of OCR regions, and the values are the stacks of captured screen regions as numpy arrays of shape (num_captures, height, width, channels).
     - `step`: The current step number. Useful for differentiating when multiple OCR texts were found in the same episode. You can typically safely ignore this. 
 
     Final Reports:
-    - `ocr_regions`: A list of tuples for all steps where OCR was detected. Is in form: `List[Tuple[int, Dict[str, np.ndarray]]]` where the int is the step number and the Dict maps kinds to the captured screen region.
+    - `ocr_regions`: A list of tuples for all steps where OCR was detected. Is in form: `List[Tuple[int, Dict[str, np.ndarray]]]` where the int is the step number and the Dict maps kinds to a stack of the captured screen region.
 
     """
     NAME = "ocr"

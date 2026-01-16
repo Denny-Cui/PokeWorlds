@@ -1,9 +1,9 @@
 from poke_worlds.execution.vlm import _ocr_merge
-from poke_worlds.execution.report import ExecutionReport
+from poke_worlds.execution.report import ExecutionReport, SimpleReport
 from poke_worlds.emulation.pokemon.trackers import PokemonOCRTracker
 from typing import Dict, Any
 
-class PokemonExecutionReport(ExecutionReport):
+class PokemonExecutionReport(SimpleReport):
     REQUIRED_STATE_TRACKER = PokemonOCRTracker
 
     def state_info_to_str(self, state_info: Dict[str, Dict[str, Any]]) -> str:

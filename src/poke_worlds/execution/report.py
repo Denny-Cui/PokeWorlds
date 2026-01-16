@@ -18,7 +18,7 @@ class ExecutionReport(ABC):
     REQUIRED_STATE_TRACKER = StateTracker
     """ The required state tracker class for this execution report (needed to guarantee safety of state_info_to_str). """
 
-    def __init__(self, *, environment: Environment, high_level_goal: str, immediate_task: str, initial_plan: str, visual_context: str, exit_conditions: List[str], parameters: dict):
+    def __init__(self, *, environment: Environment, parameters: dict):
         verify_parameters(parameters)
         self._parameters = parameters
         if environment is not None and not issubclass(type(environment._emulator.state_tracker), self.REQUIRED_STATE_TRACKER):
@@ -30,19 +30,10 @@ class ExecutionReport(ABC):
             self._history_starting_index = len(environment._history) - 1
         self._history: History = None
         """ The history object from the environment at the start of the execution. Is only set when close() is called. Use get_history to access safely. """
-        self.high_level_goal = high_level_goal
-        """ The overall high level goal of the execution. """
-        self.immediate_task = immediate_task
-        """ The immediate task the execution was trying to accomplish. """
-        self.exit_conditions = exit_conditions
-        """ The exit conditions provided for the execution. """
+
         self.steps_taken = 0
         """ Number of steps taken in the execution. """
-        self.step_contexts: List[Tuple[str, str]] = [(None, visual_context)]
-        """ List of tuples containing (difference from previous frame, visual context) at each step. """
-        self.plans: List[str] = [initial_plan]
-        """ List of plans at each step of the execution. """
-        self.exit_reasoning: str = None
+
         self._action_strings: List[str] = []
         """ List of action strings used during the execution. """
         self._action_messages: List[str] = []
@@ -50,37 +41,14 @@ class ExecutionReport(ABC):
         self.environment_done: bool = None
         """ Whether or not the environment is terminated / truncated. """
 
-    def __deepcopy__(self, memo):
-        if self in memo:
-            return memo[self]
-        freshReport = type(self)(
-            environment=None,
-            high_level_goal=self.high_level_goal,
-            immediate_task=self.immediate_task,
-            initial_plan=self.plans[0],
-            visual_context=self.step_contexts[0][1],
-            exit_conditions=self.exit_conditions,
-            parameters=self._parameters
-        )
-        memo[self] = freshReport
-        freshReport.steps_taken = deepcopy(self.steps_taken, memo)
-        freshReport.step_contexts = deepcopy(self.step_contexts, memo)
-        freshReport.plans = deepcopy(self.plans, memo)
-        freshReport.exit_reasoning = deepcopy(self.exit_reasoning, memo)
-        freshReport._action_strings = deepcopy(self._action_strings, memo)
-        freshReport._action_messages = deepcopy(self._action_messages, memo)
-        freshReport._history = deepcopy(self.get_history(), memo)
-        freshReport._history_starting_index = self._history_starting_index
-        return freshReport
-
-
-    def _add_step(self, *, action_string: str, action_messages: str, frame_difference: str, visual_context: str, plan: str):
-        """ Adds a step to the execution report. """
+    def _add_step(self, *, action_string: str, action_messages: str, **kwargs):
+        """ 
+        Adds a step to the execution report. 
+        """
         self.steps_taken += 1
         self._action_strings.append(action_string)
         self._action_messages.append(action_messages)
-        self.step_contexts.append((frame_difference, visual_context))
-        self.plans.append(plan)
+        self._add_step_additional(**kwargs)
 
     def get_history(self) -> History:
         """
@@ -135,7 +103,7 @@ class ExecutionReport(ABC):
     
     def get_actions_taken(self) -> List[Tuple[str, Type[HighLevelAction], Dict[str, Any], Dict[str, Dict[str, Any]], int, Dict[str, Any], str]]:
         """
-        Returns the list of action details taken during the execution.
+        Returns the list of action details taken on the emulator during the execution. Does not include ExecutorActions.
         
         :return: List of actions details taken during the execution. Each entry is a tuple of (action_string, action_class, action_kwargs, transition_states, success_code, action_return_info, action_message).
         :rtype: List[Tuple[str, Type[HighLevelAction], Dict[str, Any], int, Any, str]]
@@ -149,14 +117,20 @@ class ExecutionReport(ABC):
             action_message = self._action_messages[i]
             use_action_details.append((action_string, action_class, action_kwargs, transition_states, success_code, action_return_info, action_message))
         return use_action_details
-    
-    def _close(self, exit_reasoning: str, environment_done: bool):
-        """ Closes the execution report with the given exit reasoning. """
-        self.exit_reasoning = exit_reasoning
+
+    def _close(self, environment_done: bool, **kwargs):
+        """ 
+        Closes the execution report.
+
+        :param environment_done: Whether or not the environment is done (terminated / truncated).
+        :type environment_done: bool
+        :param kwargs: Additional keyword arguments for the _on_exit hook.
+        """
         self.environment_done = environment_done
         if self._history is not None:
             log_error("ExecutionReport is already closed.", self._parameters)
         self._history = self.get_history()
+        self._on_exit(**kwargs)
 
     def get_state_info_strings(self) -> List[str]:
         """ 
@@ -166,7 +140,41 @@ class ExecutionReport(ABC):
         :rtype: List[str]
         """
         return [self.state_info_to_str(state_info) for state_info in self.get_state_infos()]
+
+    @abstractmethod
+    def get_execution_summary(self) -> List[str]:
+        """
+        Returns a list describing each step taken during the execution.
         
+        :return: List of strings summarizing each step of the execution.
+        :rtype: List[str]
+        """
+        pass
+    
+    @abstractmethod    
+    def _add_step_additional(self, **kwargs):
+        """ 
+        Hook for adding additional info when adding a step. 
+        Is called after the main _add_step logic.
+
+        Leave empty if not needed.
+        """
+        pass
+
+    @abstractmethod
+    def _on_exit(self, **kwargs):
+        """ 
+        Hook for when the execution is exiting. Can be used to perform any final operations before closing. 
+        Is called after the main _close logic.
+
+        Leave empty if not needed.
+        """
+        pass
+
+    @abstractmethod
+    def __deepcopy__(self, memo):
+        pass
+
     @abstractmethod
     def state_info_to_str(self, state_info: dict) -> str:
         """ Converts a state info to a string representation. Useful for VLM Prompting
@@ -177,6 +185,94 @@ class ExecutionReport(ABC):
         :rtype: str 
         """
         pass
+
+    @abstractmethod
+    def _construct_execution_summary(self) -> List[str]:
+        """
+        Hook for constructing the execution summary lines.
+
+        Is called by get_execution_summary to get the main body of the summary.
+
+        Make it return an empty list if no summary lines are needed.
+        
+        :return: List of strings summarizing each step of the execution.
+        :rtype: List[str]
+        """
+        pass
+
+
+class SimpleReport(ExecutionReport, ABC):
+    """ 
+    Holds the report of a SimpleExecutor run.
+    """
+    REQUIRED_STATE_TRACKER = StateTracker
+    """ The required state tracker class for this execution report (needed to guarantee safety of state_info_to_str). """
+
+    def __init__(self, *, environment: Environment, high_level_goal: str, task: str, initial_plan: str, visual_context: str, exit_conditions: List[str], parameters: dict):
+        verify_parameters(parameters)
+        self._parameters = parameters
+        self.high_level_goal = high_level_goal
+        """ The overall high level goal of the execution. """
+        self.task = task
+        """ The immediate task the execution was trying to accomplish. """
+        self.exit_conditions = exit_conditions
+        """ The exit conditions provided for the execution. """
+        self.exit_reasoning: str = None
+        """ The reasoning for why the execution ended. """
+        self.step_contexts: List[Tuple[str, str]] = [(None, visual_context)]
+        """ List of tuples containing (difference from previous frame, visual context) at each step. """
+        self.plans: List[str] = [initial_plan]
+        """ List of plans at each step of the execution. """
+        super().__init__(environment=environment, parameters=parameters)
+
+    def __deepcopy__(self, memo):
+        if self in memo:
+            return memo[self]
+        freshReport = type(self)(
+            environment=None,
+            high_level_goal=self.high_level_goal,
+            task=self.task,
+            initial_plan=self.plans[0],
+            visual_context=self.step_contexts[0][1],
+            exit_conditions=self.exit_conditions,
+            parameters=self._parameters
+        )
+        memo[self] = freshReport
+        freshReport.steps_taken = deepcopy(self.steps_taken, memo)
+        freshReport.step_contexts = deepcopy(self.step_contexts, memo)
+        freshReport.plans = deepcopy(self.plans, memo)
+        freshReport.exit_reasoning = deepcopy(self.exit_reasoning, memo)
+        freshReport._action_strings = deepcopy(self._action_strings, memo)
+        freshReport._action_messages = deepcopy(self._action_messages, memo)
+        freshReport._history = deepcopy(self.get_history(), memo)
+        freshReport._history_starting_index = self._history_starting_index
+        return freshReport
+    
+    def _add_step_additional(self, frame_difference: str, visual_context: str, plan: str):
+            """ 
+            Hook for adding additional info when adding a step. 
+            Is called after the main _add_step logic.
+
+            Leave empty if not needed.
+            """
+            self.step_contexts.append((frame_difference, visual_context))
+            self.plans.append(plan) 
+
+    def get_step_frames(self) -> List[np.ndarray]:
+        """ 
+        Returns the list of screen frames captured at each step of the execution. 
+        :return: List of step frames.
+        :rtype: List[np.ndarray]        
+        """
+        history = self.get_history()
+        return history.get_step_frames()
+    
+    def _on_exit(self, **kwargs):
+        """ 
+        Hook for when the execution is exiting. Can be used to perform any final operations before closing. 
+        Is called after _close
+        """
+        self.exit_reasoning = kwargs.get("exit_reasoning", "No exit reasoning provided.")
 
     def get_execution_summary(self) -> List[str]:
         """
@@ -201,5 +297,6 @@ class ExecutionReport(ABC):
             summary_line += f"Visual Context: {visual_context}\n"
             summary_line += f"Plan at this step: {plan}\n"
             summary_lines.append(summary_line)
-        summary_lines.append(f"Execution ended because: {self.exit_reasoning}")
+        if self.exit_reasoning is not None:
+            summary_lines.append(f"Execution ended because: {self.exit_reasoning}")
         return summary_lines

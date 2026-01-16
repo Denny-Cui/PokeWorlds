@@ -1,10 +1,10 @@
 from poke_worlds.interface.pokemon.controllers import PokemonStateWiseController
 from poke_worlds.interface import HighLevelAction
-from poke_worlds.execution.executor import Executor
+from poke_worlds.execution.executor import SimpleExecutor
 from poke_worlds.interface.pokemon.actions import MoveStepsAction, MenuAction, InteractAction, PassDialogueAction, MoveGridAction, BattleMenuAction, PickAttackAction
 from poke_worlds.execution.pokemon.executor_actions import PokemonLocateAction, CheckInteractionAction
 
-class PokemonExecutor(Executor):
+class PokemonExecutor(SimpleExecutor):
     REQUIRED_CONTROLLER = PokemonStateWiseController
 
     def get_action_message(self, *, action, action_kwargs: dict, action_success: int, action_return: dict, last_action_hint: bool=False):

@@ -255,8 +255,7 @@ class Environment(gym.Env, ABC):
             all_passed_frames = transition_states[0]["core"]["passed_frames"]
             for transition_state in transition_states[1:]:
                 all_passed_frames = np.concatenate([all_passed_frames, transition_state["core"]["passed_frames"]], axis=0)
-            state_info["core"]["transition_passed_frames"] = all_passed_frames # TODO: Should include the current state info last frame as well, but must check.
-            # assert state_info["core"]["passed_frames"][-1] == state_info["core"]["current_frame"]
+            state_info["core"]["transition_passed_frames"] = all_passed_frames # Will include the current state info last frame as as the final entry
 
             # Aggregate OCR texts from transition states
             all_ocr_regions = []
