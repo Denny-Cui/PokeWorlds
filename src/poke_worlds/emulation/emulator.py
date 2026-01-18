@@ -689,7 +689,7 @@ class Emulator:
                 break
         tracker = self.close()
         log_info("Human play mode ended.", self._parameters)
-        log_dict(tracker.report_final(), parameters=self._parameters)
+        #log_dict(tracker.report_final(), parameters=self._parameters)
 
     def save_state(self, state_path: str):
         """

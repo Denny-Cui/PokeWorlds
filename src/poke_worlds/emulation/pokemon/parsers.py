@@ -159,7 +159,7 @@ class PokemonStateParser(StateParser, ABC):
             additional_named_screen_region_details (List[Tuple[str, int, int, int, int]]): Parameters associated with additional named screen regions to include.
             additional_multi_target_named_screen_region_details (List[Tuple[str, int, int, int, int]]): Parameters associated with additional multi-target named screen regions to include.
             override_multi_targets (Dict[str, List[str]]): Dictionary mapping region names to lists of target names for multi-target regions.
-                By default, will add "menu_box_middle" with target "cursor_on_options". This is important because we don't want agents messing with the frame of the emulator (it will wreck our state parsing).
+                By default, will add "menu_box_strip" with target "cursor_on_options". This is important because we don't want agents messing with the frame of the emulator (it will wreck our state parsing).
         """
         verify_parameters(parameters)
         regions = _get_proper_regions(override_regions=additional_named_screen_region_details, base_regions=self.COMMON_REGIONS)
@@ -184,12 +184,12 @@ class PokemonStateParser(StateParser, ABC):
         multi_target_provided_region_names = list(multi_targets.keys())
         if not set(multi_target_provided_region_names).issubset(set(multi_target_region_names)):
             log_error(f"Multi-target regions provided in multi_targets do not match the defined multi-target regions. Provided: {multi_target_provided_region_names}, Defined: {multi_target_region_names}", parameters)
-        if "menu_box_middle" not in multi_target_region_names:
-            log_error(f"menu_box_middle must be defined as a multi-target region to ensure proper state parsing.", parameters)
-        if "menu_box_middle" not in multi_targets:
-            multi_targets["menu_box_middle"] = ["cursor_on_options"]
+        if "menu_box_strip" not in multi_target_region_names:
+            log_error(f"menu_box_strip must be defined as a multi-target region to ensure proper state parsing.", parameters)
+        if "menu_box_strip" not in multi_targets:
+            multi_targets["menu_box_strip"] = ["cursor_on_options"]
         else:
-            multi_targets["menu_box_middle"].append("cursor_on_options")
+            multi_targets["menu_box_strip"].append("cursor_on_options")
         for region_name, x, y, w, h in multi_target_regions:
             region_target_paths = {}
             subdir = captures_dir + f"/{region_name}/"
@@ -237,7 +237,7 @@ class PokemonStateParser(StateParser, ABC):
         Returns:
             bool: True if hovering over options, False otherwise.
         """
-        return self.named_region_matches_multi_target(current_screen, "menu_box_middle", "cursor_on_options")
+        return self.named_region_matches_multi_target(current_screen, "menu_box_strip", "cursor_on_options")
 
     def is_in_battle(self, current_screen: np.ndarray) -> bool:
         """
@@ -421,10 +421,10 @@ class BasePokemonRedStateParser(PokemonStateParser, ABC):
     """
 
     MULTI_TARGET_REGIONS = [
-        ("menu_box_middle", 89, 13, 30, 100), 
+        ("menu_box_strip", 89, 13, 5, 100), 
     ]
     """ Additional multi-target named screen regions specific to Pokemon Red games. 
-    - menu_box_middle: Middle of the menu box when the start menu is open. Open the start menu to capture this. 
+    - menu_box_strip: Strip of the menu box when the start menu is open. Open the start menu to capture this. The margins are adjusted to avoiding capturing the player name, as this may change across sav files and states. 
     """
 
     def __init__(self, pyboy: PyBoy, variant: str, parameters: dict, override_regions: List[Tuple[str, int, int, int, int]] = [], override_multi_target_regions: List[Tuple[str, int, int, int, int]] = [], override_multi_targets: Dict[str, List[str]] = {}):
@@ -470,10 +470,10 @@ class BasePokemonCrystalStateParser(PokemonStateParser, ABC):
     """
 
     MULTI_TARGET_REGIONS = [
-        ("menu_box_middle", 89, 13, 30, 120),
+        ("menu_box_strip", 89, 13, 5, 120),
     ]
     """ Additional multi-target named screen regions specific to Pokemon Crystal games. 
-    - menu_box_middle: Middle of the menu box when the start menu is open. Open the start menu to capture this. 
+    - menu_box_strip: Strip of the menu box when the start menu is open. Open the start menu to capture this. The margins are adjusted to avoiding capturing the player name, as this may change across sav files and states. 
     """
 
     def __init__(self, pyboy: PyBoy, variant: str, parameters: dict, override_regions: List[Tuple[str, int, int, int, int]] = [], override_multi_target_regions: List[Tuple[str, int, int, int, int]] = [], override_multi_targets: Dict[str, List[str]] = {}):
