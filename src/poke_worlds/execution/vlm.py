@@ -94,9 +94,20 @@ class ExecutorVLM:
 
     
     @staticmethod
-    def infer(texts: List[str], images: List[np.ndarray], max_new_tokens: int, batch_size: int = None) -> List[str]:
+    def infer(texts: Union[List[str], str], images: Union[np.ndarray, List[np.ndarray]], max_new_tokens: int, batch_size: int = None) -> List[str]:
         """
         Performs inference with the given texts and images        
+
+        :param texts: List of text prompts or a single text prompt
+        :type texts: Union[List[str], str]
+        :param images: List of images in numpy array format (H x W x C) or a single image in numpy array format
+        :type images: Union[np.ndarray, List[np.ndarray]]
+        :param max_new_tokens: Maximum number of new tokens to generate
+        :type max_new_tokens: int
+        :param batch_size: Batch size for inference
+        :type batch_size: int, optional
+        :return: List of generated text outputs
+        :rtype: List[str]
         """
         if ExecutorVLM._MODEL is None:
             ExecutorVLM.start()
@@ -104,6 +115,21 @@ class ExecutorVLM:
             return ["LM Output" for text in texts]
         if max_new_tokens is None:
             log_error(f"Can't set max_new_tokens to None", _project_parameters)
+        if isinstance(texts, str):
+            texts = [texts]
+            # then images must either be a single image in a list, or an array of shape (H, W, C), or a stack of shape (1, H, W, C)
+            if isinstance(images, list):
+                if len(images) != 1:
+                    log_error(f"When passing a single text string, images must be a single image in a list. Got {len(images)} images.", _project_parameters)
+            elif isinstance(images, np.ndarray):
+                if images.ndim == 3:
+                    images = [images]
+                elif images.ndim == 4 and images.shape[0] == 1:
+                    images = [images[0]]
+                else:
+                    log_error(f"When passing a single text string, images must be a single image in a list or an array of shape (H, W, C) or (1, H, W, C). Got array of shape {images.shape}.", _project_parameters)
+            else:
+                log_error(f"When passing a single text string, images must be a single image in a list or an array of shape (H, W, C) or (1, H, W, C). Got type {type(images)}.", _project_parameters)
         return ExecutorVLM.do_infer(ExecutorVLM._MODEL_KIND, ExecutorVLM._MODEL, ExecutorVLM._PROCESSOR, texts, images, max_new_tokens, batch_size)
 
     @staticmethod
@@ -139,10 +165,30 @@ class ExecutorVLM:
         
 
     @staticmethod
-    def multi_infer(texts: List[str], images: List[List[Union[np.ndarray, Image.Image]]], max_new_tokens: int, batch_size: int = None) -> List[str]:
+    def multi_infer(texts: Union[List[str], str], images: Union[List[List[Union[np.ndarray, Image.Image]]], List[Union[np.ndarray, Image.Image]]], max_new_tokens: int, batch_size: int = None) -> List[str]:
         """
         Performs inference with the a single text and multiple images
+
+        :param texts: List of text prompts or a single text prompt
+        :type texts: Union[List[str], str]
+        :param images: List of lists of images in numpy array format (H x W x C) or a single list of images in numpy array or Pillow Image format
+        :type images: Union[List[List[Union[np.ndarray, Image.Image]]], List[Union[np.ndarray, Image.Image]]]
+        :param max_new_tokens: Maximum number of new tokens to generate
+        :type max_new_tokens: int
+        :param batch_size: Batch size for inference
+        :type batch_size: int, optional
+        :return: List of generated text outputs
+        :rtype: List[str]
         """
+        if isinstance(texts, str):
+            texts = [texts]
+            # then images must be a list whose element is NOT a list
+            if not isinstance(images, list) or len(images) == 0:
+                log_error(f"When passing a single text string, images must be a nonempty list of images. Got type {type(images)}.", _project_parameters)
+            if isinstance(images[0], list):
+                log_error(f"When passing a single text string, images must be a single list of images, not a list of lists. Got list of lists with length {len(images)}.", _project_parameters)
+            images = [images]  # wrap in another list to make it a list of lists
+            
         if len(texts) != len(images):
             log_error(f"Texts and images must have the same length. Got {len(texts)} texts and {len(images)} image lists.", _project_parameters)
         if ExecutorVLM._MODEL is None:
@@ -263,18 +309,12 @@ def ocr(images: List[np.ndarray], *, text_prompt=None, do_merge: bool=True) -> L
     parameters = _project_parameters
     batch_size = parameters["ocr_batch_size"]
     max_new_tokens = parameters["ocr_max_new_tokens"]
-    use_images = []
-    for image in images:
-        if image.mean() < 234: # Generally if the image is mostly white, there is no text to be read. This may need to be removed if it causes issues in some games. Seems fine for Pokemon.
-            use_images.append(image)
-    if len(use_images) == 0:
-        return []
-    texts = [text_prompt] * len(use_images)    
-    ocred = ExecutorVLM.infer(texts=texts, images=use_images, max_new_tokens=max_new_tokens, batch_size=batch_size)
+    texts = [text_prompt] * len(images)    
+    ocred = ExecutorVLM.infer(texts=texts, images=images, max_new_tokens=max_new_tokens, batch_size=batch_size)
     for i, res in enumerate(ocred):
         if res.strip().lower() == "none":
             log_warn(f"Got NONE as output from OCR. Could this have been avoided?\nimages statistics: {images[i].max(), images[i].min(), images[i].mean(), (images[i] > 0).mean()}", _project_parameters)
     ocred = [text.strip() for text in ocred if text.strip().lower() != "none"]
     if do_merge:
-        ocred = _ocr_merge(ocred)
+        ocred = merge_ocr_strings(ocred)
     return ocred
