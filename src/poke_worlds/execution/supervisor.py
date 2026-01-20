@@ -1,7 +1,18 @@
-from poke_worlds.utils import load_parameters, log_error, log_info, verify_parameters, log_warn
+from poke_worlds.utils import (
+    load_parameters,
+    log_error,
+    log_info,
+    verify_parameters,
+    log_warn,
+)
 from poke_worlds.interface import Environment
 from poke_worlds.execution.vlm import SupervisorVLM
-from poke_worlds.execution.report import ExecutionReport, SupervisorReport, SimpleSupervisorReport
+from poke_worlds.execution.report import (
+    ExecutionReport,
+    SupervisorReport,
+    SimpleSupervisorReport,
+    EQASupervisorReport,
+)
 from poke_worlds.execution.executor import Executor, SimpleExecutor, EQAExecutor
 from abc import ABC, abstractmethod
 from typing import Type, List, Dict, Tuple, Any
@@ -15,12 +26,25 @@ class Supervisor(ABC):
     REQUIRED_REPORT = SupervisorReport
     """ The type of Report produced by this Supervisor."""
 
-    def __init__(self, *, game: str, environment: Environment, model_name: str = None, vlm_kind: str = None, executor_class: Type[Executor] = None, execution_report_class: Type[ExecutionReport] = None, executor_max_steps=None, parameters: dict = None):
+    def __init__(
+        self,
+        *,
+        game: str,
+        environment: Environment,
+        model_name: str = None,
+        vlm_kind: str = None,
+        executor_class: Type[Executor] = None,
+        execution_report_class: Type[ExecutionReport] = None,
+        executor_max_steps=None,
+        parameters: dict = None,
+    ):
         self._parameters = load_parameters(parameters)
         if executor_class is None:
             executor_class = self.REQUIRED_EXECUTOR
         if not issubclass(executor_class, self.REQUIRED_EXECUTOR):
-            log_error(f"Executor class {executor_class} is not a subclass of required {self.REQUIRED_EXECUTOR}.")
+            log_error(
+                f"Executor class {executor_class} is not a subclass of required {self.REQUIRED_EXECUTOR}."
+            )
         self._environment = environment
         self._EXECUTOR_CLASS = executor_class
         self._EXECUTION_REPORT_CLASS = execution_report_class
@@ -31,24 +55,22 @@ class Supervisor(ABC):
         else:
             self.executor_max_steps = executor_max_steps
 
-
     def _create_report(self, **play_kwargs) -> SupervisorReport:
         """
         Creates the SupervisorReport instance. Override this method to customize report creation.
 
         :param play_kwargs: All keyword arguments passed to the play method. May or may not be used.
         :type play_kwargs: dict
-        :return: The created SupervisorReport instance.        
+        :return: The created SupervisorReport instance.
         :rtype: SupervisorReport
         """
         return self.REQUIRED_REPORT(parameters=self._parameters)
-
 
     def call_executor(self, **executor_kwargs) -> ExecutionReport:
         """
         Calls the Executor with provided arguments, logs the call and its report.
         You should generally never call the executor directly, but use this method instead to ensure proper logging.
-                
+
         :param executor_kwargs: Keyword arguments to pass to the Executor.
         :type executor_kwargs: dict
         :return: The ExecutionReport returned by the Executor.
@@ -58,11 +80,18 @@ class Supervisor(ABC):
         environment = executor_kwargs.pop("environment", self._environment)
         parameters = executor_kwargs.pop("parameters", self._parameters)
         call_args = executor_kwargs.copy()
-        executor = self._EXECUTOR_CLASS(game=game, environment=environment, execution_report_class=self._EXECUTION_REPORT_CLASS, parameters=parameters, **executor_kwargs)
-        report = executor.execute(step_limit=self.executor_max_steps, show_progress=True)
+        executor = self._EXECUTOR_CLASS(
+            game=game,
+            environment=environment,
+            execution_report_class=self._EXECUTION_REPORT_CLASS,
+            parameters=parameters,
+            **executor_kwargs,
+        )
+        report = executor.execute(
+            step_limit=self.executor_max_steps, show_progress=True
+        )
         self._report.log_executor_call(call_args, report)
         return report
-    
 
     @abstractmethod
     def _play(self, **kwargs):
@@ -70,17 +99,16 @@ class Supervisor(ABC):
         The main loop of the Supervisor. Should take in a reset environment and implement the logic to interact with the environment using the Executor.
         Always call executor with the call_executor method to ensure proper logging.
 
-        
+
         :param kwargs: Additional keyword arguments for customization.
         :type kwargs: dict
         """
         pass
 
-
     def play(self, **kwargs) -> SupervisorReport:
         """
         Public method to start the Supervisor's play loop. Initializes the environment and calls the internal _play method.
-        
+
         :param kwargs: Additional keyword arguments for customization.
         :type kwargs: dict
         :return: The final SupervisorReport after execution.
@@ -155,29 +183,44 @@ Format your response as:
 IMMEDIATE TASK: <THE IMMEDIATE TASK TO ACHIEVE FOR THE MISSION> Must be a short, directly actionable task from the visual context and available actions. 
 Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
 """
+
     def __init__(self, **kwargs):
         game = kwargs["game"]
         # replace [GAME] in prompts
-        self.supervisor_visual_context_prompt = self.supervisor_visual_context_prompt.replace("[GAME]", game)
-        self.supervisor_start_prompt = self.supervisor_start_prompt.replace("[GAME]", game)
-        self.supervisor_common_prompt = self.supervisor_common_prompt.replace("[GAME]", game)
-        self.executor_return_analysis_prompt = self.executor_return_analysis_prompt.replace("[GAME]", game)
-        self.executor_information_construction_prompt = self.executor_information_construction_prompt.replace("[GAME]", game)
+        self.supervisor_visual_context_prompt = (
+            self.supervisor_visual_context_prompt.replace("[GAME]", game)
+        )
+        self.supervisor_start_prompt = self.supervisor_start_prompt.replace(
+            "[GAME]", game
+        )
+        self.supervisor_common_prompt = self.supervisor_common_prompt.replace(
+            "[GAME]", game
+        )
+        self.executor_return_analysis_prompt = (
+            self.executor_return_analysis_prompt.replace("[GAME]", game)
+        )
+        self.executor_information_construction_prompt = (
+            self.executor_information_construction_prompt.replace("[GAME]", game)
+        )
         super().__init__(**kwargs)
 
     def _create_report(self, **play_kwargs):
         mission = play_kwargs["mission"]
         initial_visual_context = play_kwargs["initial_visual_context"]
-        return SimpleSupervisorReport(mission=mission, initial_visual_context=initial_visual_context, parameters=self._parameters)
-    
+        return SimpleSupervisorReport(
+            mission=mission,
+            initial_visual_context=initial_visual_context,
+            parameters=self._parameters,
+        )
+
     def parse_plan_steps(self, plan_text):
         steps = []
         for line in plan_text.lower().replace("high level plan:", "").split("[sep]"):
             line = line.strip()
             if line != "":
                 steps.append(line.strip())
-        return steps    
-    
+        return steps
+
     def parse_supervisor_start(self, output_text: str) -> Tuple[List[str], str]:
         if "note:" in output_text.lower():
             high_level_plan, note = output_text.lower().split("note:")
@@ -186,22 +229,35 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
         else:
             log_warn(f"Failed to parse supervisor start output: {output_text}")
             return None, None
-        
-    
+
     def do_supervisor_start(self, visual_context: str):
         allowed_actions = self._environment.get_action_strings(return_all=True)
         allowed_actions_str = ""
         for class_name, action_str in allowed_actions.items():
             allowed_actions_str += f"{action_str}\n"
-        prompt = self.supervisor_start_prompt.replace("[MISSION]", self.mission).replace("[ALLOWED_ACTIONS]", allowed_actions_str).replace("[VISUAL_CONTEXT]", visual_context)
+        prompt = (
+            self.supervisor_start_prompt.replace("[MISSION]", self.mission)
+            .replace("[ALLOWED_ACTIONS]", allowed_actions_str)
+            .replace("[VISUAL_CONTEXT]", visual_context)
+        )
         current_frame = self._environment.get_info()["core"]["current_frame"]
         output_text = self._vlm.infer(prompt, current_frame, max_new_tokens=300)[0]
         steps, note = self.parse_supervisor_start(output_text)
         self.high_level_plan = steps
         self._report.high_level_plan = steps
-        self.executor_return_analysis_prompt = self.executor_return_analysis_prompt.replace("[MISSION]", self.mission).replace("[ALLOWED_ACTIONS]", allowed_actions_str).replace("[HIGH_LEVEL_PLAN]", "\n".join(self.high_level_plan))
-        self.executor_information_construction_prompt = self.executor_information_construction_prompt.replace("[MISSION]", self.mission).replace("[ALLOWED_ACTIONS]", allowed_actions_str).replace("[HIGH_LEVEL_PLAN]", "\n".join(self.high_level_plan))            
-        return note        
+        self.executor_return_analysis_prompt = (
+            self.executor_return_analysis_prompt.replace("[MISSION]", self.mission)
+            .replace("[ALLOWED_ACTIONS]", allowed_actions_str)
+            .replace("[HIGH_LEVEL_PLAN]", "\n".join(self.high_level_plan))
+        )
+        self.executor_information_construction_prompt = (
+            self.executor_information_construction_prompt.replace(
+                "[MISSION]", self.mission
+            )
+            .replace("[ALLOWED_ACTIONS]", allowed_actions_str)
+            .replace("[HIGH_LEVEL_PLAN]", "\n".join(self.high_level_plan))
+        )
+        return note
 
     def parse_executor_return_analysis(self, output_text):
         analysis = None
@@ -226,20 +282,24 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
         current_visual_context = context_part.strip()
         mission_complete = "yes" in mission_part.lower()
         return analysis, lessons_learned, current_visual_context, mission_complete
-    
+
     def parse_executor_information_construction(self, output_text):
         output_text = output_text.lower()
         if output_text.count("plan:") != 1:
-            log_warn(f"Failed to parse executor information construction output: {output_text}")
+            log_warn(
+                f"Failed to parse executor information construction output: {output_text}"
+            )
             return None, None
         task_part, plan_part = output_text.split("plan:")
         immediate_task = task_part.replace("immediate task:", "").strip()
         plan = plan_part.strip()
         return immediate_task, plan
-    
+
     def _play(self, mission: str, initial_visual_context: str):
         assert mission is not None, "Mission must be provided to play()."
-        assert initial_visual_context is not None, "Initial visual context must be provided to play()."
+        assert initial_visual_context is not None, (
+            "Initial visual context must be provided to play()."
+        )
         self.mission = mission
         visual_context = initial_visual_context
         note = self.do_supervisor_start(visual_context)
@@ -248,20 +308,41 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
         lessons_learned = "No Lessons Learned Yet."
         immediate_task = self.high_level_plan[0]
         mission_accomplished = False
-        pbar = tqdm(total=self._environment._emulator.max_steps, desc="Overall VLM Agent Progress")
+        pbar = tqdm(
+            total=self._environment._emulator.max_steps,
+            desc="Overall VLM Agent Progress",
+        )
         while not mission_accomplished:
-            log_info(f"Starting execution of immediate task: {immediate_task} with initial_plan: {initial_plan}")
-            execution_report = self.call_executor(high_level_goal=self.mission,
-                                                  task=immediate_task,
-                                                  initial_plan=initial_plan,
-                                                  visual_context=visual_context,
-                                                  exit_conditions=[])
-            actions_and_observations = "\n".join(execution_report.get_execution_summary())
-            prompt = self.executor_return_analysis_prompt.replace("[LESSONS_LEARNED]", lessons_learned).replace("[IMMEDIATE_TASK]", immediate_task).replace("[ACTION_AND_OBSERVATIONS_LOG]", actions_and_observations)
+            log_info(
+                f"Starting execution of immediate task: {immediate_task} with initial_plan: {initial_plan}"
+            )
+            execution_report = self.call_executor(
+                high_level_goal=self.mission,
+                task=immediate_task,
+                initial_plan=initial_plan,
+                visual_context=visual_context,
+                exit_conditions=[],
+            )
+            actions_and_observations = "\n".join(
+                execution_report.get_execution_summary()
+            )
+            prompt = (
+                self.executor_return_analysis_prompt.replace(
+                    "[LESSONS_LEARNED]", lessons_learned
+                )
+                .replace("[IMMEDIATE_TASK]", immediate_task)
+                .replace("[ACTION_AND_OBSERVATIONS_LOG]", actions_and_observations)
+            )
             current_frame = self._environment.get_info()["core"]["current_frame"]
             output_text = self._vlm.infer(prompt, current_frame, max_new_tokens=400)[0]
-            analysis, lessons_learned, visual_context, mission_accomplished = self.parse_executor_return_analysis(output_text)
-            self._report.update_before_loop(executor_analysis=analysis, lessons_learned=lessons_learned, visual_context=visual_context)
+            analysis, lessons_learned, visual_context, mission_accomplished = (
+                self.parse_executor_return_analysis(output_text)
+            )
+            self._report.update_before_loop(
+                executor_analysis=analysis,
+                lessons_learned=lessons_learned,
+                visual_context=visual_context,
+            )
             if visual_context is None:
                 break
             if mission_accomplished:
@@ -271,10 +352,14 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
             if execution_report.exit_code == 1:
                 log_warn("Environment Steps Done")
                 break
-            prompt = self.executor_information_construction_prompt.replace("[LESSONS_LEARNED]", lessons_learned).replace("[VISUAL_CONTEXT]", visual_context)
+            prompt = self.executor_information_construction_prompt.replace(
+                "[LESSONS_LEARNED]", lessons_learned
+            ).replace("[VISUAL_CONTEXT]", visual_context)
             current_frame = self._environment.get_info()["core"]["current_frame"]
             output_text = self._vlm.infer(prompt, current_frame, max_new_tokens=300)[0]
-            immediate_task, initial_plan = self.parse_executor_information_construction(output_text)
+            immediate_task, initial_plan = self.parse_executor_information_construction(
+                output_text
+            )
             if immediate_task is None or initial_plan is None:
                 break
             pbar.update(1)
@@ -283,34 +368,261 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
 
 class EQASupervisor(Supervisor):
     REQUIRED_EXECUTOR = EQAExecutor
-    REQUIRED_REPORT = SupervisorReport
+    REQUIRED_REPORT = EQASupervisorReport
+
+    # Prompts for EQA Supervisor
+    scene_description_prompt = """
+    You are playing [GAME] and need to answer the question: [QUESTION].
+    Given the current screen state with context [VISUAL_CONTEXT], describe what you know and what you don't know about your current situation.
+    Focus on information that would be relevant to answering the question.
+    Answer in the following format:
+    Known Information: What you can observe or infer from the current screen.
+    Unknown Information: What you still need to discover to answer the question.
+    """
+
+    planning_prompt = """
+    You are playing [GAME] and need to answer the question: [QUESTION].
+    Based on your current understanding:
+    Known Information: [KNOWN_INFO]
+    Unknown Information: [UNKNOWN_INFO]
+    
+    Create a plan to answer this question by declaring what you need to track over time.
+    Answer in the following format:
+    To Track: What specific items, information, or changes you need to track to answer the question.
+    High Level Plan: A multi-step plan for gathering the needed information.
+    """
+
+    task_planning_prompt = """
+    You are playing [GAME] and need to answer the question: [QUESTION].
+    You are tracking: [TO_TRACK]
+    Your high level plan is: [HIGH_LEVEL_PLAN]
+    You have collected these notes so far: [COLLECTED_NOTES]
+    Current visual context: [VISUAL_CONTEXT]
+    
+    Based on this, plan a simple immediate task that can be achieved with 3-5 actions to gather more relevant information.
+    Answer in the following format:
+    Immediate Task: A short, directly actionable task to gather specific information.
+    Plan: Brief plan for achieving this immediate task.
+    """
+
+    executor_analysis_prompt = """
+    You are playing [GAME] and need to answer the question: [QUESTION].
+    The executor was given the task: [TASK]
+    Initial visual context was: [INITIAL_VISUAL_CONTEXT]
+    
+    Execution steps:
+    [EXECUTION_SUMMARY]
+    
+    Final visual context: [FINAL_VISUAL_CONTEXT]
+    Notes from executor: [EXECUTOR_NOTES]
+    
+    Analyze what happened and provide:
+    Summary of Final State: Brief description of what the screen shows now.
+    Summary of Actions: What happened during the execution.
+    Task Achieved: Yes/No - whether the immediate task was accomplished.
+    Next Immediate Task: What should be done next, or "DONE" if the question can be answered.
+    """
+
+    termination_prompt = """
+    You are playing [GAME] and need to answer the question: [QUESTION].
+    You have been tracking: [TO_TRACK]
+    You have collected these notes during your exploration: [COLLECTED_NOTES]
+    
+    Based on all the information gathered, decide if you can answer the question now.
+    Answer in the following format:
+    Can Answer: Yes/No
+    Answer: [If Yes, provide the answer to the question. If No, "Still need more information"]
+    Reasoning: Brief explanation of your decision.
+    """
 
     def __init__(self, **kwargs):
+        game = kwargs.get("game", "")
+        # Replace game placeholder in prompts
+        self.scene_description_prompt = self.scene_description_prompt.replace(
+            "[GAME]", game
+        )
+        self.planning_prompt = self.planning_prompt.replace("[GAME]", game)
+        self.task_planning_prompt = self.task_planning_prompt.replace("[GAME]", game)
+        self.executor_analysis_prompt = self.executor_analysis_prompt.replace(
+            "[GAME]", game
+        )
+        self.termination_prompt = self.termination_prompt.replace("[GAME]", game)
         super().__init__(**kwargs)
 
-    def _play(self, question=str, initial_visual_context=str):
+    def _create_report(self, **play_kwargs):
+        return EQASupervisorReport(parameters=self._parameters)
+
+    def _play(self, **kwargs):
         """
-        Step 1: Describe the scene and understand where you are. What do you know (e.g. location), what do you not know. 
-Step 2: Make a plan for answering the question. Declare what it should track over time. 
-Then start loop. 
-Step 3: Given the plan and the state of the screen. Plan a simple task that can be achieved by composing just a few actions together. It should be not more than like 5. 
-Step 4: Executor call
-Step 5: Look through the executor report to understand what actually happened. 
-	Given:
-		Task:
-		Initial Visual Context:
-			Step: Action taken, change description, 
-		Final Screen:
-		Notes from just the executor: 
-	Describe:
-		Summary of final state of the screen: 
-		Summary of what happened in actions: 
-		Whether the task was achieved: 
-		Next Immediate Task: 			
-Step 6: Collect the executor notes into its own. Then:
-	Summarize existing notes for the answer: 
-	Decide whether to terminate
-If not terminating, go back to step 3 loop. 
+        Implementation of EQASupervisor play loop following the outlined steps.
         """
-        # TODO: implement EQASupervisor play loop
-        pass
+        question = kwargs.get("question", "")
+        initial_visual_context = kwargs.get("initial_visual_context", "")
+
+        self.question = question
+        self.current_visual_context = initial_visual_context
+        self.collected_notes = []
+        self.to_track = ""
+        self.high_level_plan = ""
+
+        # Step 1: Describe the scene and understand where you are
+        current_frame = self._environment.get_info()["core"]["current_frame"]
+        prompt = self.scene_description_prompt.replace("[QUESTION]", question)
+        prompt = prompt.replace("[VISUAL_CONTEXT]", initial_visual_context)
+
+        response = self._vlm.infer(prompt, current_frame, max_new_tokens=200)[0]
+        log_info(f"EQA Supervisor scene description VLM response: {response}")
+
+        known_info = "No known information"
+        unknown_info = "No unknown information"
+
+        if "Known Information:" in response and "Unknown Information:" in response:
+            parts = response.split("Unknown Information:")
+            known_info = parts[0].replace("Known Information:", "").strip()
+            unknown_info = parts[1].strip()
+
+        # Step 2: Make a plan for answering the question
+        prompt = self.planning_prompt.replace("[QUESTION]", question)
+        prompt = prompt.replace("[KNOWN_INFO]", known_info)
+        prompt = prompt.replace("[UNKNOWN_INFO]", unknown_info)
+
+        response = self._vlm.infer(prompt, current_frame, max_new_tokens=200)[0]
+        log_info(f"EQA Supervisor planning VLM response: {response}")
+
+        if "To Track:" in response and "High Level Plan:" in response:
+            parts = response.split("High Level Plan:")
+            self.to_track = parts[0].replace("To Track:", "").strip()
+            self.high_level_plan = parts[1].strip()
+
+        # Main loop
+        max_iterations = 10  # Prevent infinite loops
+        iteration = 0
+
+        while iteration < max_iterations:
+            iteration += 1
+
+            # Step 3: Plan a simple task
+            collected_notes_str = (
+                "\n".join(self.collected_notes)
+                if self.collected_notes
+                else "No notes collected yet."
+            )
+
+            prompt = self.task_planning_prompt.replace("[QUESTION]", question)
+            prompt = prompt.replace("[TO_TRACK]", self.to_track)
+            prompt = prompt.replace("[HIGH_LEVEL_PLAN]", self.high_level_plan)
+            prompt = prompt.replace("[COLLECTED_NOTES]", collected_notes_str)
+            prompt = prompt.replace("[VISUAL_CONTEXT]", self.current_visual_context)
+
+            current_frame = self._environment.get_info()["core"]["current_frame"]
+            response = self._vlm.infer(prompt, current_frame, max_new_tokens=200)[0]
+            log_info(f"EQA Supervisor task planning VLM response: {response}")
+
+            immediate_task = "Explore the area"
+            task_plan = "Look around to gather information"
+
+            if "Immediate Task:" in response and "Plan:" in response:
+                parts = response.split("Plan:")
+                immediate_task = parts[0].replace("Immediate Task:", "").strip()
+                task_plan = parts[1].strip()
+
+            # Step 4: Executor call
+            execution_report = self.call_executor(
+                test_question=question,
+                track_items=self.to_track,
+                task=immediate_task,
+                visual_context=self.current_visual_context,
+            )
+
+            # Step 5: Analyze executor results
+            execution_summary = "\n".join(execution_report.get_execution_summary())
+            final_visual_context = (
+                execution_report.visual_contexts[-1]
+                if execution_report.visual_contexts
+                else self.current_visual_context
+            )
+
+            # Extract relevant info from step summaries
+            executor_notes = []
+            for step_summary in execution_report.step_summaries:
+                if len(step_summary) >= 4:
+                    action_str, observed_change, new_context, relevant_info = (
+                        step_summary
+                    )
+                    if relevant_info and relevant_info != "None":
+                        executor_notes.append(relevant_info)
+
+            executor_notes_str = (
+                "\n".join(executor_notes)
+                if executor_notes
+                else "No relevant information collected"
+            )
+
+            prompt = self.executor_analysis_prompt.replace("[QUESTION]", question)
+            prompt = prompt.replace("[TASK]", immediate_task)
+            prompt = prompt.replace(
+                "[INITIAL_VISUAL_CONTEXT]", self.current_visual_context
+            )
+            prompt = prompt.replace("[EXECUTION_SUMMARY]", execution_summary)
+            prompt = prompt.replace("[FINAL_VISUAL_CONTEXT]", final_visual_context)
+            prompt = prompt.replace("[EXECUTOR_NOTES]", executor_notes_str)
+
+            current_frame = self._environment.get_info()["core"]["current_frame"]
+            response = self._vlm.infer(prompt, current_frame, max_new_tokens=300)[0]
+            log_info(f"EQA Supervisor executor analysis VLM response: {response}")
+
+            # Parse analysis response
+            final_state_summary = "No summary available"
+            actions_summary = "No actions summary"
+            task_achieved = "No"
+            next_immediate_task = "Explore more"
+
+            if "Summary of Final State:" in response:
+                parts = response.split("Summary of Actions:")
+                final_state_summary = (
+                    parts[0].replace("Summary of Final State:", "").strip()
+                )
+                if len(parts) > 1:
+                    actions_parts = parts[1].split("Task Achieved:")
+                    actions_summary = actions_parts[0].strip()
+                    if len(actions_parts) > 1:
+                        task_parts = actions_parts[1].split("Next Immediate Task:")
+                        task_achieved = task_parts[0].strip()
+                        if len(task_parts) > 1:
+                            next_immediate_task = task_parts[1].strip()
+
+            # Step 6: Collect notes and decide termination
+            self.collected_notes.extend(executor_notes)
+            self.current_visual_context = final_visual_context
+
+            # Check if we should continue
+            if next_immediate_task == "DONE" or "DONE" in next_immediate_task.upper():
+                break
+
+            # Also check termination condition
+            prompt = self.termination_prompt.replace("[QUESTION]", question)
+            prompt = prompt.replace("[TO_TRACK]", self.to_track)
+            prompt = prompt.replace(
+                "[COLLECTED_NOTES]", "\n".join(self.collected_notes)
+            )
+
+            response = self._vlm.infer(prompt, current_frame, max_new_tokens=200)[0]
+            log_info(f"EQA Supervisor termination VLM response: {response}")
+
+            if "Can Answer:" in response and "Yes" in response:
+                # We can answer the question
+                answer_part = (
+                    response.split("Answer:")[1].split("Reasoning:")[0].strip()
+                )
+                self.final_answer = answer_part
+                break
+
+        # Log final state
+        self._report.log_final_state(
+            question=question,
+            to_track=self.to_track,
+            high_level_plan=self.high_level_plan,
+            collected_notes=self.collected_notes,
+            final_answer=getattr(self, "final_answer", "Could not determine answer"),
+            final_visual_context=self.current_visual_context,
+        )
