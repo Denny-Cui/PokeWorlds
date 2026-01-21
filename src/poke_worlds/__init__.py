@@ -1,10 +1,10 @@
 """
-Documentation for the <img src="https://dhananjayashok.github.io/PokeWorlds/assets/logo_tilt.png" width="70px"> package. 
+Documentation for the <img src="https://dhananjayashok.github.io/PokeWorlds/assets/logo_tilt.png" width="70px"> package.
 
 ### Navigating the Documentation
-This page and some of the nested links will look a bit empty, but rest assured, the documentation is there. You just need to look for it a little. 
+This page and some of the nested links will look a bit empty, but rest assured, the documentation is there. You just need to look for it a little.
 There are two ways to navigate the documentation:
-1. **Sidebar Navigation**: Use the sidebar on the left to explore different modules. Expand the sections to find detailed documentation. 
+1. **Sidebar Navigation**: Use the sidebar on the left to explore different modules. Expand the sections to find detailed documentation.
 2. **Search Functionality**: Use the search bar at the top of the sidebar to quickly find specific classes, methods, or keywords within the documentation.
 
 ### Package Structure
@@ -15,7 +15,7 @@ There are two ways to navigate the documentation:
     - Change how the game is run (e.g. automatically skip dialogues and cutscenes, etc).
 * `interface` is where we create the actions that agents can take in the game (e.g. `Seek(looking for prof oak, npc)` that tries to locate an NPC on the screen, determine which one is prof oak, move towards him and then interact with him, all in one command). The submodule also has the Gym API integration which allows us to train RL agents on top of the game. Look here if you want to:
     - Create new high level actions, which compose multiple button presses into a single action. These actions can use VLMs to help guide their behavior (e.g. using VLMs to determine which grid cell of the screen contains the target object to interact with).
-    - Create new environments or test scenarios, with different observation spaces, reward functions, and termination conditions for the game. 
+    - Create new environments or test scenarios, with different observation spaces, reward functions, and termination conditions for the game.
 * `execution` contains the highest level APIs in this project. This allows users (or LMs) to spin up a VLM agent that tries to use the specified high level actions to execute a short, arbitrary task in a given game environment. Look here if you want to:
     - Use a (V)LM to construct plans for a high level goal in the game (e.g. Clear the first gym), analyze a game playthrough to determine its progress towards this goal and then adjust its strategy accordingly.
     - Prompt engineer VLM agents to better use the existing high level actions
@@ -34,6 +34,7 @@ There are two ways to navigate the documentation:
 * `Executor`: Class that manages the execution of high-level tasks in the game environment using VLM agents.
 
 """
+
 from poke_worlds.emulation.registry import AVAILABLE_GAMES, get_emulator
 from poke_worlds.interface.registry import get_environment
 from poke_worlds.execution.executor import Executor

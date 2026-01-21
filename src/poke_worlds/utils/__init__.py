@@ -9,6 +9,7 @@ from PIL import Image
 import os
 import matplotlib.pyplot as plt
 
+
 def is_none_str(s) -> bool:
     """
     Checks if a string is None or represents a null value.
@@ -29,17 +30,19 @@ def is_none_str(s) -> bool:
     return isna(s)
 
 
-def nested_dict_to_str(nested_dict: dict, *, indent: int=0, indent_char: str="  ") -> str:
+def nested_dict_to_str(
+    nested_dict: dict, *, indent: int = 0, indent_char: str = "  "
+) -> str:
     """
     Converts a nested dictionary to a formatted string representation.
-    Example Usage: 
+    Example Usage:
     ```python
     nested_dict={2: 4, 3: {4: 5, 6: {7: 8}}}
     print(nested_dict_to_str(nested_dict))
     2: 4
-    3: Dict: 
+    3: Dict:
       4: 5
-      6: Dict: 
+      6: Dict:
         7: 8
     ```
 
@@ -55,10 +58,13 @@ def nested_dict_to_str(nested_dict: dict, *, indent: int=0, indent_char: str="  
     for key, value in nested_dict.items():
         result += indent_char * indent + str(key) + ": "
         if isinstance(value, dict):
-            result += "Dict: \n" + nested_dict_to_str(value, indent + 1, indent_char=indent_char)
+            result += "Dict: \n" + nested_dict_to_str(
+                value, indent + 1, indent_char=indent_char
+            )
         else:
             result += str(value) + "\n"
     return result
+
 
 def verify_parameters(parameters: dict):
     """
@@ -70,7 +76,7 @@ def verify_parameters(parameters: dict):
         raise ValueError("Parameters must be a dictionary.")
     if len(parameters) == 0:
         raise ValueError("Parameters dictionary cannot be empty.")
-    
+
 
 def get_lowest_level_subclass(class_list: List[Type]) -> Type:
     """
@@ -85,7 +91,9 @@ def get_lowest_level_subclass(class_list: List[Type]) -> Type:
     return lowest_level_tracker
 
 
-def show_frames(frames: np.ndarray, titles: List[str]=None, save=False, parameters: dict=None):
+def show_frames(
+    frames: np.ndarray, titles: List[str] = None, save=False, parameters: dict = None
+):
     """
     Plots each frame as an image in matplotlib. If save is true, will save each frame as title.png in the frame_saves/ directory.
     titles length must be equal to frame length if specified.
@@ -95,12 +103,15 @@ def show_frames(frames: np.ndarray, titles: List[str]=None, save=False, paramete
         titles = [titles]
     if save:
         if titles is None:
-            log_error(f"Cannot save frames without titles specified.", parameters)    
+            log_error(f"Cannot save frames without titles specified.", parameters)
     if titles is not None:
         if len(titles) == 1 and len(frames) > 1:
             titles = [titles[0] + f"_{i}" for i in range(len(frames))]
     if titles is not None and len(titles) != len(frames):
-        log_error(f"Length of titles {len(titles)} does not match number of frames {len(frames)}", parameters)
+        log_error(
+            f"Length of titles {len(titles)} does not match number of frames {len(frames)}",
+            parameters,
+        )
     save_dir = "frame_saves/"
     os.makedirs(save_dir, exist_ok=True)
     for i in range(len(frames)):
@@ -108,7 +119,9 @@ def show_frames(frames: np.ndarray, titles: List[str]=None, save=False, paramete
         if titles is not None:
             plt.title(titles[i])
         if save:
-            filename = os.path.join(save_dir, titles[i].replace(" ", "_").replace("/", "_") + ".png")
-            plt.imsave(filename, frames[i][:, :, 0], cmap='gray')
+            filename = os.path.join(
+                save_dir, titles[i].replace(" ", "_").replace("/", "_") + ".png"
+            )
+            plt.imsave(filename, frames[i][:, :, 0], cmap="gray")
         else:
             plt.show()

@@ -3,6 +3,7 @@ from poke_worlds.execution.report import ExecutionReport, SimpleReport, EQARepor
 from poke_worlds.emulation.pokemon.trackers import PokemonOCRTracker
 from typing import Dict, Any
 
+
 class SimplePokemonExecutionReport(SimpleReport):
     REQUIRED_STATE_TRACKER = PokemonOCRTracker
 
@@ -18,11 +19,15 @@ class SimplePokemonExecutionReport(SimpleReport):
                     all_ocrs[key].append(ocr_text_dict[key])
             for key in all_ocrs:
                 all_ocrs[key] = _ocr_merge(all_ocrs[key])
-            return "OCR Results: " + "\n".join([f"{k}: {v}" for k, v in all_ocrs.items()])
+            return "OCR Results: " + "\n".join(
+                [f"{k}: {v}" for k, v in all_ocrs.items()]
+            )
         else:
             return ""
-        
+
+
 class EQAPokemonExecutionReport(EQAReport):
     REQUIRED_STATE_TRACKER = PokemonOCRTracker
+
     def state_info_to_str(self, state_info):
         return SimplePokemonExecutionReport.state_info_to_str(self, state_info)

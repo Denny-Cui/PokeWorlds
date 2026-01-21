@@ -15,12 +15,14 @@ from PIL import Image
 HARD_MAX_STEPS = 20
 """ The hard maximum number of steps we'll let agents take in a sequence """
 
+
 def frame_changed(past: np.ndarray, preset: np.ndarray, epsilon=0.01):
-    return np.abs(past -preset).mean() > epsilon 
+    return np.abs(past - preset).mean() > epsilon
+
 
 def _plot(past: np.ndarray, current: np.ndarray):
     # plot both side by side for debug
-    fig, axs = plt.subplots(1,2)
+    fig, axs = plt.subplots(1, 2)
     axs[0].imshow(past)
     axs[1].imshow(current)
     plt.show()
@@ -30,7 +32,7 @@ class PassDialogueAction(SingleHighLevelAction):
     """
     Skips dialogue by pressing the B button.
 
-    Is Valid When: 
+    Is Valid When:
     - In Dialogue State
 
     Action Success Interpretation:
@@ -38,6 +40,7 @@ class PassDialogueAction(SingleHighLevelAction):
     - 0: Frame changed and no longer in dialogue state
     - 1: Frame changed but still in dialogue state
     """
+
     REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
 
@@ -45,15 +48,23 @@ class PassDialogueAction(SingleHighLevelAction):
         """
         Just checks if the agent is in dialogue state.
         """
-        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.IN_DIALOGUE
-    
+        return (
+            self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
+            == AgentState.IN_DIALOGUE
+        )
+
     def _execute(self):
         frames, done = self._emulator.step(LowLevelActions.PRESS_BUTTON_B)
         report = self._state_tracker.report()
         if not report["core"]["frame_changed"]:
             action_success = -1
         else:
-            action_success = 0 if self._emulator.state_parser.get_agent_state(frames[-1]) != AgentState.IN_DIALOGUE else 1
+            action_success = (
+                0
+                if self._emulator.state_parser.get_agent_state(frames[-1])
+                != AgentState.IN_DIALOGUE
+                else 1
+            )
         return [report], action_success
 
 
@@ -61,7 +72,7 @@ class InteractAction(SingleHighLevelAction):
     """
     Presses the A button to interact with an object in front of the agent.
 
-    Is Valid When: 
+    Is Valid When:
     - In Free Roam State
 
     Action Success Interpretation:
@@ -69,14 +80,17 @@ class InteractAction(SingleHighLevelAction):
     - 1: Agent not in free roam state
     """
 
-    REQUIRED_STATE_PARSER = PokemonStateParser    
+    REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
 
     def is_valid(self, **kwargs):
         """
         Just checks if the agent is in free roam state.
         """
-        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
+        return (
+            self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
+            == AgentState.FREE_ROAM
+        )
 
     def _execute(self):
         current_frame = self._emulator.get_current_frame()
@@ -85,7 +99,10 @@ class InteractAction(SingleHighLevelAction):
         # Check if the frames have changed. Be strict and require all to not permit jittering screens.
         prev_frames = []
         for frame in frames:
-            if self._emulator.state_parser.get_agent_state(frame) != AgentState.FREE_ROAM: # something happened lol
+            if (
+                self._emulator.state_parser.get_agent_state(frame)
+                != AgentState.FREE_ROAM
+            ):  # something happened lol
                 action_success = 1
                 break
             for past_frame in prev_frames:
@@ -94,34 +111,41 @@ class InteractAction(SingleHighLevelAction):
                     break
             if action_success != 0:
                 break
-            prev_frames.append(frame)        
+            prev_frames.append(frame)
         if action_success == 0:
-            action_success = -1 # I guess? For some reason the previous thing doesn't catch same frames
-        return [self._state_tracker.report()], action_success # 0 means something maybe happened. 1 means def happened.
-    
+            action_success = (
+                -1
+            )  # I guess? For some reason the previous thing doesn't catch same frames
+        return [
+            self._state_tracker.report()
+        ], action_success  # 0 means something maybe happened. 1 means def happened.
+
 
 class BaseMovementAction(HighLevelAction, ABC):
     """
     Base class for movement actions in the Pokemon environment.
     Has utility methods for moving in directions.
 
-    Is Valid When: 
+    Is Valid When:
     - In Free Roam State
 
     Action Success Interpretation:
     - -1: Frame did not change, even on the first step
     - 0: Finished all steps
     - 1: Took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter). This usually means we ran into an obstacle.
-    - 2: Took some steps, but agent state changed from free roam. This often means we entered a cutscene or battle. 
+    - 2: Took some steps, but agent state changed from free roam. This often means we entered a cutscene or battle.
 
     Action Returns:
     - `n_steps_taken` (`int`): Number of steps actually taken
-    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle. 
+    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.
     """
+
     REQUIRED_STATE_TRACKER = CorePokemonTracker
     REQUIRED_STATE_PARSER = PokemonStateParser
 
-    def judge_movement(self, previous_frame: np.ndarray, current_frame: np.ndarray) -> Tuple[bool, bool]:
+    def judge_movement(
+        self, previous_frame: np.ndarray, current_frame: np.ndarray
+    ) -> Tuple[bool, bool]:
         """
         Judges whether movement has occurred between two frames.
 
@@ -131,50 +155,69 @@ class BaseMovementAction(HighLevelAction, ABC):
         Returns:
             Tuple[bool, bool]: A tuple containing:
             - bool: True if movement has occurred, False otherwise.
-            - bool: True if the player has not moved, but has rotated.  
+            - bool: True if the player has not moved, but has rotated.
         """
         # if the full screen hasn't changed at all, player has neither moved nor rotated
         if not frame_changed(previous_frame, current_frame):
             return False, False
-        # split the screen into quadrants and check which quadrants have changed. If any of them stayed the same, the player has not moved, but may have rotated. 
+        # split the screen into quadrants and check which quadrants have changed. If any of them stayed the same, the player has not moved, but may have rotated.
         flag = False
-        for quadrant in ["screen_quadrant_1", "screen_quadrant_2", "screen_quadrant_3", "screen_quadrant_4"]:
-            prev_quad = self._emulator.state_parser.capture_named_region(previous_frame, quadrant)
-            curr_quad = self._emulator.state_parser.capture_named_region(current_frame, quadrant)
+        for quadrant in [
+            "screen_quadrant_1",
+            "screen_quadrant_2",
+            "screen_quadrant_3",
+            "screen_quadrant_4",
+        ]:
+            prev_quad = self._emulator.state_parser.capture_named_region(
+                previous_frame, quadrant
+            )
+            curr_quad = self._emulator.state_parser.capture_named_region(
+                current_frame, quadrant
+            )
             prev_uniform = prev_quad.max() == prev_quad.min()
             curr_uniform = curr_quad.max() == curr_quad.min()
-            if not frame_changed(prev_quad, curr_quad) and not prev_uniform and not curr_uniform: # then screen isn't just black, but also hasn't changed.
+            if (
+                not frame_changed(prev_quad, curr_quad)
+                and not prev_uniform
+                and not curr_uniform
+            ):  # then screen isn't just black, but also hasn't changed.
                 flag = True
                 break
-        if flag: # then some frame stayed the same, so no movement, but maybe rotation.
-            prev_player_cell = self._emulator.state_parser.capture_grid_cells(previous_frame)[(0, 0)]
-            curr_player_cell = self._emulator.state_parser.capture_grid_cells(current_frame)[(0, 0)]
+        if flag:  # then some frame stayed the same, so no movement, but maybe rotation.
+            prev_player_cell = self._emulator.state_parser.capture_grid_cells(
+                previous_frame
+            )[(0, 0)]
+            curr_player_cell = self._emulator.state_parser.capture_grid_cells(
+                current_frame
+            )[(0, 0)]
             if frame_changed(prev_player_cell, curr_player_cell):
                 return False, True
             else:
                 return False, False
         else:
             return True, None
-    
+
     def move(self, direction: str, steps: int) -> Tuple[np.ndarray, int]:
         """
         Move in a given direction for a number of steps.
-        
+
         :param direction: One of "up", "down", "left", "right"
         :type direction: str
         :param steps: Number of steps to move in that direction
         :type steps: int
         :return:  A tuple containing:
-                
+
                 - A list of state tracker reports after each low level action executed. Length is equal to the number of low level actions executed.
-                
+
                 - An integer action success status
         :rtype: Tuple[ndarray[_AnyShape, dtype[Any]], int]
         """
-        action_dict = {"right": LowLevelActions.PRESS_ARROW_RIGHT, 
-                       "down": LowLevelActions.PRESS_ARROW_DOWN, 
-                       "up": LowLevelActions.PRESS_ARROW_UP,
-                       "left": LowLevelActions.PRESS_ARROW_LEFT}
+        action_dict = {
+            "right": LowLevelActions.PRESS_ARROW_RIGHT,
+            "down": LowLevelActions.PRESS_ARROW_DOWN,
+            "up": LowLevelActions.PRESS_ARROW_UP,
+            "left": LowLevelActions.PRESS_ARROW_LEFT,
+        }
         if direction not in action_dict.keys():
             log_error(f"Got invalid direction to move {direction}", self._parameters)
         action = action_dict[direction]
@@ -182,11 +225,13 @@ class BaseMovementAction(HighLevelAction, ABC):
         # exit status 0 -> finished steps
         # 1 -> took some steps, but not all, and then frame stopped changing OR the frame starts oscillating (trying to check for jitter)
         # 2 -> took some steps, but agent state changed from free roam
-        # -1 -> frame didn't change, even on the first step 
+        # -1 -> frame didn't change, even on the first step
         action_success = -1
         transition_state_dicts = []
         transition_frames = []
-        previous_frame = self._emulator.get_current_frame() # Do NOT get the state tracker frame, as it may have a grid on it. 
+        previous_frame = (
+            self._emulator.get_current_frame()
+        )  # Do NOT get the state tracker frame, as it may have a grid on it.
         n_step = 0
         n_successful_steps = 0
         has_rotated = None
@@ -195,19 +240,25 @@ class BaseMovementAction(HighLevelAction, ABC):
             frames, done = self._emulator.step(action)
             transition_state_dicts.append(self._state_tracker.report())
             transition_frames.extend(frames)
-            current_frame = self._emulator.get_current_frame() # Do NOT use the emulator frame, as it may have a grid on it.
+            current_frame = (
+                self._emulator.get_current_frame()
+            )  # Do NOT use the emulator frame, as it may have a grid on it.
             if done:
                 break
-            # check if frames changed. If not, break out. 
+            # check if frames changed. If not, break out.
             # We check all frames in sequence to try and catch oscillations. But nothing will catch 1 step into wall in areas like this
-            player_moved, player_rotated = self.judge_movement(previous_frame, current_frame)
+            player_moved, player_rotated = self.judge_movement(
+                previous_frame, current_frame
+            )
             if player_rotated == True:
                 has_rotated = True
             if not player_moved and not player_rotated:
                 break
             if player_moved:
-                n_successful_steps += 1 # don't count rotation as a step
-            agent_state = self._emulator.state_parser.get_agent_state(self._emulator.get_current_frame())
+                n_successful_steps += 1  # don't count rotation as a step
+            agent_state = self._emulator.state_parser.get_agent_state(
+                self._emulator.get_current_frame()
+            )
             if agent_state != AgentState.FREE_ROAM:
                 break
             n_step += 1
@@ -221,21 +272,27 @@ class BaseMovementAction(HighLevelAction, ABC):
                 action_success = 0
             else:
                 action_success = 1
-        transition_state_dicts[-1]["core"]["action_return"] = {"n_steps_taken": n_successful_steps, "rotated": has_rotated}
-        return transition_state_dicts, action_success 
+        transition_state_dicts[-1]["core"]["action_return"] = {
+            "n_steps_taken": n_successful_steps,
+            "rotated": has_rotated,
+        }
+        return transition_state_dicts, action_success
 
     def is_valid(self, **kwargs):
         """
         Just checks if the agent is in free roam state.
         """
-        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
+        return (
+            self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
+            == AgentState.FREE_ROAM
+        )
 
 
 class MoveStepsAction(BaseMovementAction):
     """
     Moves the agent in a specified cardinal direction for a specified number of steps.
 
-    Is Valid When: 
+    Is Valid When:
     - In Free Roam State
     Action Success Interpretation:
     - -1: Frame did not change, even on the first step
@@ -245,7 +302,7 @@ class MoveStepsAction(BaseMovementAction):
 
     Action Returns:
     - `n_steps_taken` (`int`): Number of steps actually taken
-    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.         
+    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.
     """
 
     def get_action_space(self):
@@ -258,7 +315,12 @@ class MoveStepsAction(BaseMovementAction):
             Box: A Box space with shape (2,) and values ranging from -HARD_MAX_STEPS//2 to HARD_MAX_STEPS//2.
 
         """
-        return Box(low=-HARD_MAX_STEPS//2, high=HARD_MAX_STEPS//2, shape=(2,), dtype=np.int8)
+        return Box(
+            low=-HARD_MAX_STEPS // 2,
+            high=HARD_MAX_STEPS // 2,
+            shape=(2,),
+            dtype=np.int8,
+        )
 
     def space_to_parameters(self, space_action):
         direction = None
@@ -268,7 +330,7 @@ class MoveStepsAction(BaseMovementAction):
             direction = "up"
         if space_action[0] < 0:
             if direction is not None:
-                log_error(f"Weird space vector: {space_action}", self._parameters)            
+                log_error(f"Weird space vector: {space_action}", self._parameters)
             direction = "down"
         if space_action[1] > 0:
             if direction is not None:
@@ -282,10 +344,9 @@ class MoveStepsAction(BaseMovementAction):
             log_error(f"Weird space vector: {space_action}", self._parameters)
         steps = abs(int(space_action.sum()))
         return {"direction": direction, "steps": steps}
-        
 
     def parameters_to_space(self, direction: str, steps: int):
-        move_vec = np.zeros(2) # x, y
+        move_vec = np.zeros(2)  # x, y
         if direction == "up":
             move_vec[1] = 1
         elif direction == "right":
@@ -297,15 +358,17 @@ class MoveStepsAction(BaseMovementAction):
         else:
             log_error(f"Unrecognized direction {direction}", self._parameters)
         if steps <= 0:
-            log_error(f"Bro. What you trying here. Don't step weirdly: {steps}", self._parameters)
+            log_error(
+                f"Bro. What you trying here. Don't step weirdly: {steps}",
+                self._parameters,
+            )
         move_vec *= steps
         return move_vec
-
 
     def _execute(self, direction, steps):
         transition_states, status = self.move(direction=direction, steps=steps)
         return transition_states, status
-    
+
     def is_valid(self, **kwargs):
         direction = kwargs.get("direction")
         step = kwargs.get("step")
@@ -317,13 +380,13 @@ class MoveStepsAction(BaseMovementAction):
             if step <= 0:
                 return False
         return super().is_valid(**kwargs)
-        
+
 
 class MoveGridAction(BaseMovementAction):
     """
-    Moves the agent on both axes. Will always try to move right first and then up. 
+    Moves the agent on both axes. Will always try to move right first and then up.
 
-    Is Valid When: 
+    Is Valid When:
     - In Free Roam State
     Action Success Interpretation:
     - -1: Frame did not change, even on the first step
@@ -333,7 +396,7 @@ class MoveGridAction(BaseMovementAction):
 
     Action Returns:
     - `n_steps_taken` (`int`): Number of steps actually taken
-    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle. 
+    - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.
     """
 
     def get_action_space(self):
@@ -346,42 +409,52 @@ class MoveGridAction(BaseMovementAction):
             Box: A Box space with shape (2,) and values ranging from -HARD_MAX_STEPS//2 to HARD_MAX_STEPS//2.
 
         """
-        return Box(low=-HARD_MAX_STEPS//2, high=HARD_MAX_STEPS//2, shape=(2,), dtype=np.int8)
+        return Box(
+            low=-HARD_MAX_STEPS // 2,
+            high=HARD_MAX_STEPS // 2,
+            shape=(2,),
+            dtype=np.int8,
+        )
 
     def space_to_parameters(self, space_action):
         right_action = space_action[0]
         up_action = space_action[1]
         return {"x_steps": right_action, "y_steps": up_action}
-        
 
     def parameters_to_space(self, x_steps, y_steps):
-        move_vec = np.zeros(2) # x, y
+        move_vec = np.zeros(2)  # x, y
         move_vec[0] = x_steps
         move_vec[1] = y_steps
         return move_vec
 
-
     def _execute(self, x_steps, y_steps):
-        x_direction = "right" if x_steps >=0 else "left"
+        x_direction = "right" if x_steps >= 0 else "left"
         y_direction = "up" if y_steps >= 0 else "down"
         if x_steps != 0:
-            transition_states, status = self.move(direction=x_direction, steps=abs(x_steps))
+            transition_states, status = self.move(
+                direction=x_direction, steps=abs(x_steps)
+            )
             if status != 0:
                 return transition_states, status
         else:
             transition_states = []
         if y_steps != 0:
-            more_transition_states, status = self.move(direction=y_direction, steps=abs(y_steps))
+            more_transition_states, status = self.move(
+                direction=y_direction, steps=abs(y_steps)
+            )
             transition_states.extend(more_transition_states)
         try:
             status is not None
         except NameError:
-            log_warn(f"Weird case where both x_steps and y_steps are 0 in MoveGridAction or something. {x_steps}, {y_steps}", self._parameters)
+            log_warn(
+                f"Weird case where both x_steps and y_steps are 0 in MoveGridAction or something. {x_steps}, {y_steps}",
+                self._parameters,
+            )
             transition_states = [self._state_tracker.report()]
             status = -1
         return transition_states, status
-    
-    def is_valid(self, x_steps: int=None, y_steps: int=None):
+
+    def is_valid(self, x_steps: int = None, y_steps: int = None):
         if x_steps is not None and y_steps is not None:
             if not isinstance(x_steps, int) or not isinstance(y_steps, int):
                 return False
@@ -389,29 +462,30 @@ class MoveGridAction(BaseMovementAction):
                 return False
         return super().is_valid()
 
+
 class MenuAction(HighLevelAction):
     """
-    Allows simple navigation and option selection of menus. 
+    Allows simple navigation and option selection of menus.
 
-    Is Valid When: 
+    Is Valid When:
     - In Menu State
 
     Action Success Interpretation:
     - -1: Frame did not change.
-    - 0: Frame changed. 
+    - 0: Frame changed.
     """
 
-    REQUIRED_STATE_PARSER = PokemonStateParser    
+    REQUIRED_STATE_PARSER = PokemonStateParser
     REQUIRED_STATE_TRACKER = CorePokemonTracker
 
     _MENU_ACTION_MAP = {
-            "up": LowLevelActions.PRESS_ARROW_UP,
-            "down": LowLevelActions.PRESS_ARROW_DOWN,
-            "confirm": LowLevelActions.PRESS_BUTTON_A,
-            "left": LowLevelActions.PRESS_ARROW_LEFT,
-            "right": LowLevelActions.PRESS_ARROW_RIGHT,
-            "back": LowLevelActions.PRESS_BUTTON_B,
-            "open": LowLevelActions.PRESS_BUTTON_START # In general, we won't be using this action, but prefer OpenMenuAction instead.
+        "up": LowLevelActions.PRESS_ARROW_UP,
+        "down": LowLevelActions.PRESS_ARROW_DOWN,
+        "confirm": LowLevelActions.PRESS_BUTTON_A,
+        "left": LowLevelActions.PRESS_ARROW_LEFT,
+        "right": LowLevelActions.PRESS_ARROW_RIGHT,
+        "back": LowLevelActions.PRESS_BUTTON_B,
+        "open": LowLevelActions.PRESS_BUTTON_START,  # In general, we won't be using this action, but prefer OpenMenuAction instead.
     }
 
     def is_valid(self, **kwargs):
@@ -430,12 +504,12 @@ class MenuAction(HighLevelAction):
         state = self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
         if menu_action is None:
             return state != AgentState.IN_DIALOGUE
-            #return (state != AgentState.IN_BATTLE) and (state != AgentState.IN_DIALOGUE)
+            # return (state != AgentState.IN_BATTLE) and (state != AgentState.IN_DIALOGUE)
         if menu_action == "open":
             return state == AgentState.FREE_ROAM
         else:
             return state == AgentState.IN_MENU
-            
+
     def get_action_space(self):
         """
         Returns a Discrete space representing menu actions.
@@ -463,29 +537,31 @@ class MenuAction(HighLevelAction):
         else:
             log_error(f"Invalid space action {space_action}")
         return {"menu_action": menu_action}
-    
+
     def _execute(self, menu_action):
         action = self._MENU_ACTION_MAP[menu_action]
         current_frame = self._emulator.get_current_frame()
         frames, done = self._emulator.step(action)
         action_success = 0 if frame_changed(current_frame, frames[-1]) else -1
         return [self._state_tracker.report()], action_success
-        
-                
+
+
 class BattleMenuAction(HighLevelAction):
     """
     Allows navigation of the battle menu.
 
-    Is Valid When: 
+    Is Valid When:
     - In Battle State
 
     Action Success Interpretation:
-    - -1: Navigation Failure. Screen did not end up in expected end state. 
+    - -1: Navigation Failure. Screen did not end up in expected end state.
     - 0: Navigation Success. Screen ended up in expected end state. For run, got away safely.
     - 1: Run Attempt Failed (cannot escape wild pokemon)
     - 2: Run Attempt Failed (cannot escape trainer battle)
     """
+
     _OPTIONS = ["fight", "bag", "pokemon", "run", "progress"]
+
     def is_valid(self, option: str = None):
         if option is not None and option not in self._OPTIONS:
             return False
@@ -495,23 +571,21 @@ class BattleMenuAction(HighLevelAction):
 
     def get_action_space(self):
         return Discrete(len(self._OPTIONS))
-    
+
     def get_all_valid_parameters(self):
         state = self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
         if state != AgentState.IN_BATTLE:
             return []
         return [{"option": option} for option in self._OPTIONS]
-    
+
     def parameters_to_space(self, option: str):
         return self._OPTIONS.index(option)
 
-    
     def space_to_parameters(self, space_action):
         if space_action < 0 or space_action >= len(self._OPTIONS):
             return None
         return {"option": self._OPTIONS[space_action]}
-    
-    
+
     def go_to_battle_menu(self):
         # assumes we are in battle menu or will get there with some B's
         state_reports = []
@@ -524,52 +598,95 @@ class BattleMenuAction(HighLevelAction):
         state_reports = self.go_to_battle_menu()
         for action in low_level_actions:
             self._emulator.step(action)
-        self._emulator.step(LowLevelActions.PRESS_BUTTON_A) # confirm option
+        self._emulator.step(LowLevelActions.PRESS_BUTTON_A)  # confirm option
         return state_reports + [self._state_tracker.report()]
 
-
     def go_to_fight_menu(self):
-        return self.button_sequence([LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_LEFT])
+        return self.button_sequence(
+            [LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_LEFT]
+        )
 
     def go_to_bag_menu(self):
-        return self.button_sequence([LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_LEFT])
+        return self.button_sequence(
+            [LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_LEFT]
+        )
 
     def go_to_pokemon_menu(self):
-        return self.button_sequence([LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_RIGHT])
+        return self.button_sequence(
+            [LowLevelActions.PRESS_ARROW_UP, LowLevelActions.PRESS_ARROW_RIGHT]
+        )
 
     def go_to_run(self):
-        return self.button_sequence([LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_RIGHT])
-    
+        return self.button_sequence(
+            [LowLevelActions.PRESS_ARROW_DOWN, LowLevelActions.PRESS_ARROW_RIGHT]
+        )
+
     def _execute(self, option):
         success = -1
         if option == "fight":
             state_reports = self.go_to_fight_menu()
-            success = 0 if self._emulator.state_parser.is_in_fight_options_menu(self._emulator.get_current_frame()) else -1
+            success = (
+                0
+                if self._emulator.state_parser.is_in_fight_options_menu(
+                    self._emulator.get_current_frame()
+                )
+                else -1
+            )
         elif option == "bag":
             state_reports = self.go_to_bag_menu()
-            success = 0 if self._emulator.state_parser.is_in_fight_bag(self._emulator.get_current_frame()) else -1
+            success = (
+                0
+                if self._emulator.state_parser.is_in_fight_bag(
+                    self._emulator.get_current_frame()
+                )
+                else -1
+            )
         elif option == "pokemon":
             state_reports = self.go_to_pokemon_menu()
-            success = 0 if self._emulator.state_parser.is_in_pokemon_menu(self._emulator.get_current_frame()) else -1
+            success = (
+                0
+                if self._emulator.state_parser.is_in_pokemon_menu(
+                    self._emulator.get_current_frame()
+                )
+                else -1
+            )
         elif option == "run":
             state_reports = self.go_to_run()
             current_frame = self._emulator.get_current_frame()
-            got_away_safely = self._emulator.state_parser.named_region_matches_multi_target(current_frame, "dialogue_box_middle", "got_away_safely")
-            cannot_escape = self._emulator.state_parser.named_region_matches_multi_target(current_frame, "dialogue_box_middle", "cannot_escape")
-            cannot_run_from_trainer = self._emulator.state_parser.named_region_matches_multi_target(current_frame, "dialogue_box_middle", "cannot_run_from_trainer")
+            got_away_safely = (
+                self._emulator.state_parser.named_region_matches_multi_target(
+                    current_frame, "dialogue_box_middle", "got_away_safely"
+                )
+            )
+            cannot_escape = (
+                self._emulator.state_parser.named_region_matches_multi_target(
+                    current_frame, "dialogue_box_middle", "cannot_escape"
+                )
+            )
+            cannot_run_from_trainer = (
+                self._emulator.state_parser.named_region_matches_multi_target(
+                    current_frame, "dialogue_box_middle", "cannot_run_from_trainer"
+                )
+            )
             if got_away_safely:
                 success = 0
-                self._emulator.step(LowLevelActions.PRESS_BUTTON_B) # to clear the dialogue
+                self._emulator.step(
+                    LowLevelActions.PRESS_BUTTON_B
+                )  # to clear the dialogue
             elif cannot_escape:
                 success = 1
-                self._emulator.step(LowLevelActions.PRESS_BUTTON_B) # to clear the dialogue
+                self._emulator.step(
+                    LowLevelActions.PRESS_BUTTON_B
+                )  # to clear the dialogue
             elif cannot_run_from_trainer:
                 success = 2
                 self._emulator.step(LowLevelActions.PRESS_BUTTON_B)
                 state_reports.append(self._state_tracker.report())
-                self._emulator.step(LowLevelActions.PRESS_BUTTON_B) # Twice, to clear the dialogue
+                self._emulator.step(
+                    LowLevelActions.PRESS_BUTTON_B
+                )  # Twice, to clear the dialogue
             else:
-                pass # Should never happen, but might. 
+                pass  # Should never happen, but might.
             state_reports.append(self._state_tracker.report())
             return state_reports, success
         elif option == "progress":
@@ -577,19 +694,19 @@ class BattleMenuAction(HighLevelAction):
             state_reports = self.go_to_battle_menu()
             new_frame = self._emulator.get_current_frame()
             if frame_changed(current_frame, new_frame):
-                success = 0 # valid frame change, screen changed
+                success = 0  # valid frame change, screen changed
             else:
-                success = -1 # uneccesary progress press
+                success = -1  # uneccesary progress press
         else:
-            pass # Will never happen.
+            pass  # Will never happen.
         return state_reports, success
-    
+
 
 class PickAttackAction(HighLevelAction):
     """
     Selects an attack option in the battle fight menu.
 
-    Is Valid When: 
+    Is Valid When:
     - In Battle State AND In Fight Menu
 
     Action Success Interpretation:
@@ -597,23 +714,26 @@ class PickAttackAction(HighLevelAction):
     - 0: Used attack successfully.
     - 1: Tried to use a move with no PP remaining.
     """
+
     def get_action_space(self):
         return Discrete(4)
-    
+
     def is_valid(self, option: int = None):
         option = option - 1
         if option is not None:
-            if option < 0 or option >=4:
-                return False        
-        return self._emulator.state_parser.is_in_fight_options_menu(self._emulator.get_current_frame())
-    
+            if option < 0 or option >= 4:
+                return False
+        return self._emulator.state_parser.is_in_fight_options_menu(
+            self._emulator.get_current_frame()
+        )
+
     def parameters_to_space(self, option: int):
         option = option - 1
         return option
-    
+
     def space_to_parameters(self, space_action):
         return {"option": space_action + 1}
-    
+
     def _execute(self, option: int):
         # assume we are in the attack menu already
         # first go to the top:
@@ -621,26 +741,36 @@ class PickAttackAction(HighLevelAction):
         flag = False
         for _ in range(4):
             self._emulator.step(LowLevelActions.PRESS_ARROW_UP)
-            if self._emulator.state_parser.is_on_top_attack_option(self._emulator.get_current_frame()):
+            if self._emulator.state_parser.is_on_top_attack_option(
+                self._emulator.get_current_frame()
+            ):
                 flag = True
                 break
-        if not flag: # could not get to top. Some error
+        if not flag:  # could not get to top. Some error
             return [self._state_tracker.report()], -1
         # then go down option times
         for time in range(option):
             self._emulator.step(LowLevelActions.PRESS_ARROW_DOWN)
-            if self._emulator.state_parser.is_on_top_attack_option(self._emulator.get_current_frame()):
+            if self._emulator.state_parser.is_on_top_attack_option(
+                self._emulator.get_current_frame()
+            ):
                 # went back to top, means that option was invalid
                 return [self._state_tracker.report()], -1
         state_reports = []
-        self._emulator.step(LowLevelActions.PRESS_BUTTON_A) # confirm option
+        self._emulator.step(LowLevelActions.PRESS_BUTTON_A)  # confirm option
         state_reports.append(self._state_tracker.report())
-        if self._emulator.state_parser.tried_no_pp_move(self._emulator.get_current_frame()):
-            self._emulator.step(LowLevelActions.PRESS_BUTTON_B) # to clear the no PP dialogue
+        if self._emulator.state_parser.tried_no_pp_move(
+            self._emulator.get_current_frame()
+        ):
+            self._emulator.step(
+                LowLevelActions.PRESS_BUTTON_B
+            )  # to clear the no PP dialogue
             state_reports.append(self._state_tracker.report())
-            return state_reports, 1 # tried to use a move with no PP
+            return state_reports, 1  # tried to use a move with no PP
         else:
-            self._emulator.step(LowLevelActions.PRESS_BUTTON_B) # to get through any attack animation dialogue
+            self._emulator.step(
+                LowLevelActions.PRESS_BUTTON_B
+            )  # to get through any attack animation dialogue
             state_reports.append(self._state_tracker.report())
         return state_reports, 0
 

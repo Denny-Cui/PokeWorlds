@@ -9,6 +9,7 @@ You can skim the abstract base class documentation to understand the structure t
 * If you want to implement new high level actions, focus on the `HighLevelAction` class and its methods.
 * If you want to implement new environments or test scenarios, focus on the `Environment` class and its methods.
 """
+
 from poke_worlds.interface.action import HighLevelAction
 from poke_worlds.interface.controller import Controller
 from poke_worlds.interface.environment import Environment, History

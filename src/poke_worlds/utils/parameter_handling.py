@@ -44,12 +44,14 @@ def compute_secondary_parameters(params: dict):
     # convert all rom_data_paths to absolute paths
     for key in params:
         if key.endswith("_rom_data_path"):
-                params[key] = os.path.abspath(os.path.join(params["rom_data_dir"], params[key]))
+            params[key] = os.path.abspath(
+                os.path.join(params["rom_data_dir"], params[key])
+            )
     if params["debug_skip_lm"]:
         if not params["debug_mode"]:
-            logger.error("Can only set `debug_skip_lm` to True in configs if you are in debug mode. Set `debug_mode` to True in configs")
-
-
+            logger.error(
+                "Can only set `debug_skip_lm` to True in configs if you are in debug mode. Set `debug_mode` to True in configs"
+            )
 
 
 def load_parameters(parameters: dict = None) -> dict:
@@ -66,14 +68,19 @@ def load_parameters(parameters: dict = None) -> dict:
         dict: Parameters dictionary.
     """
     if parameters is not None:
-        if "logger" not in parameters: # this is a flag that secondary parameters need to be computed
+        if (
+            "logger" not in parameters
+        ):  # this is a flag that secondary parameters need to be computed
             compute_secondary_parameters(parameters)
         return parameters
     essential_keys = ["storage_dir"]
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    )
     params = {"project_root": project_root}
     logger = get_logger()
     config_files = os.listdir(os.path.join(project_root, "configs"))
+
     def error(msg):
         logger.error(msg)
         raise ValueError(msg)
@@ -85,27 +92,37 @@ def load_parameters(parameters: dict = None) -> dict:
             configs = load_yaml(os.path.join(project_root, "configs", file))
             for key in configs:
                 if key in params:
-                    error(f"{key} is present in multiple config files. At least one of which is {file}. Please remove the duplicate")
+                    error(
+                        f"{key} is present in multiple config files. At least one of which is {file}. Please remove the duplicate"
+                    )
             params.update(configs)
         else:
             pass
 
     for key in params:
         if params[key] == "PLACEHOLDER":
-            error(f"{key} is currently the placeholder value in private_vars.yaml. Please set it")
+            error(
+                f"{key} is currently the placeholder value in private_vars.yaml. Please set it"
+            )
     for essential_key in essential_keys:
         if essential_key not in params:
             error(f"Please set {essential_key} in one of the config yamls")
     # check if there are any .py files in storage_dir, if so, log error
-    if os.path.exists(params['storage_dir']):
+    if os.path.exists(params["storage_dir"]):
         if any([f.endswith(".py") for f in os.listdir(params["storage_dir"])]):
-            logger.warning(f"There are .py files in the storage_dir {params['storage_dir']}. It is recommended to set a path which has nothing else inside it to avoid issues.")
+            logger.warning(
+                f"There are .py files in the storage_dir {params['storage_dir']}. It is recommended to set a path which has nothing else inside it to avoid issues."
+            )
     else:
-        full_path = os.path.abspath(params["storage_dir"])        
+        full_path = os.path.abspath(params["storage_dir"])
         if params["storage_dir"] == "storage":
-            logger.warning(f"Using default storage directory '{full_path}'. This may cause issues if your project root directory has limited space. To change the storage directory, modify the 'storage_dir' parameter in your config files and run this method again.")
+            logger.warning(
+                f"Using default storage directory '{full_path}'. This may cause issues if your project root directory has limited space. To change the storage directory, modify the 'storage_dir' parameter in your config files and run this method again."
+            )
         os.makedirs(full_path)
-        logger.info(f"Created storage directory {full_path}. You will find a {full_path}/rom_data/ directory inside it, which is where you must place your downloaded ROM (.gb or .gbc) files.")
+        logger.info(
+            f"Created storage directory {full_path}. You will find a {full_path}/rom_data/ directory inside it, which is where you must place your downloaded ROM (.gb or .gbc) files."
+        )
     # For every path, see if it looks relative, and if so, make it absolute based on project_root
     for key in params:
         if isinstance(params[key], str):

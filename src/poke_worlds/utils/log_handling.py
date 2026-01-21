@@ -18,6 +18,7 @@ def log_error(message: str, parameters: dict = None):
     logger.error(message, stacklevel=2)
     sys.exit(1)
 
+
 def log_warn(message: str, parameters: dict = None):
     """
     Log a warning message.
@@ -31,6 +32,7 @@ def log_warn(message: str, parameters: dict = None):
     parameters = load_parameters(parameters)
     logger = parameters["logger"]
     logger.warn(message, stacklevel=2)
+
 
 def log_info(message: str, parameters: dict = None):
     """
@@ -46,7 +48,8 @@ def log_info(message: str, parameters: dict = None):
     logger = parameters["logger"]
     logger.info(message, stacklevel=2)
 
-def log_dict(meta_dict: dict,  *, parameters: dict = None, n_indents: int = 1):
+
+def log_dict(meta_dict: dict, *, parameters: dict = None, n_indents: int = 1):
     """
     Print a dictionary in a readable format
     Args:
@@ -59,5 +62,7 @@ def log_dict(meta_dict: dict,  *, parameters: dict = None, n_indents: int = 1):
     """
     parameters = load_parameters(parameters)
     logger = parameters["logger"]
-    meta_dict_str = meta_dict_to_str(meta_dict, print_mode=True, n_indents=n_indents, skip_write_timestamp=False)
+    meta_dict_str = meta_dict_to_str(
+        meta_dict, print_mode=True, n_indents=n_indents, skip_write_timestamp=False
+    )
     logger.info("\n" + meta_dict_str, stacklevel=2)

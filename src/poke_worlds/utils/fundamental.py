@@ -1,4 +1,4 @@
-# This file contains all the fundamental utilities that do not rely on any other file. 
+# This file contains all the fundamental utilities that do not rely on any other file.
 import os
 import logging
 import importlib.util
@@ -9,18 +9,21 @@ class RelativePathFormatter(logging.Formatter):
     def format(self, record):
         # record.pathname is the full system path
         path = record.pathname
-        
+
         # Look for 'src' and keep everything after it
-        if 'src' in path:
+        if "src" in path:
             # Splits at 'src', takes the last part, and removes leading slashes
-            record.custom_path = "poke_worlds" + path.split('poke_worlds')[-1]
+            record.custom_path = "poke_worlds" + path.split("poke_worlds")[-1]
         else:
             # Fallback to just the filename if 'src' isn't found
             record.custom_path = record.filename
-            
+
         return super().format(record)
 
-def get_logger(level: int = logging.INFO, filename: str = None, add_console: bool = True) -> logging.Logger:
+
+def get_logger(
+    level: int = logging.INFO, filename: str = None, add_console: bool = True
+) -> logging.Logger:
     """
     Sets up and returns a logger with specified configurations.
     Args:
@@ -49,7 +52,14 @@ def get_logger(level: int = logging.INFO, filename: str = None, add_console: boo
         logger.propagate = False
     return logger
 
-def meta_dict_to_str(meta_dict: dict, *, print_mode: bool = False, n_indents: int = 1, skip_write_timestamp: bool = True) -> str:
+
+def meta_dict_to_str(
+    meta_dict: dict,
+    *,
+    print_mode: bool = False,
+    n_indents: int = 1,
+    skip_write_timestamp: bool = True,
+) -> str:
     """
     Converts a metadata dictionary to a string representation.
     Args:
@@ -68,11 +78,13 @@ def meta_dict_to_str(meta_dict: dict, *, print_mode: bool = False, n_indents: in
     meta_str = ""
     for key in keys:
         if print_mode:
-            indent = '\t' * n_indents
+            indent = "\t" * n_indents
             element = meta_dict[key]
             element_str = None
             if isinstance(element, dict):
-                element_str = "\n" + meta_dict_to_str(element, print_mode=True, n_indents=n_indents + 1)
+                element_str = "\n" + meta_dict_to_str(
+                    element, print_mode=True, n_indents=n_indents + 1
+                )
             else:
                 element_str = str(element)
             meta_str += f"{indent}{key}: {element_str}\n"
@@ -91,7 +103,9 @@ def logger_print_dict(logger: logging.Logger, meta_dict: dict, n_indents: int = 
         meta_dict (dict): The metadata dictionary to log.
         n_indents (int, optional): Number of indentation levels for formatting. Defaults to 1.
     """
-    meta_dict_str = meta_dict_to_str(meta_dict, print_mode=True, n_indents=n_indents, skip_write_timestamp=False)
+    meta_dict_str = meta_dict_to_str(
+        meta_dict, print_mode=True, n_indents=n_indents, skip_write_timestamp=False
+    )
     logger.info(meta_dict_str)
 
 
@@ -124,10 +138,10 @@ def check_optional_installs(warn=False) -> Dict[str, bool]:
     Check for installs of optional modules
 
     Args:
-        warn: whether to log a warning if not found. 
+        warn: whether to log a warning if not found.
 
     Returns:
-        optionals (dict): a dictionary where keys are optional config modes, and values are whether the packages required for basic imports are installed. 
+        optionals (dict): a dictionary where keys are optional config modes, and values are whether the packages required for basic imports are installed.
         This does not check internal requirements (e.g. `einops` may be needed for some models, etc.)
     """
     config_imports = {
@@ -142,6 +156,8 @@ def check_optional_installs(warn=False) -> Dict[str, bool]:
             if not module_installed(module):
                 not_importable.append(module)
         if len(not_importable) > 0 and warn:
-            logger.warning(f"Unable to find imports for the following modules of the {config} setting: {not_importable}. Some features will not be enabled.\nTo fix this, run `uv pip install -e \".[{config}]\"` in the PokeWorlds repo.")
-        configs[config] = len(not_importable) == 0 
-    return configs  
+            logger.warning(
+                f'Unable to find imports for the following modules of the {config} setting: {not_importable}. Some features will not be enabled.\nTo fix this, run `uv pip install -e ".[{config}]"` in the PokeWorlds repo.'
+            )
+        configs[config] = len(not_importable) == 0
+    return configs

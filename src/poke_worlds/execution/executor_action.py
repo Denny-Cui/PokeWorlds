@@ -5,31 +5,39 @@ import numpy as np
 from PIL import Image
 from abc import abstractmethod
 
+
 class ExecutorAction(HighLevelAction):
     """
-    Passive (non-interactive) actions that can be called on by an Executor to understand the game state. 
-    Will often include VLM inference to understand the game screen in some manner. 
+    Passive (non-interactive) actions that can be called on by an Executor to understand the game state.
+    Will often include VLM inference to understand the game screen in some manner.
 
     Development Note: Unlike HighLevelAction, ExecutorAction does NOT call emulator.step.
     If you want to implement an action that does that, you probably want to be doing that in an Executor class instead.
     """
+
     def parameters_to_space(self, **kwargs):
-        raise NotImplementedError(f"ExecutorAction does not implement parameters_to_space. Ensure that it is not being treated as a typical HighLevelAction.")
-    
+        raise NotImplementedError(
+            f"ExecutorAction does not implement parameters_to_space. Ensure that it is not being treated as a typical HighLevelAction."
+        )
+
     def space_to_parameters(self, **kwargs):
-        raise NotImplementedError(f"ExecutorAction does not implement space_to_parameters. Ensure that it is not being treated as a typical HighLevelAction.")
-    
+        raise NotImplementedError(
+            f"ExecutorAction does not implement space_to_parameters. Ensure that it is not being treated as a typical HighLevelAction."
+        )
+
     def get_action_space(self):
-        raise NotImplementedError(f"ExecutorAction does not implement get_action_space. Ensure that it is not being treated as a typical HighLevelAction.")
+        raise NotImplementedError(
+            f"ExecutorAction does not implement get_action_space. Ensure that it is not being treated as a typical HighLevelAction."
+        )
 
     @abstractmethod
     def _execute(self, **kwargs) -> Tuple[Dict[str, Any], int]:
         """
-        Executes the specified executor action. 
+        Executes the specified executor action.
         Does not check for validity
         Development Note: Unlike HighLevelAction, ExecutorAction does NOT call emulator.step.
         If you want to implement an action that does that, you probably want to be doing that in an Executor class instead.
-        
+
         :param kwargs: Additional arguments required for the specific executor action.
         :return: A tuple containing:
 
@@ -40,10 +48,12 @@ class ExecutorAction(HighLevelAction):
         raise NotImplementedError
 
 
-def object_detection(description: str, images: List[np.ndarray], text_prompt: str=None) -> List[bool]:
+def object_detection(
+    description: str, images: List[np.ndarray], text_prompt: str = None
+) -> List[bool]:
     """
     Performs object detection on the given images with the given texts.
-    
+
     :param images: List of images that may contain the object described in texts
     :type images: List[np.ndarray]
     :param text_prompt: A prompt with the textual description of the object to detect, and that requests a Yes/No answer.
@@ -59,7 +69,9 @@ def object_detection(description: str, images: List[np.ndarray], text_prompt: st
         [STOP]
         Output:
         """
-    outputs = ExecutorVLM.infer(texts=[text_prompt for _ in images], images=images, max_new_tokens=60)
+    outputs = ExecutorVLM.infer(
+        texts=[text_prompt for _ in images], images=images, max_new_tokens=60
+    )
     founds = []
     for i, output in enumerate(outputs):
         if "yes" in output.lower():
@@ -69,7 +81,12 @@ def object_detection(description: str, images: List[np.ndarray], text_prompt: st
     return founds
 
 
-def identify_matches(description: str, screens: List[np.ndarray], reference: Image.Image, text_prompt: str=None) -> List[bool]:
+def identify_matches(
+    description: str,
+    screens: List[np.ndarray],
+    reference: Image.Image,
+    text_prompt: str = None,
+) -> List[bool]:
     """
     Identifies which screens match the given reference image based on the description.
     Args:
@@ -104,12 +121,12 @@ class LocateAction(ExecutorAction):
     2. Recursively divides the grid cells into quadrants and checks each quadrant for the target.
     3. If a quadrant contains the target, further divides it into smaller quadrants until the smallest grid cells are reached.
     4. Returns the grid cell coordinates that may contain the target.
-    
+
     Uses VLM inference to check each grid cell for the target. There are three kinds of VLM search used:
     - Description matching: if the target is specified as a known object in `pre_described_options`, uses a pre-defined description to search for the target.
     - Image matching: if the target is specified as a known object in the provided state parser's `image_references`, uses a reference image as well as a description to search for the target.
     - Free-form description matching: if the target is specified as a free-form string, uses the string as a description to search for the target.
-    
+
     Action Success Interpretation:
     - -1: Object not found
     - 0: A single object found and only definitively
@@ -123,7 +140,7 @@ class LocateAction(ExecutorAction):
     - `definitive_cells` (`List[Tuple[int, int]]`): list of grid cell coordinates that, with high confidence, contain the target.
     """
 
-    pre_described_options = {}    
+    pre_described_options = {}
     """ Pre-defined descriptions for known objects to locate. Subclasses can override this dictionary to options. """
 
     image_references = {}
@@ -142,12 +159,12 @@ class LocateAction(ExecutorAction):
         elif c2 < 0:
             start += f"{-c2} steps down from you)"
         return start
-    
+
     def coords_to_string(self, coords: List[Tuple[int, int]]) -> str:
         coord_strings = [self.coord_to_string(coord) for coord in coords]
         return "[" + ", ".join(coord_strings) + "]"
 
-    def is_valid(self, target: str=None):
+    def is_valid(self, target: str = None):
         if target is not None:
             if not isinstance(target, str):
                 return False
@@ -156,22 +173,28 @@ class LocateAction(ExecutorAction):
             target = target.lower().strip()
             if target not in self.image_references.keys():
                 if target not in self.pre_described_options.keys():
-                    return False # most permissive case. Return False here if you want to restrict to known options.
+                    return False  # most permissive case. Return False here if you want to restrict to known options.
                 else:
-                    pass # known pre-described option. Return False here if you want to restrict to only image references.
+                    pass  # known pre-described option. Return False here if you want to restrict to only image references.
             else:
-                pass # known image reference            
+                pass  # known image reference
         return True
 
     def check_for_target(self, description, screens, image_reference: str = None):
         if image_reference is None:
             return object_detection(description=description, images=screens)
         else:
-            reference_image = self._emulator.state_parser.get_image_reference(image_reference)
-            founds = identify_matches(description=description, screens=screens, reference=reference_image)
+            reference_image = self._emulator.state_parser.get_image_reference(
+                image_reference
+            )
+            founds = identify_matches(
+                description=description, screens=screens, reference=reference_image
+            )
             return founds
-    
-    def get_centroid(self, cells: Dict[Tuple[int, int], np.ndarray]) -> Tuple[float, float]:
+
+    def get_centroid(
+        self, cells: Dict[Tuple[int, int], np.ndarray]
+    ) -> Tuple[float, float]:
         min_x = min([coord[0] for coord in cells.keys()])
         min_y = min([coord[1] for coord in cells.keys()])
         max_x = max([coord[0] for coord in cells.keys()])
@@ -179,8 +202,13 @@ class LocateAction(ExecutorAction):
         centroid_x = (min_x + max_x) // 2
         centroid_y = (min_y + max_y) // 2
         return (centroid_x, centroid_y)
-    
-    def get_cells_found(self, grid_cells: Dict[Tuple[int, int], np.ndarray], description: str, image_reference: str=None) -> Tuple[bool, List[Tuple[int, int]], List[Tuple[int, int]]]:
+
+    def get_cells_found(
+        self,
+        grid_cells: Dict[Tuple[int, int], np.ndarray],
+        description: str,
+        image_reference: str = None,
+    ) -> Tuple[bool, List[Tuple[int, int]], List[Tuple[int, int]]]:
         """
         Recursively divides the grid cells into quadrants and checks each quadrant for the target.
         Args:
@@ -198,17 +226,23 @@ class LocateAction(ExecutorAction):
         if len(grid_cells) == 1:
             screen = list(grid_cells.values())[0]
             keys = list(grid_cells.keys())[0]
-            target_in_grid = self.check_for_target(description, [screen], image_reference=image_reference)[0]
+            target_in_grid = self.check_for_target(
+                description, [screen], image_reference=image_reference
+            )[0]
             if target_in_grid:
                 return True, list(grid_cells.keys()), list(grid_cells.keys())
             else:
                 return False, [], []
-        quadrants = self._emulator.state_parser.get_quadrant_frame(grid_cells=grid_cells)
+        quadrants = self._emulator.state_parser.get_quadrant_frame(
+            grid_cells=grid_cells
+        )
         screens = []
         for quadrant in quadrant_keys:
             screen = quadrants[quadrant]["screen"]
             screens.append(screen)
-        quadrant_founds = self.check_for_target(description, screens, image_reference=image_reference)
+        quadrant_founds = self.check_for_target(
+            description, screens, image_reference=image_reference
+        )
         if not any(quadrant_founds):
             return False, [], []
         else:
@@ -222,36 +256,47 @@ class LocateAction(ExecutorAction):
                         potential_cells.append(self.get_centroid(cells))
                         cell_keys = list(cells.keys())
                         cell_screens = [cells[key] for key in cell_keys]
-                        cell_founds = self.check_for_target(description, cell_screens, image_reference=image_reference)
+                        cell_founds = self.check_for_target(
+                            description, cell_screens, image_reference=image_reference
+                        )
                         for i, found in enumerate(cell_founds):
                             if found:
                                 quadrant_definites.append(cell_keys[i])
                             else:
-                                pass                        
+                                pass
                     else:
-                        found_in_quadrant, quadrant_potentials, recursive_quadrant_definites = self.get_cells_found(cells, description, image_reference=image_reference)
+                        (
+                            found_in_quadrant,
+                            quadrant_potentials,
+                            recursive_quadrant_definites,
+                        ) = self.get_cells_found(
+                            cells, description, image_reference=image_reference
+                        )
                         if len(recursive_quadrant_definites) > 0:
                             quadrant_definites.extend(recursive_quadrant_definites)
-                        if found_in_quadrant: # then there is some potential, so add the quadrants potentials. 
+                        if (
+                            found_in_quadrant
+                        ):  # then there is some potential, so add the quadrants potentials.
                             if len(quadrant_potentials) != 0:
                                 potential_cells.extend(quadrant_potentials)
                             else:
                                 potential_cells.append(self.get_centroid(cells))
             return True, potential_cells, quadrant_definites
-    
-    
-    def do_location(self, description: str, image_reference: str = None) -> Tuple[Dict[str, Any], int]:
+
+    def do_location(
+        self, description: str, image_reference: str = None
+    ) -> Tuple[Dict[str, Any], int]:
         """
         Performs the locate action to find the target described by `description` in the current screen.
-        
-        :param description: Description of the target to locate. 
+
+        :param description: Description of the target to locate.
         :type description: str
         :param image_reference: String key for the image reference in the state parser to use for matching.
         :type image_reference: str
         :return: A tuple containing:
 
-            - A dictionary with:   
-            
+            - A dictionary with:
+
                 * `found` (`bool`): whether the target was found in any of the grid cells at any point.
                 * `potential_cells` (`List[Tuple[int, int]]`): list of grid cell coordinates that may contain the target.
                 * `definitive_cells` (`List[Tuple[int, int]]`): list of grid cell coordinates that, with high confidence, contain the target.
@@ -261,13 +306,19 @@ class LocateAction(ExecutorAction):
             - An integer representing the action success code.
         :rtype: Tuple[Dict[str, Any], int]
         """
-        grid_cells = self._emulator.state_parser.capture_grid_cells(self._emulator.get_current_frame())
-        found, potential_cells, definitive_cells = self.get_cells_found(grid_cells, description, image_reference=image_reference)
-        ret_dict = {"found": found, 
-                    "potential_cells": potential_cells, 
-                    "definitive_cells": definitive_cells, 
-                    "potential_cells_str": self.coords_to_string(potential_cells),
-                    "definitive_cells_str": self.coords_to_string(definitive_cells)}
+        grid_cells = self._emulator.state_parser.capture_grid_cells(
+            self._emulator.get_current_frame()
+        )
+        found, potential_cells, definitive_cells = self.get_cells_found(
+            grid_cells, description, image_reference=image_reference
+        )
+        ret_dict = {
+            "found": found,
+            "potential_cells": potential_cells,
+            "definitive_cells": definitive_cells,
+            "potential_cells_str": self.coords_to_string(potential_cells),
+            "definitive_cells_str": self.coords_to_string(definitive_cells),
+        }
         action_success = None
         if not found:
             action_success = -1
@@ -285,10 +336,13 @@ class LocateAction(ExecutorAction):
                 else:
                     action_success = 1
         return ret_dict, action_success
-    
+
     def _execute(self, target: str):
         if target in self.image_references:
-            return self.do_location(description=self.pre_described_options[target], image_reference=self.image_references[target])
+            return self.do_location(
+                description=self.pre_described_options[target],
+                image_reference=self.image_references[target],
+            )
         elif target in self.pre_described_options:
             return self.do_location(description=self.pre_described_options[target])
         else:

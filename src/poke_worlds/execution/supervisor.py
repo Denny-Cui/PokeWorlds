@@ -297,9 +297,9 @@ Plan: <YOUR PLAN FOR THE EXECUTOR TO FOLLOW TO ACHIEVE THE IMMEDIATE TASK>
 
     def _play(self, mission: str, initial_visual_context: str):
         assert mission is not None, "Mission must be provided to play()."
-        assert initial_visual_context is not None, (
-            "Initial visual context must be provided to play()."
-        )
+        assert (
+            initial_visual_context is not None
+        ), "Initial visual context must be provided to play()."
         self.mission = mission
         visual_context = initial_visual_context
         note = self.do_supervisor_start(visual_context)

@@ -1,5 +1,13 @@
 from poke_worlds.emulation.parser import StateParser
-from poke_worlds.utils import nested_dict_to_str, verify_parameters, log_info, log_error, log_warn, log_dict, show_frames
+from poke_worlds.utils import (
+    nested_dict_to_str,
+    verify_parameters,
+    log_info,
+    log_error,
+    log_warn,
+    log_dict,
+    show_frames,
+)
 
 
 import numpy as np
@@ -9,6 +17,7 @@ from abc import ABC, abstractmethod
 
 EPSILON = 0.001
 """ Default epsilon for frame change detection. """
+
 
 class MetricGroup(ABC):
     """
@@ -20,6 +29,7 @@ class MetricGroup(ABC):
     - Final Reports (List of keys that are present in the return dict of `report_final`)
 
     """
+
     NAME = "base"
     """ Name of the MetricGroup. """
 
@@ -29,7 +39,9 @@ class MetricGroup(ABC):
     def __init__(self, state_parser: StateParser, parameters: dict):
         verify_parameters(parameters)
         if not issubclass(type(state_parser), self.REQUIRED_PARSER):
-            log_error(f"StateParser of type {type(state_parser)} is not compatible with MetricGroup requiring {self.REQUIRED_PARSER}.")
+            log_error(
+                f"StateParser of type {type(state_parser)} is not compatible with MetricGroup requiring {self.REQUIRED_PARSER}."
+            )
         self.state_parser = state_parser
         """ An instance of the StateParser to parse game state variables. """
         self._parameters = parameters
@@ -39,21 +51,21 @@ class MetricGroup(ABC):
 
     def start(self):
         """
-        Called once when environment starts. 
+        Called once when environment starts.
         All subclasses should call super() AFTER initializing their own variables.
         Only variables that will persist across episodes should be initialized here.
         """
         self.reset(first=True)
 
-    @abstractmethod    
+    @abstractmethod
     def reset(self, first: bool = False):
         """Called when environment resets.
-        
+
         Args:
-            first (bool): Whether this is the first reset of the environment. If True, might need to aggregate metrics into running final totals. 
+            first (bool): Whether this is the first reset of the environment. If True, might need to aggregate metrics into running final totals.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def close(self):
         """
@@ -72,17 +84,17 @@ class MetricGroup(ABC):
             recent_frames (Optional[np.ndarray]): The stack of frames that were rendered during the last action. Shape is [n_frames, height, width, channels]. Can be None if rendering is disabled.
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def report(self) -> Dict[str, Any]:
         """
         Return metrics as dictionary for instantaneous variable tracking.
-        
+
         :return: Dictionary of metrics
         :rtype: Dict[str, Any]
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def report_final(self) -> dict:
         """
@@ -93,7 +105,7 @@ class MetricGroup(ABC):
         :rtype: Dict[str, Any]
         """
         raise NotImplementedError
-    
+
     def log_info(self, message: str):
         """
         Logs with MetricGroup's name. Primarily for debugging.
@@ -111,7 +123,7 @@ class MetricGroup(ABC):
         Logs the current metrics report with MetricGroup's name. Primarily for debugging.
         """
         log_info(f"Metric({self.NAME}):\n")
-        log_dict(self.report(), parameters=self._parameters) 
+        log_dict(self.report(), parameters=self._parameters)
 
 
 class CoreMetrics(MetricGroup):
@@ -132,17 +144,18 @@ class CoreMetrics(MetricGroup):
     - `std_steps`: Standard deviation of steps taken across episodes.
 
     """
+
     NAME = "core"
 
     def start(self):
         self.steps_per_episode = []
         """ List of steps taken in each episode. """
         super().start()
-    
+
     def reset(self, first=False):
         if not first:
             self.steps_per_episode.append(self.steps)
-        else:    
+        else:
             self.steps = 0
             """ Number of steps taken in the episode. """
             self.previous_frame = None
@@ -172,7 +185,7 @@ class CoreMetrics(MetricGroup):
             "average_steps_per_episode": float(average_steps),
             "max_steps": int(max_steps),
             "min_steps": int(min_steps),
-            "std_steps": float(std_steps)
+            "std_steps": float(std_steps),
         }
 
     def step(self, current_frame, recent_frames):
@@ -196,7 +209,7 @@ class CoreMetrics(MetricGroup):
                 if frame_changed:
                     break
             self.frame_changed = frame_changed
-        self.previous_frame = current_frame    
+        self.previous_frame = current_frame
 
     def report(self):
         """
@@ -210,9 +223,9 @@ class CoreMetrics(MetricGroup):
             "steps": self.steps,
             "frame_changed": self.frame_changed,
             "current_frame": self.current_frame,
-            "passed_frames": self.passed_frames
+            "passed_frames": self.passed_frames,
         }
-    
+
     def report_final(self):
         """
         Provides the following metrics:
@@ -232,24 +245,28 @@ class OCRegionMetric(MetricGroup, ABC):
 
     Reports:
     - `ocr_regions`: A dictionary mapping kinds to captured regions that had OCR-eligible text detected in them. The keys are kinds of OCR regions, and the values are the stacks of captured screen regions as numpy arrays of shape (num_captures, height, width, channels).
-    - `step`: The current step number. Useful for differentiating when multiple OCR texts were found in the same episode. You can typically safely ignore this. 
+    - `step`: The current step number. Useful for differentiating when multiple OCR texts were found in the same episode. You can typically safely ignore this.
 
     Final Reports:
     - `ocr_regions`: A list of tuples for all steps where OCR was detected. Is in form: `List[Tuple[int, Dict[str, np.ndarray]]]` where the int is the step number and the Dict maps kinds to a stack of the captured screen region.
 
     """
+
     NAME = "ocr"
-    
+
     def start(self):
         """
-        Assumes the child has initialized a dict called self.kinds which tracks the various kinds of OCR that could be done. 
+        Assumes the child has initialized a dict called self.kinds which tracks the various kinds of OCR that could be done.
                 self.kinds should be in the form: {kind: region_name} where region_name is the name of the region to OCR for that kind.
-                Will track ocr captured region results in form of list of dictionaries where these kinds are keys. 
+                Will track ocr captured region results in form of list of dictionaries where these kinds are keys.
         """
         super().start()
         if self.NAME != "ocr":
-            log_error("OCRMetric subclasses must have NAME equal to 'ocr' for the environment get_info() aggregation step to work.", self._parameters)
-        if not hasattr(self, 'kinds'):
+            log_error(
+                "OCRMetric subclasses must have NAME equal to 'ocr' for the environment get_info() aggregation step to work.",
+                self._parameters,
+            )
+        if not hasattr(self, "kinds"):
             log_error("OCRMetrics must declare self.kinds dictionary", self._parameters)
         elif not isinstance(self.kinds, dict):
             log_error("self.kinds must be a dictionary", self._parameters)
@@ -259,9 +276,14 @@ class OCRegionMetric(MetricGroup, ABC):
                 log_error("self.kinds keys must be strings", self._parameters)
             region_info = self.kinds[item]
             if not isinstance(region_info, str):
-                log_error("self.kinds values must be region names (strings)", self._parameters)
+                log_error(
+                    "self.kinds values must be region names (strings)", self._parameters
+                )
             if region_info not in self.state_parser.named_screen_regions:
-                log_error(f"OCR region name {region_info} not found in state parser named regions. Available options: {self.state_parser.named_screen_regions}", self._parameters)
+                log_error(
+                    f"OCR region name {region_info} not found in state parser named regions. Available options: {self.state_parser.named_screen_regions}",
+                    self._parameters,
+                )
 
     @staticmethod
     def can_read_kind(self, frame: np.ndarray, kind: str) -> bool:
@@ -274,37 +296,43 @@ class OCRegionMetric(MetricGroup, ABC):
         """
         raise NotImplementedError
 
-    def reset(self, first = False):
+    def reset(self, first=False):
         """
         ocr_regions will track a list of the form List[Tuple[int, Dict[str, np.ndarray]]]
         which is a list of (step_number, {kind: ocr_region}) dictionaries.
         """
         self.ocr_regions = []
         self.steps = 0
-        self.prev_has_ocr = False    
-    
+        self.prev_has_ocr = False
+
     def step(self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]):
         all_frames = None
         if recent_frames is not None:
-            all_frames = recent_frames # Current frame is included in recent frames
+            all_frames = recent_frames  # Current frame is included in recent frames
         else:
             all_frames = np.array([current_frame])
         ocr_dict = {}
-        # Aggregate results for all frames and separate per kind. 
+        # Aggregate results for all frames and separate per kind.
         for kind in self.kinds.keys():
             captured_frames = []
             for frame in all_frames:
                 if self.can_read_kind(frame, kind):
-                    captured_frames.append(self.state_parser.capture_named_region(current_frame=frame, name=self.kinds[kind]))
-            true_captured_frames = [] # remove duplicates for efficiency
-            # add the later frame in case of overlap detection. This prefers more text for cases where text comes as a stream. 
+                    captured_frames.append(
+                        self.state_parser.capture_named_region(
+                            current_frame=frame, name=self.kinds[kind]
+                        )
+                    )
+            true_captured_frames = []  # remove duplicates for efficiency
+            # add the later frame in case of overlap detection. This prefers more text for cases where text comes as a stream.
             if len(captured_frames) > 0:
-                for i in range(len(captured_frames)-1):
+                for i in range(len(captured_frames) - 1):
                     curr_frame = captured_frames[i]
-                    next_frame = captured_frames[i+1]
+                    next_frame = captured_frames[i + 1]
                     if np.abs(curr_frame - next_frame).mean() > EPSILON:
                         true_captured_frames.append(curr_frame)
-                true_captured_frames.append(captured_frames[-1]) # always add the last frame. 
+                true_captured_frames.append(
+                    captured_frames[-1]
+                )  # always add the last frame.
                 ocr_dict[kind] = np.array(true_captured_frames)
         if len(ocr_dict) > 0:
             self.ocr_regions.append((self.steps, ocr_dict))
@@ -322,57 +350,63 @@ class OCRegionMetric(MetricGroup, ABC):
         if self.prev_has_ocr:
             return {
                 "ocr_regions": self.ocr_regions[-1][1],
-                "step": self.ocr_regions[-1][0]
+                "step": self.ocr_regions[-1][0],
             }
         else:
             return {}
-    
+
     def report_final(self):
         """
         Reports all the OCR regions extracted in the episode.
         """
-        return {
-            "ocr_regions": self.ocr_regions
-        }
-    
+        return {"ocr_regions": self.ocr_regions}
+
     def close(self):
         pass
 
 
-class StateTracker():
+class StateTracker:
     """
-Tracks and provides API access to the game state / metrics over time and across episodes.
-The most hassle-free way to read from the StateTracker is to use the `report()` and `report_final()` methods to get nested dictionaries of all metrics tracked.
+    Tracks and provides API access to the game state / metrics over time and across episodes.
+    The most hassle-free way to read from the StateTracker is to use the `report()` and `report_final()` methods to get nested dictionaries of all metrics tracked.
 
-**Example Usage:**
+    **Example Usage:**
 
-```python
-import numpy as np
-from poke_worlds import get_pokemon_emulator
-emulator = get_pokemon_emulator(variant="pokemon_red")
+    ```python
+    import numpy as np
+    from poke_worlds import get_pokemon_emulator
+    emulator = get_pokemon_emulator(variant="pokemon_red")
 
-# We can access the StateTracker via the emulator
-state_tracker = emulator.state_tracker
+    # We can access the StateTracker via the emulator
+    state_tracker = emulator.state_tracker
 
-# Run a random action on the emulator
-emulator.reset()
-allowed_actions = list(LowLevelActions)
-action = np.random.choice(allowed_actions)
-_, _ = emulator.step(action) # also updates the StateTracker internally
-# We can access the current episode metrics via the StateTracker
-episode_metrics = state_tracker.report() # access all of them as a nested dict
-specific_metric = state_tracker.get_episode_metric(("core", "steps")) # access specific metrics
+    # Run a random action on the emulator
+    emulator.reset()
+    allowed_actions = list(LowLevelActions)
+    action = np.random.choice(allowed_actions)
+    _, _ = emulator.step(action) # also updates the StateTracker internally
+    # We can access the current episode metrics via the StateTracker
+    episode_metrics = state_tracker.report() # access all of them as a nested dict
+    specific_metric = state_tracker.get_episode_metric(("core", "steps")) # access specific metrics
 
-# If we reset the emulator, the StateTracker will reset its inter-episode metrics as well
-emulator.reset()
-action = np.random.choice(allowed_actions)
-_, _ = emulator.step(action)
-emulator.close() # StateTracker will finalize its metrics internally
-final_metrics = state_tracker.report_final() # access all of them as a nested dict
-specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_per_episode")) # access specific final metrics
-```
+    # If we reset the emulator, the StateTracker will reset its inter-episode metrics as well
+    emulator.reset()
+    action = np.random.choice(allowed_actions)
+    _, _ = emulator.step(action)
+    emulator.close() # StateTracker will finalize its metrics internally
+    final_metrics = state_tracker.report_final() # access all of them as a nested dict
+    specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_per_episode")) # access specific final metrics
+    ```
     """
-    def __init__(self, name: str, session_name: str, instance_id: str, state_parser: StateParser, parameters: dict):
+
+    def __init__(
+        self,
+        name: str,
+        session_name: str,
+        instance_id: str,
+        state_parser: StateParser,
+        parameters: dict,
+    ):
         """
         Initializes the StateTracker.
         Args:
@@ -394,11 +428,16 @@ specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_p
         self._parameters = parameters
         self.start()
         if self.metric_classes[0] != CoreMetrics:
-            log_error("First metric class must be CoreMetrics. Make sure to call `super().start()` first in child class overrides of `start()`.", parameters)
+            log_error(
+                "First metric class must be CoreMetrics. Make sure to call `super().start()` first in child class overrides of `start()`.",
+                parameters,
+            )
         self.metrics = {}
         """ Dictionary to store MetricGroup instances. """
         for metric_group_class in self.metric_classes:
-            metric_group_instance: MetricGroup = metric_group_class(state_parser, parameters)
+            metric_group_instance: MetricGroup = metric_group_class(
+                state_parser, parameters
+            )
             self.metrics[metric_group_instance.NAME] = metric_group_instance
         self.episode_metrics: Dict[str, Dict[str, Any]] = None
         """ Dictionary to store metrics running during episode. """
@@ -444,7 +483,9 @@ specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_p
         """
         for metric_group in self.metrics.values():
             metric_group.close()
-        self.final_metrics = {name: mg.report_final() for name, mg in self.metrics.items()}
+        self.final_metrics = {
+            name: mg.report_final() for name, mg in self.metrics.items()
+        }
 
     def report(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -454,7 +495,7 @@ specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_p
         :rtype: Dict[str, Dict[str, Any]]
         """
         return self.episode_metrics
-    
+
     def report_final(self) -> Dict[str, Dict[str, Any]]:
         """
         Returns the final metrics after environment close.
@@ -471,16 +512,20 @@ specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_p
             log_error("No metrics available. Have you called step() or close()?")
         metric_group_name, metric_name = key
         if metric_group_name not in metrics_dict:
-            log_error(f"Metric group {metric_group_name} not found in metrics. Available groups: {list(metrics_dict.keys())}")
+            log_error(
+                f"Metric group {metric_group_name} not found in metrics. Available groups: {list(metrics_dict.keys())}"
+            )
         if metric_name not in metrics_dict[metric_group_name]:
-            log_error(f"Metric {metric_name} not found in metric group {metric_group_name}. Available metrics: {list(metrics_dict[metric_group_name].keys())}")
+            log_error(
+                f"Metric {metric_name} not found in metric group {metric_group_name}. Available metrics: {list(metrics_dict[metric_group_name].keys())}"
+            )
         return metrics_dict[metric_group_name][metric_name]
-    
+
     def get_episode_metric(self, key: Tuple[str, str]):
         """
         Returns the metrics for a specific episode and metric group.
 
-        Does not give final metrics at any point. 
+        Does not give final metrics at any point.
 
         :param key: A tuple of the form (metric_group_name, metric_name).
         :type key: Tuple[str, str]
@@ -488,7 +533,7 @@ specific_final_metric = state_tracker.get_final_metric(("core", "average_steps_p
         :rtype: Any
         """
         return self._get_specific_metric(self.episode_metrics, key)
-    
+
     def get_final_metric(self, key: Tuple[str, str]):
         """
         Returns the final metrics for a specific metric group.

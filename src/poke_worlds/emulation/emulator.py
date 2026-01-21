@@ -10,7 +10,16 @@ import shutil
 import uuid
 from poke_worlds.emulation.parser import StateParser
 from poke_worlds.emulation.tracker import StateTracker
-from poke_worlds.utils import load_parameters, log_error, log_warn, file_makedir, log_info, is_none_str, verify_parameters, log_dict
+from poke_worlds.utils import (
+    load_parameters,
+    log_error,
+    log_warn,
+    file_makedir,
+    log_info,
+    is_none_str,
+    verify_parameters,
+    log_dict,
+)
 
 
 import cv2
@@ -27,6 +36,7 @@ class LowLevelActions(Enum):
     """
     Enum for low-level actions that can be performed on the GameBoy emulator.
     """
+
     PRESS_ARROW_DOWN = WindowEvent.PRESS_ARROW_DOWN
     PRESS_ARROW_LEFT = WindowEvent.PRESS_ARROW_LEFT
     PRESS_ARROW_RIGHT = WindowEvent.PRESS_ARROW_RIGHT
@@ -34,11 +44,13 @@ class LowLevelActions(Enum):
     PRESS_BUTTON_A = WindowEvent.PRESS_BUTTON_A
     PRESS_BUTTON_B = WindowEvent.PRESS_BUTTON_B
     PRESS_BUTTON_START = WindowEvent.PRESS_BUTTON_START
-    
+
+
 class ReleaseActions(Enum):
     """
     Enum for release actions corresponding to low-level actions.
     """
+
     release_actions = {
         LowLevelActions.PRESS_ARROW_DOWN: WindowEvent.RELEASE_ARROW_DOWN,
         LowLevelActions.PRESS_ARROW_LEFT: WindowEvent.RELEASE_ARROW_LEFT,
@@ -46,15 +58,16 @@ class ReleaseActions(Enum):
         LowLevelActions.PRESS_ARROW_UP: WindowEvent.RELEASE_ARROW_UP,
         LowLevelActions.PRESS_BUTTON_A: WindowEvent.RELEASE_BUTTON_A,
         LowLevelActions.PRESS_BUTTON_B: WindowEvent.RELEASE_BUTTON_B,
-        LowLevelActions.PRESS_BUTTON_START: WindowEvent.RELEASE_BUTTON_START}
+        LowLevelActions.PRESS_BUTTON_START: WindowEvent.RELEASE_BUTTON_START,
+    }
 
 
 class Emulator:
     """
-    Handles the running of the GameBoy emulator, including loading ROMs, managing state, performing low level actions and calling the tracker. 
+    Handles the running of the GameBoy emulator, including loading ROMs, managing state, performing low level actions and calling the tracker.
     Subclasses will likely only be needed to manually force the execution of specific button sequences when certain states are detected. (e.g. short-circuiting specific menus, etc.)
-    
-    Can be used to access the `state_parser` and `state_tracker` instances for the running game instance. 
+
+    Can be used to access the `state_parser` and `state_tracker` instances for the running game instance.
     """
 
     REQUIRED_STATE_PARSER = StateParser
@@ -63,7 +76,21 @@ class Emulator:
     REQUIRED_STATE_TRACKER = StateTracker
     """ The minimal functionality StateTracker needed for this emulator to run """
 
-    def __init__(self, game: str, gb_path: str, state_parser_class: Type[StateParser], state_tracker_class: Type[StateTracker], init_state: str, parameters: dict, *, headless: bool = True, max_steps: int = None, save_video: bool = None, session_name: str = None, instance_id: str = None):
+    def __init__(
+        self,
+        game: str,
+        gb_path: str,
+        state_parser_class: Type[StateParser],
+        state_tracker_class: Type[StateTracker],
+        init_state: str,
+        parameters: dict,
+        *,
+        headless: bool = True,
+        max_steps: int = None,
+        save_video: bool = None,
+        session_name: str = None,
+        instance_id: str = None,
+    ):
         """
         Start the GameBoy emulator with the given ROM file and initial state.
 
@@ -74,24 +101,37 @@ class Emulator:
             state_tracker_class (Type[StateTracker]): A class that inherits from StateTracker to track game state metrics.
             init_state (str): Path to the initial state file to load.
             parameters (dict): Dictionary of parameters for the environment.
-            headless (bool, optional): Whether to run the environment in headless mode. 
-            max_steps (int, optional): Maximum number of steps per episode. 
-            save_video (bool, optional): Whether to save video of the episodes.          
+            headless (bool, optional): Whether to run the environment in headless mode.
+            max_steps (int, optional): Maximum number of steps per episode.
+            save_video (bool, optional): Whether to save video of the episodes.
             session_name (str, optional): Name of the session. If None, a new session name will be allocated. This is the broad category you want to save files to
-            instance_id (str, optional): Unique identifier for this environment instance. If None, a new UUID will be generated. The instance ID is useful for distinguishing multiple environments running in parallel with the same session name. 
+            instance_id (str, optional): Unique identifier for this environment instance. If None, a new UUID will be generated. The instance ID is useful for distinguishing multiple environments running in parallel with the same session name.
         """
         verify_parameters(parameters)
         self._parameters = parameters
         if game is None or game == "":
-            log_error("You must provide a name for the game variant being emulated.", self._parameters)
+            log_error(
+                "You must provide a name for the game variant being emulated.",
+                self._parameters,
+            )
         if gb_path is None:
-            log_error("You must provide a path to the GameBoy ROM file.", self._parameters)
+            log_error(
+                "You must provide a path to the GameBoy ROM file.", self._parameters
+            )
         if not issubclass(state_parser_class, self.REQUIRED_STATE_PARSER):
-            log_error(f"state_parser_class must be a subclass of {self.REQUIRED_STATE_PARSER.__name__}, got {state_parser_class_.__name__}.", self._parameters)
+            log_error(
+                f"state_parser_class must be a subclass of {self.REQUIRED_STATE_PARSER.__name__}, got {state_parser_class_.__name__}.",
+                self._parameters,
+            )
         if not issubclass(state_tracker_class, self.REQUIRED_STATE_TRACKER):
-            log_error(f"state_tracker_class must be a subclass of {self.REQUIRED_STATE_TRACKER.__name__}, got {state_tracker_class.__name__}.", self._parameters)
+            log_error(
+                f"state_tracker_class must be a subclass of {self.REQUIRED_STATE_TRACKER.__name__}, got {state_tracker_class.__name__}.",
+                self._parameters,
+            )
         if init_state is None:
-            log_error("You must provide an initial state file to load.", self._parameters)
+            log_error(
+                "You must provide an initial state file to load.", self._parameters
+            )
         if headless not in [True, False]:
             log_error("headless must be a boolean.", self._parameters)
         self.game = game
@@ -100,15 +140,24 @@ class Emulator:
         self._set_init_state(init_state)
         # validate init_state exists and ends with .state
         if not os.path.exists(self._gb_path):
-            log_error(f"GameBoy ROM file {self._gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {self._gb_path}", self._parameters)
+            log_error(
+                f"GameBoy ROM file {self._gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {self._gb_path}",
+                self._parameters,
+            )
         if not self._gb_path.endswith(".gb") and not self._gb_path.endswith(".gbc"):
-            log_error(f"GameBoy ROM file {self._gb_path} is not a .gb or .gbc file.", self._parameters)
+            log_error(
+                f"GameBoy ROM file {self._gb_path} is not a .gb or .gbc file.",
+                self._parameters,
+            )
         self.headless = headless
         """ Whether to run the environment in headless mode."""
         if max_steps is None:
             max_steps = self._parameters["gameboy_max_steps"]
         if max_steps > self._parameters["gameboy_hard_max_steps"]:
-            log_warn(f"max_steps {max_steps} exceeds gameboy_hard_max_steps {self._parameters['gameboy_hard_max_steps']}. Setting to hard max.", self._parameters)
+            log_warn(
+                f"max_steps {max_steps} exceeds gameboy_hard_max_steps {self._parameters['gameboy_hard_max_steps']}. Setting to hard max.",
+                self._parameters,
+            )
             max_steps = self._parameters["gameboy_hard_max_steps"]
         self.max_steps = max_steps
         """ Maximum number of steps per episode. """
@@ -123,12 +172,19 @@ class Emulator:
         self.session_name = None
         if session_name is None:
             session_name = "tmp_sessions"
-            log_warn(f"Saving a temporary session. If you run emulator.clear_tmp_sessions(), it will be deleted. To make it permanent, pass in a session_name to the emulator.")
+            log_warn(
+                f"Saving a temporary session. If you run emulator.clear_tmp_sessions(), it will be deleted. To make it permanent, pass in a session_name to the emulator."
+            )
         elif not isinstance(session_name, str) or session_name == "":
-            log_error(f"session_name must be a non-empty string. Recieved {session_name}", self._parameters)
+            log_error(
+                f"session_name must be a non-empty string. Recieved {session_name}",
+                self._parameters,
+            )
         self.session_name = session_name
         """ Name of the session. Decides the directory where artifacts are saved. """
-        self.session_path = os.path.join(self.get_session_path(), self.session_name, self.instance_id)
+        self.session_path = os.path.join(
+            self.get_session_path(), self.session_name, self.instance_id
+        )
         """ Path to the session directory. This is where all artifacts for this session are saved. """
         os.makedirs(self.session_path, exist_ok=True)
         self.act_freq = parameters["gameboy_action_freq"]
@@ -138,7 +194,10 @@ class Emulator:
         self.render_headless = parameters["gameboy_headless_render"]
         """ Whether to render the emulator screen even in headless mode. This must be true for methods that rely on image observations (e.g. VLMs) to access the screen. Defaults to value specified in config files. """
         if not self.render_headless:
-            log_error("render_headless cannot be set to False. In the Pokemon environments, screen captures are used aggressively to determine state. ", self._parameters)
+            log_error(
+                "render_headless cannot be set to False. In the Pokemon environments, screen captures are used aggressively to determine state. ",
+                self._parameters,
+            )
 
         self._full_frame_writer = None
         self._model_frame_writer = None
@@ -147,11 +206,14 @@ class Emulator:
         self.step_count = 0
         """ Number of steps taken in the current episode. """
         self._reduce_video_resolution = parameters["gameboy_reduce_video_resolution"]
-        pokemon_frame_size = (160, 144) # Confirm this is universal if you want other GB games. 
+        pokemon_frame_size = (
+            160,
+            144,
+        )  # Confirm this is universal if you want other GB games.
         self.screen_shape = (pokemon_frame_size[0], pokemon_frame_size[1], 1)
         """ Resolution of the rendered game screen """
         if self._reduce_video_resolution:
-            self.output_shape = (pokemon_frame_size[0]//2, pokemon_frame_size[1]//2)
+            self.output_shape = (pokemon_frame_size[0] // 2, pokemon_frame_size[1] // 2)
         else:
             self.output_shape = (pokemon_frame_size[0], pokemon_frame_size[1])
             """ Shape of the output observations. This is the resolution of the rendered screen. """
@@ -165,16 +227,24 @@ class Emulator:
         self.state_parser = state_parser_class(self._pyboy, self._parameters)
         """ Instance of the StateParser to parse game state variables. """
 
-        self.state_tracker = state_tracker_class(self.game, self.session_name, self.instance_id, self.state_parser, self._parameters)
+        self.state_tracker = state_tracker_class(
+            self.game,
+            self.session_name,
+            self.instance_id,
+            self.state_parser,
+            self._parameters,
+        )
         """ Instance of the StateTracker to track game state metrics. """
 
-        #self.screen = self.pyboy.botsupport_manager().screen()
+        # self.screen = self.pyboy.botsupport_manager().screen()
 
         if not self.headless:
             if not is_none_str(self._parameters["gameboy_headed_emulation_speed"]):
-                self._pyboy.set_emulation_speed(int(self._parameters["gameboy_headed_emulation_speed"]))        
+                self._pyboy.set_emulation_speed(
+                    int(self._parameters["gameboy_headed_emulation_speed"])
+                )
         self.reset()
-            
+
     @staticmethod
     def create_first_state(gb_path: str, state_path: str):
         """
@@ -188,7 +258,9 @@ class Emulator:
         """
         # error out if gb_path does not exist or is not a .gb or .gbc file
         if not os.path.exists(gb_path):
-            log_error(f"GameBoy ROM file {gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {gb_path}")
+            log_error(
+                f"GameBoy ROM file {gb_path} does not exist. You must obtain a ROM through official means, and then place it in the path: {gb_path}"
+            )
         if not gb_path.endswith(".gb") and not gb_path.endswith(".gbc"):
             log_error(f"GameBoy ROM file {gb_path} is not a .gb or .gbc file.")
         if not state_path.endswith(".state"):
@@ -208,7 +280,7 @@ class Emulator:
 
     def clear_tmp_sessions(self):
         """
-        Clears the tmp_sessions directory for ALL game variants. 
+        Clears the tmp_sessions directory for ALL game variants.
         """
         storage_dir = self._parameters["storage_dir"]
         session_path = os.path.join(storage_dir, "sessions")
@@ -239,11 +311,11 @@ class Emulator:
         """
         self._set_init_state(init_state)
         self.reset()
-    
+
     def _set_init_state(self, init_state: str):
         """
-        Sets a new initial state file for the environment to eventually load. 
-        Does not reset the environment. 
+        Sets a new initial state file for the environment to eventually load.
+        Does not reset the environment.
 
         Args:
             init_state (str): Path to the new initial state file.
@@ -251,9 +323,14 @@ class Emulator:
         if init_state is None:
             return
         if not os.path.exists(init_state):
-            log_error(f"New initial state file {init_state} does not exist.", self._parameters)
+            log_error(
+                f"New initial state file {init_state} does not exist.", self._parameters
+            )
         if not init_state.endswith(".state"):
-            log_error(f"New initial state file {init_state} is not a .state file.", self._parameters)
+            log_error(
+                f"New initial state file {init_state} is not a .state file.",
+                self._parameters,
+            )
         self.init_state = init_state
         log_info(f"Set new initial state file to {self.init_state}", self._parameters)
 
@@ -262,12 +339,12 @@ class Emulator:
         Resets the environment to the initial state. Optionally loads a new initial state file.
 
         Args:
-            new_init_state (str, optional): Path to a new initial state file to load. 
+            new_init_state (str, optional): Path to a new initial state file to load.
         """
         # validate the new_init_state if provided
         if new_init_state is not None:
             self._set_init_state(new_init_state)
-        # restart game, skipping to init_state 
+        # restart game, skipping to init_state
         with open(self.init_state, "rb") as f:
             self._pyboy.load_state(f)
 
@@ -283,14 +360,14 @@ class Emulator:
 
         Returns:
             np.ndarray: The rendered image as a numpy array.
-        """ 
+        """
         return self.state_parser.get_current_frame()
-    
+
     def _update_listeners_after_actions(self, frames: np.ndarray):
         """
-        Updates the video and state tracker after a batch of actions are run on the emulator without step() 
+        Updates the video and state tracker after a batch of actions are run on the emulator without step()
 
-        You should *not* call this method when implementing HighLevelActions, instead call step(), track the states at each step, and return the list of transition states. 
+        You should *not* call this method when implementing HighLevelActions, instead call step(), track the states at each step, and return the list of transition states.
 
         Args:
             frames (np.ndarray): Frames of shape [n_frames, H, W, C] that contain the frames which elapsed during the run of the actions outside step
@@ -298,11 +375,11 @@ class Emulator:
         if self.save_video and self.video_running:
             self.add_video_frames(frames)
         self.state_tracker.step(frames)
-    
+
     def step(self, action: LowLevelActions = None) -> Tuple[Optional[np.ndarray], bool]:
         """
         Takes a step in the environment by performing the given action on the emulator. If saving video, starts the video recording on the first step.
-        
+
         :param action: Lowest level action to perform on the emulator.
         :type action: LowLevelActions
         :return: The stack of frames that passed while performing the action, if rendering is enabled. Is of shape [n_frames (3 right now), height, width, channels]. Otherwise, None.
@@ -310,10 +387,16 @@ class Emulator:
         """
         if action is not None:
             if action not in LowLevelActions:
-                log_error(f"Invalid action {action}. Must be one of {list(LowLevelActions)} or None", self._parameters)
+                log_error(
+                    f"Invalid action {action}. Must be one of {list(LowLevelActions)} or None",
+                    self._parameters,
+                )
         if self.step_count >= self.max_steps:
-            log_error("Step called after max_steps reached. Please reset the environment.", self._parameters)
-            
+            log_error(
+                "Step called after max_steps reached. Please reset the environment.",
+                self._parameters,
+            )
+
         if self.save_video and self.step_count == 0:
             self.start_video()
 
@@ -331,9 +414,11 @@ class Emulator:
         """
         return self.state_parser
 
-    def run_action_on_emulator(self, action: LowLevelActions = None) -> Optional[np.ndarray]:
-        """ 
-        
+    def run_action_on_emulator(
+        self, action: LowLevelActions = None
+    ) -> Optional[np.ndarray]:
+        """
+
         Performs the given action on the emulator by pressing and releasing the corresponding button.
 
         Args:
@@ -357,7 +442,7 @@ class Emulator:
         else:
             self._pyboy.tick(self.act_freq, True)
             frames = [self.get_current_frame()]
-            frames =  np.array(frames)
+            frames = np.array(frames)
         return frames
 
     def reduce_resolution(self, frame: np.ndarray) -> np.ndarray:
@@ -368,9 +453,7 @@ class Emulator:
         Returns:
             np.ndarray: The reduced resolution frame.
         """
-        reduced = (
-                downscale_local_mean(frame, (2,2,1))
-            ).astype(np.uint8)
+        reduced = (downscale_local_mean(frame, (2, 2, 1))).astype(np.uint8)
         return reduced
 
     def save_render(self, reduce_res: bool = None):
@@ -378,17 +461,19 @@ class Emulator:
         Saves the current rendered screen of the emulator as a JPEG image in the renders directory.
 
         Args:
-            reduce_res (bool, optional): Whether to reduce the resolution of the saved image. 
+            reduce_res (bool, optional): Whether to reduce the resolution of the saved image.
                 If None, uses the default setting from the config files.
         """
-        render_path = os.path.join(self.session_path, "renders", f"step_{self.step_count}.jpeg")
+        render_path = os.path.join(
+            self.session_path, "renders", f"step_{self.step_count}.jpeg"
+        )
         file_makedir(render_path)
         if reduce_res is None:
             reduce_res = self._reduce_video_resolution
         current_frame = self.get_current_frame()
         if reduce_res:
             current_frame = self.reduce_resolution(current_frame)
-        plt.imsave(render_path, current_frame[:,:, 0])
+        plt.imsave(render_path, current_frame[:, :, 0])
 
     def get_free_video_id(self) -> str:
         """
@@ -408,28 +493,40 @@ class Emulator:
                     video_ints.append(int(video_name))
         if len(video_ints) == 0:
             return "0.mp4"
-        return str(max(video_ints) + 1)+".mp4"
-        
+        return str(max(video_ints) + 1) + ".mp4"
+
     def start_video(self, video_id: str = None):
-        """ 
+        """
         Starts recording video of the emulator's screen.
         Args:
-            video_id (str, optional): Name of the video file to save. If None, a new unique name will be generated. 
+            video_id (str, optional): Name of the video file to save. If None, a new unique name will be generated.
         """
         if video_id is not None:
             if not isinstance(video_id, str):
-                log_error("video_id must be a string (not digits) if provided.", self._parameters)
+                log_error(
+                    "video_id must be a string (not digits) if provided.",
+                    self._parameters,
+                )
             if not video_id.endswith(".mp4"):
                 log_error("video_id must end with .mp4 if provided.", self._parameters)
             if os.path.exists(os.path.join(self.session_path, "videos", video_id)):
-                log_warn(f"video_id {video_id} already exists. Overwriting...", self._parameters)                       
+                log_warn(
+                    f"video_id {video_id} already exists. Overwriting...",
+                    self._parameters,
+                )
         else:
             video_id = self.get_free_video_id()
         base_dir = os.path.join(self.session_path, "videos")
         os.makedirs(base_dir, exist_ok=True)
         video_path = os.path.join(base_dir, f"{video_id}")
         self.close_video()
-        self.frame_writer = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*"mp4v"), 60, (self.output_shape[0], self.output_shape[1]), isColor=False)
+        self.frame_writer = cv2.VideoWriter(
+            video_path,
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            60,
+            (self.output_shape[0], self.output_shape[1]),
+            isColor=False,
+        )
         self.video_running = True
         log_info(f"Started recording video to: {video_path}", self._parameters)
 
@@ -448,7 +545,7 @@ class Emulator:
                 frame = self.reduce_resolution(frame)
             self.frame_writer.write(frame)
         return
-                    
+
     def check_if_done(self):
         """
         Checks if the max_steps limit has been reached.
@@ -467,7 +564,7 @@ class Emulator:
             self._model_frame_writer.release()
             self._model_frame_writer = None
         self.video_running = False
-    
+
     def close(self) -> StateTracker:
         """
         Closes the emulator and any associated resources.
@@ -478,21 +575,30 @@ class Emulator:
         self.close_video()
         self.state_tracker.close()
         # check if session directory is empty, and if so delete it
-        if os.path.exists(self.session_path) and len(os.listdir(self.session_path)) == 0:
+        if (
+            os.path.exists(self.session_path)
+            and len(os.listdir(self.session_path)) == 0
+        ):
             os.rmdir(self.session_path)
         return self.state_tracker
-    
+
     def human_play(self, max_steps: int = None):
-        """ 
+        """
         Allows a human to play the emulator using keyboard inputs.
         Args:
             max_steps (int, optional): Maximum number of steps to play. Defaults to gameboy_hard_max_steps in configs.
         """
         if max_steps is None:
             max_steps = self._parameters["gameboy_hard_max_steps"]
-        log_info("Starting human play mode. Use arrow keys and A(a)/B(s)/Start(enter) buttons to play. Close the window to exit.", self._parameters)
+        log_info(
+            "Starting human play mode. Use arrow keys and A(a)/B(s)/Start(enter) buttons to play. Close the window to exit.",
+            self._parameters,
+        )
         if self.headless:
-            log_error("Human play mode requires headless=False. Change the initialization", self._parameters)    
+            log_error(
+                "Human play mode requires headless=False. Change the initialization",
+                self._parameters,
+            )
         self.reset()
         while True:
             self._pyboy.tick(1, True)
@@ -502,7 +608,7 @@ class Emulator:
         self.close()
 
     def random_play(self, max_steps: int = None):
-        """ 
+        """
         Allows the emulator to play itself using (sort of) random actions.
         Args:
             max_steps (int, optional): Maximum number of steps to play. Defaults to gameboy_hard_max_steps in configs.
@@ -513,7 +619,7 @@ class Emulator:
         self.reset()
         pbar = tqdm(total=max_steps, desc="Random Play Steps")
         allowed_actions = list(LowLevelActions)
-        # remove the Start and Select actions from allowed actions to avoid menu spamming. 
+        # remove the Start and Select actions from allowed actions to avoid menu spamming.
         allowed_actions.remove(LowLevelActions.PRESS_BUTTON_START)
         while self.step_count < max_steps:
             action = np.random.choice(allowed_actions)
@@ -527,19 +633,28 @@ class Emulator:
 
     def _dev_play(self, max_steps: int = None):
         """
-        Allows a human to play the emulator using keyboard inputs. Does not route through step function. 
+        Allows a human to play the emulator using keyboard inputs. Does not route through step function.
         This function continuously reads from the parameters in the configs directory and if it detects a change in the `gameboy_dev_play_stop` parameter, will enter a breakpoint
 
         Args:
             max_steps (int, optional): Maximum number of steps to play. Defaults to gameboy_hard_max_steps in configs.
         """
         if not hasattr(self.state_parser, "rom_data_path"):
-            log_error("Development play mode requires a StateParser with rom_data_path attribute.", self._parameters)
+            log_error(
+                "Development play mode requires a StateParser with rom_data_path attribute.",
+                self._parameters,
+            )
         if max_steps is None:
             max_steps = self._parameters["gameboy_hard_max_steps"]
-        log_info("Starting human play mode. Use arrow keys and A(a)/B(s)/Start(enter) buttons to play. Close the window to exit. Open configs/gameboy_vars.yaml and set gameboy_dev_play_stop to true to enable development mode.", self._parameters)
+        log_info(
+            "Starting human play mode. Use arrow keys and A(a)/B(s)/Start(enter) buttons to play. Close the window to exit. Open configs/gameboy_vars.yaml and set gameboy_dev_play_stop to true to enable development mode.",
+            self._parameters,
+        )
         if self.headless:
-            log_error("Human play mode requires headless=False. Change the initialization", self._parameters)
+            log_error(
+                "Human play mode requires headless=False. Change the initialization",
+                self._parameters,
+            )
         self.reset()
         valid_regions = []
         unassigned_regions = []
@@ -553,7 +668,10 @@ class Emulator:
                     if region.multi_targets[target_name] is None:
                         unassigned_regions.append((region_name, target_name))
         if len(unassigned_regions) > 0:
-            log_warn(f"Unassigned regions (target array not set) are: {unassigned_regions}", self._parameters)
+            log_warn(
+                f"Unassigned regions (target array not set) are: {unassigned_regions}",
+                self._parameters,
+            )
         while True:
             self._parameters = load_parameters()
             if not self._parameters["gameboy_dev_play_stop"]:
@@ -562,7 +680,7 @@ class Emulator:
             else:
                 tracker_report = self.state_tracker.report()
                 tracker_report["core"].pop("current_frame", None)
-                tracker_report["core"].pop("passed_frames", None) 
+                tracker_report["core"].pop("passed_frames", None)
                 dev_instructions = f"""
                 In development mode.
                 Enter 'e' to close the emulator.
@@ -585,16 +703,24 @@ class Emulator:
                 first_char = user_input[0] if len(user_input) > 0 else ""
                 allowed_inputs = ["e", "", "p", "w", "c", "s", "l", "d", "b"]
                 if first_char not in allowed_inputs:
-                    log_warn(f"Invalid input {user_input}. Valid inputs are: {allowed_inputs}", self._parameters)
+                    log_warn(
+                        f"Invalid input {user_input}. Valid inputs are: {allowed_inputs}",
+                        self._parameters,
+                    )
                     continue
                 if first_char == "e":
                     log_info("Exiting human play mode.", self._parameters)
                     break
                 elif first_char == "":
-                    log_info("Exiting development mode. Resuming normal play.", self._parameters)
+                    log_info(
+                        "Exiting development mode. Resuming normal play.",
+                        self._parameters,
+                    )
                     continue
                 elif first_char == "p":
-                    log_info(f"Current State:\n{str(self.state_tracker)}", self._parameters)
+                    log_info(
+                        f"Current State:\n{str(self.state_tracker)}", self._parameters
+                    )
                     continue
                 elif first_char == "w":
                     self._pyboy.tick(1, True)
@@ -608,17 +734,24 @@ class Emulator:
                     state_name = parts[1]
                     if not state_name.endswith(".state"):
                         state_name = state_name + ".state"
-                    state_path = os.path.join(self.state_parser.rom_data_path, "states", state_name)
+                    state_path = os.path.join(
+                        self.state_parser.rom_data_path, "states", state_name
+                    )
                     if first_char == "s":
                         if os.path.exists(state_path):
-                            confirm_input = input(f"State file {state_path} already exists. Overwrite? (y/n): ")
+                            confirm_input = input(
+                                f"State file {state_path} already exists. Overwrite? (y/n): "
+                            )
                             if confirm_input.lower().strip() != "y":
                                 log_info("Aborting save state.", self._parameters)
                                 continue
                         self.save_state(state_path)
                     else:
                         if not os.path.exists(state_path):
-                            log_warn(f"State file {state_path} does not exist. Cannot load.", self._parameters)
+                            log_warn(
+                                f"State file {state_path} does not exist. Cannot load.",
+                                self._parameters,
+                            )
                             continue
                         self.set_init_state(state_path)
                 elif first_char == "b":
@@ -631,65 +764,97 @@ class Emulator:
                         parts = user_input.split(" ")
                         if len(parts) != 3:
                             if len(parts) != 2:
-                                log_warn(f"Invalid input {user_input}.", self._parameters)
+                                log_warn(
+                                    f"Invalid input {user_input}.", self._parameters
+                                )
                                 continue
-                            else:                                
+                            else:
                                 region_name = parts[1].split(",")[0]
-                                region = self.state_parser.named_screen_regions[region_name]
+                                region = self.state_parser.named_screen_regions[
+                                    region_name
+                                ]
                                 if region.multi_targets is None:
                                     save_path = region.target_path
                                 else:
                                     if "," not in parts[1]:
-                                        log_warn(f"Region {region_name} is a multi-target region. Specify target", self._parameters)
+                                        log_warn(
+                                            f"Region {region_name} is a multi-target region. Specify target",
+                                            self._parameters,
+                                        )
                                         continue
                                     target_name = parts[1].split(",")[1]
                                     if target_name not in region.multi_target_paths:
-                                        log_warn(f"Target name {target_name} not found in region {region_name} with targets {region.multi_targets.keys()}.", self._parameters)
+                                        log_warn(
+                                            f"Target name {target_name} not found in region {region_name} with targets {region.multi_targets.keys()}.",
+                                            self._parameters,
+                                        )
                                         continue
                                     save_path = region.multi_target_paths[target_name]
                                 if save_path is None:
-                                    log_warn(f"Region {region_name} does not have a target path specified. Please provide a save name.", self._parameters)
+                                    log_warn(
+                                        f"Region {region_name} does not have a target path specified. Please provide a save name.",
+                                        self._parameters,
+                                    )
                                     continue
                         else:
                             save_name = parts[2]
                             if not save_name.endswith(".npy"):
                                 save_name = save_name + ".npy"
-                                save_path = os.path.join(self.state_parser.rom_data_path, "captures", save_name)
+                                save_path = os.path.join(
+                                    self.state_parser.rom_data_path,
+                                    "captures",
+                                    save_name,
+                                )
                         file_makedir(save_path)
                     elif first_char == "d":
                         parts = user_input.split(" ")
                         if len(parts) == 2:
-                            region_name = parts[1].split(",")[0] # Shouldn't need but anyway.
+                            region_name = parts[1].split(",")[
+                                0
+                            ]  # Shouldn't need but anyway.
                         elif len(parts) == 1:
                             region_name = "Full Screen"
                         else:
                             log_warn(f"Invalid input {user_input}.", self._parameters)
                             continue
                     if region_name == "Full Screen":
-                        drawn_frame = current_frame#self.state_parser.draw_grid_overlay(current_frame)
+                        drawn_frame = current_frame  # self.state_parser.draw_grid_overlay(current_frame)
                     else:
-                        drawn_frame = self.state_parser.draw_named_region(current_frame, region_name)
+                        drawn_frame = self.state_parser.draw_named_region(
+                            current_frame, region_name
+                        )
                     plt.imshow(drawn_frame[:, :, 0], cmap="gray")
                     plt.title(f"Region: {region_name}")
                     plt.show()
                     if first_char == "c":
-                        captured_region = self.state_parser.capture_named_region(current_frame, region_name)
+                        captured_region = self.state_parser.capture_named_region(
+                            current_frame, region_name
+                        )
                         plt.imshow(captured_region[:, :, 0], cmap="gray")
                         plt.title(f"Captured Region: {region_name}")
                         plt.show()
                         existing_file = os.path.exists(save_path)
-                        existing_str = "" if not existing_file else " (will overwrite existing file)"
-                        confirmation_input = input(f"Save captured region {region_name} to {save_path}? (y/n) {existing_str}: ")
+                        existing_str = (
+                            ""
+                            if not existing_file
+                            else " (will overwrite existing file)"
+                        )
+                        confirmation_input = input(
+                            f"Save captured region {region_name} to {save_path}? (y/n) {existing_str}: "
+                        )
                         if confirmation_input.lower().strip() != "y":
                             log_info("Aborting capture region.", self._parameters)
                             continue
                         np.save(save_path, captured_region)
-                        log_info(f"Saved captured region {region_name} to {save_path}", self._parameters)
+                        log_info(
+                            f"Saved captured region {region_name} to {save_path}",
+                            self._parameters,
+                        )
             if self.step_count >= max_steps:
                 break
         tracker = self.close()
         log_info("Human play mode ended.", self._parameters)
-        #log_dict(tracker.report_final(), parameters=self._parameters)
+        # log_dict(tracker.report_final(), parameters=self._parameters)
 
     def save_state(self, state_path: str):
         """
@@ -707,7 +872,7 @@ class Emulator:
 
     def _sav_to_state(self, sav_file: Optional[str], state_file: str):
         """
-        Loads a .sav file into the emulator and saves the corresponding .state file. 
+        Loads a .sav file into the emulator and saves the corresponding .state file.
         Use this if you want to manually create .sav files and convert them to .state files for use as initial states.
         Requires `_open_to_first_state` to be implemented in the subclass to get past opening menus.
 
@@ -715,7 +880,10 @@ class Emulator:
             save_file (str or None): Path to the .sav file to load. If None, looks for a .sav file in the same directory as the ROM with the same base name.
             state_file (str): Path to save the .state file
         """
-        log_info("Trying to find .sav file and convert to .state file. This is a breaking operation, so the program will terminate after its completion.", self._parameters)
+        log_info(
+            "Trying to find .sav file and convert to .state file. This is a breaking operation, so the program will terminate after its completion.",
+            self._parameters,
+        )
         if sav_file is not None:
             expected_sav = sav_file
         else:
@@ -724,13 +892,22 @@ class Emulator:
             else:
                 expected_sav = self._gb_path.replace(".gb", ".sav")
         if not os.path.exists(expected_sav):
-            log_error(f"Expected .sav file at {expected_sav} to convert to .state file, but it does not exist.", self._parameters)
+            log_error(
+                f"Expected .sav file at {expected_sav} to convert to .state file, but it does not exist.",
+                self._parameters,
+            )
         if state_file is None or state_file == "":
-            log_error("You must provide a state_file to save the .state file.", self._parameters)
+            log_error(
+                "You must provide a state_file to save the .state file.",
+                self._parameters,
+            )
         if not state_file.endswith(".state"):
             state_file = state_file + ".state"
         if os.path.exists(state_file):
-            log_error(f"state_file {state_file} already exists. Please provide a new path to avoid overwriting.", self._parameters)
+            log_error(
+                f"state_file {state_file} already exists. Please provide a new path to avoid overwriting.",
+                self._parameters,
+            )
         file_makedir(state_file)
         # copy the .sav file to self._gb_path.gb.ram file
         save_destination = self._gb_path.replace(".gb", ".gb.ram")
@@ -744,27 +921,31 @@ class Emulator:
         self._open_to_first_state()
         self.save_state(state_file)
         self._pyboy.stop(save=False)
-        log_info("State saved successfully. Exiting now to avoid issues ...", self._parameters)
+        log_info(
+            "State saved successfully. Exiting now to avoid issues ...",
+            self._parameters,
+        )
         # remove the .gb.ram file
         if os.path.exists(save_destination):
             os.remove(save_destination)
         sys.exit(0)
-            
+
     def _open_to_first_state(self):
         """
-        Presses buttons on the emulator to get past the opening menus and into the game itself. 
-        You don't really need to implement this method, but if you do, you can use _sav_to_state to create state files from mGBA sav files. 
+        Presses buttons on the emulator to get past the opening menus and into the game itself.
+        You don't really need to implement this method, but if you do, you can use _sav_to_state to create state files from mGBA sav files.
         """
         raise NotImplementedError
-    
+
     def get_env_variant(self) -> str:
-        """        
+        """
         Returns a string identifier for the particular environment variant being used.
-        
+
         :return: string name identifier of the particular env e.g. PokemonRed
         """
         return self.game
-    
+
+
 def bytes_to_padded_hex_string(integer_value):
     """
     Converts a bytes object into a padded, '0x'-prefixed hexadecimal string.
@@ -774,8 +955,8 @@ def bytes_to_padded_hex_string(integer_value):
     # 2. Format the integer into a string with padding and the '0x' prefix
     # The 'x' specifier for hex, '#' adds '0x', '04' pads to 4 hex characters total
     # (not including the '0x' prefix for simple formatters like this, but managing width)
-    
+
     # A robust approach to match your exact output '0x00a':
     # You generally want enough width for your bytes. b'\n' is 1 byte, 2 hex chars.
 
-    return f'0x{integer_value:04x}' # {0:04x} pads to 4 digits specifically
+    return f"0x{integer_value:04x}"  # {0:04x} pads to 4 digits specifically

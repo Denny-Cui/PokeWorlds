@@ -9,21 +9,24 @@ class PokemonLocateAction(LocateAction):
         "pokeball": "a pixelated, greyscale Poke Ball sprite, recognizable by its circular shape, white center, black band around the top, and grey body",
         "npc": "a pixelated human-like character sprite",
         "grass": "a pixelated, greyscale patch of grass that resembles wavy dark lines.",
-        "sign": "a pixelated, greyscale white signpost with dots on its face"
-    }    
-
+        "sign": "a pixelated, greyscale white signpost with dots on its face",
+    }
 
     image_references = {
         "item": "pokeball",
         "pokeball": "pokeball",
         "grass": "grass",
-        "sign": "sign"
+        "sign": "sign",
     }
 
-    def is_valid(self, target = None):
-        if self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) != AgentState.FREE_ROAM:
+    def is_valid(self, target=None):
+        if (
+            self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
+            != AgentState.FREE_ROAM
+        ):
             return False
         return super().is_valid(target=target)
+
 
 """
 all_options = set(LocateAction.image_references.keys()).union(LocateAction.pre_described_options.keys())
@@ -37,7 +40,7 @@ class CheckInteractionAction(ExecutorAction):
     1. Checks the orientation of the agent using VLM inference.
     2. Captures the grid cell in all four cardinal directions of the agent and uses VLM inference to describe what is in the cell and whether we can interact with it.
 
-    Is Valid When: 
+    Is Valid When:
     - In Free Roam State
 
     Action Success Interpretation:
@@ -53,6 +56,7 @@ class CheckInteractionAction(ExecutorAction):
         - The raw VLM output for that cell.
 
     """
+
     orientation_prompt = """
     You are playing Pokemon and are given a screen capture of the player. Which direction is the player facing?
     Do not give any explanation, just your answer. 
@@ -69,9 +73,13 @@ class CheckInteractionAction(ExecutorAction):
     and then [STOP]
     Description:
     """
+
     def is_valid(self, **kwargs):
-        return self._state_tracker.get_episode_metric(("pokemon_core", "agent_state")) == AgentState.FREE_ROAM
-    
+        return (
+            self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
+            == AgentState.FREE_ROAM
+        )
+
     def parse_result(self, output):
         if "answer:" not in output.lower():
             return output.strip(), None
@@ -83,13 +91,22 @@ class CheckInteractionAction(ExecutorAction):
         else:
             return description_part.strip(), None
 
-        
-    
     def _execute(self):
         current_frame = self._emulator.get_current_frame()
-        grid_cells = self._emulator.state_parser.capture_grid_cells(current_frame=current_frame)
-        orientation_output = ExecutorVLM.infer(texts=[self.orientation_prompt], images=[grid_cells[(0, 0)]], max_new_tokens=5)[0]
-        all_cardinals = {"up": (0, 1), "down": (0, -1), "left": (-1, 0), "right": (1, 0)}
+        grid_cells = self._emulator.state_parser.capture_grid_cells(
+            current_frame=current_frame
+        )
+        orientation_output = ExecutorVLM.infer(
+            texts=[self.orientation_prompt],
+            images=[grid_cells[(0, 0)]],
+            max_new_tokens=5,
+        )[0]
+        all_cardinals = {
+            "up": (0, 1),
+            "down": (0, -1),
+            "left": (-1, 0),
+            "right": (1, 0),
+        }
         cardinal = None
         for cardinal_key, cardinal_value in all_cardinals.items():
             if cardinal_key in orientation_output.lower():
@@ -101,7 +118,11 @@ class CheckInteractionAction(ExecutorAction):
         cardinal_results = {}
         for cardinal_key, cardinal_value in all_cardinals.items():
             cardinal_screen = grid_cells[cardinal_value]
-            percieve_output = ExecutorVLM.infer(texts=[self.percieve_prompt], images=[cardinal_screen], max_new_tokens=50)[0]
+            percieve_output = ExecutorVLM.infer(
+                texts=[self.percieve_prompt],
+                images=[cardinal_screen],
+                max_new_tokens=50,
+            )[0]
             description, answer = self.parse_result(percieve_output)
             cardinal_results[cardinal_key] = (description, answer, percieve_output)
         cardinal_results["orientation"] = cardinal
