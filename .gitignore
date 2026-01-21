@@ -187,3 +187,6 @@ rom_data/*/*.gbc.state
 
 download_roms.sh
 rom_data.zip
+*.out
+todo.md
+tmp.py
