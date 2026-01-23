@@ -10,6 +10,7 @@ from poke_worlds.emulation.pokemon.base_metrics import (
 from poke_worlds.utils import log_info
 from poke_worlds.emulation.tracker import (
     StateTracker,
+    TestTrackerMixin,
 )
 from poke_worlds.emulation.pokemon.parsers import (
     AgentState,
@@ -42,12 +43,6 @@ class CorePokemonTracker(StateTracker):
                 self.episode_metrics["core"]["passed_frames"][-1, :] = screen
 
 
-class PokemonOCRTracker(CorePokemonTracker):
-    def start(self):
-        super().start()
-        self.metric_classes.extend([PokemonOCRMetric])
-
-
 class PokemonRedStarterTracker(CorePokemonTracker):
     """
     Example StateTracker that tracks the starter Pokémon chosen in Pokémon Red.
@@ -56,3 +51,17 @@ class PokemonRedStarterTracker(CorePokemonTracker):
     def start(self):
         super().start()
         self.metric_classes.extend([PokemonRedStarter, PokemonRedLocation])
+
+
+class PokemonOCRTracker(CorePokemonTracker):
+    def start(self):
+        super().start()
+        self.metric_classes.extend([PokemonOCRMetric])
+
+
+class PokemonTestTracker(TestTrackerMixin, PokemonOCRTracker):
+    """
+    Inherit this class and set TERMINATION_TRUNCATION_METRIC to create a TestTracker for Pokémon games.
+    """
+
+    pass
