@@ -4,6 +4,8 @@ from poke_worlds.emulation.pokemon.base_metrics import (
     PokemonRedLocation,
     PokemonRedStarter,
 )
+from poke_worlds.emulation.pokemon.test_metrics import PokemonCenterTerminateMetric
+
 from poke_worlds.emulation.pokemon.base_metrics import (
     PokemonTestMetric,
 )
@@ -64,4 +66,12 @@ class PokemonTestTracker(TestTrackerMixin, PokemonOCRTracker):
     Inherit this class and set TERMINATION_TRUNCATION_METRIC to create a TestTracker for Pokémon games.
     """
 
-    pass
+    TERMINATION_TRUNCATION_METRIC = PokemonCenterTerminateMetric
+
+
+class PokemonRedCenterTestTracker(PokemonTestTracker):
+    """
+    A TestTracker for Pokémon Red that ends an episode when the agent reaches the entrance to the Viridian City Pokémon Center.
+    """
+
+    TERMINATION_TRUNCATION_METRIC = PokemonCenterTerminateMetric

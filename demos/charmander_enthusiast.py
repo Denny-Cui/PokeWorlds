@@ -21,24 +21,31 @@ class OneOfToDiscreteWrapper(gym.ActionWrapper):
             if action < offset + space.n:
                 return (i, action - offset)
             offset += space.n
-        return (0, 0) # Fallback
+        return (0, 0)  # Fallback
 
 
 def make_env(rank, seed=0):
     """
     Utility function for multiprocessed env.
-    
+
     :param env_id: (str) the environment ID
     :param num_env: (int) the number of environment you wish to have in subprocesses
     :param seed: (int) the inital seed for RNG
     :param rank: (int) index of the subprocess
     """
+
     def _init():
-        original_env = get_pokemon_environment(game_variant="pokemon_red", controller=LowLevelPlayController(),
-                                                environment_variant="charmander_enthusiast", max_steps=100, headless=True)
-        original_env.seed(seed + rank) # Doesn't matter here, its deterministic
+        original_env = get_pokemon_environment(
+            game_variant="pokemon_red",
+            controller=LowLevelPlayController(),
+            environment_variant="charmander_enthusiast",
+            max_steps=100,
+            headless=True,
+        )
+        original_env.seed(seed + rank)  # Doesn't matter here, its deterministic
         ind_env = OneOfToDiscreteWrapper(original_env)
         return ind_env
+
     return _init
 
 
@@ -49,42 +56,80 @@ from stable_baselines3.common.callbacks import CallbackList
 
 
 @click.command()
-@click.option("--num_cpu", type=int, default=4, help="Number of CPU cores to use for training.")
+@click.option(
+    "--num_cpu", type=int, default=4, help="Number of CPU cores to use for training."
+)
 @click.option("--batch_size", type=int, default=64, help="Batch size for training.")
-@click.option("--exploration_fraction", type=float, default=0.75, help="Exploration fraction for training.")
-@click.option("--gamma", type=float, default=0.999, help="Discount factor for training.")
-@click.option("--total_timesteps", type=int, default=int(2e5), help="Total timesteps for training.")
+@click.option(
+    "--exploration_fraction",
+    type=float,
+    default=0.75,
+    help="Exploration fraction for training.",
+)
+@click.option(
+    "--gamma", type=float, default=0.999, help="Discount factor for training."
+)
+@click.option(
+    "--total_timesteps",
+    type=int,
+    default=int(2e5),
+    help="Total timesteps for training.",
+)
 def train(num_cpu, batch_size, exploration_fraction, gamma, total_timesteps):
     from wandb.integration.sb3 import WandbCallback
     import wandb
+
     callbacks = []
     run = wandb.init(
-    project="PokeWorlds",
-    name="charmander_enthusiast",
-    sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
-    monitor_gym=True,  # auto-upload the videos of agents playing the game
-    save_code=False,  # optional
+        project="PokeWorlds",
+        name="charmander_enthusiast",
+        sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics
+        monitor_gym=True,  # auto-upload the videos of agents playing the game
+        save_code=False,  # optional
     )
     callbacks.append(WandbCallback())
 
     env = SubprocVecEnv([make_env(i) for i in range(num_cpu)])
 
     # Instantiate the agent
-    model = DQN("MultiInputPolicy", env, verbose=1, gamma=gamma, exploration_fraction=exploration_fraction, batch_size=batch_size)
+    model = DQN(
+        "MultiInputPolicy",
+        env,
+        verbose=1,
+        gamma=gamma,
+        exploration_fraction=exploration_fraction,
+        batch_size=batch_size,
+    )
     # Train the agent and display a progress bar
-    model.learn(total_timesteps=total_timesteps, progress_bar=True, callback=CallbackList(callbacks))
+    model.learn(
+        total_timesteps=total_timesteps,
+        progress_bar=True,
+        callback=CallbackList(callbacks),
+    )
     # Save the agent
     model.save("charmander_enthusiast_agent")
-    mean_reward, std_reward = evaluate_policy(model, model.get_env(), n_eval_episodes=50)
-    print(f"Reward: {mean_reward} +/- {std_reward}")    
+    mean_reward, std_reward = evaluate_policy(
+        model, model.get_env(), n_eval_episodes=50
+    )
+    print(f"Reward: {mean_reward} +/- {std_reward}")
     del model  # delete trained model to demonstrate loading
 
 
 @click.command()
-@click.option("--render", type=bool, default=True, help="Whether to render the environment during evaluation.")
+@click.option(
+    "--render",
+    type=bool,
+    default=True,
+    help="Whether to render the environment during evaluation.",
+)
 def evaluate(render):
-    env = get_pokemon_environment(game_variant="pokemon_red", controller=LowLevelPlayController(),
-                                  environment_variant="charmander_enthusiast", max_steps=200, headless=True)
+    env = get_pokemon_environment(
+        game_variant="pokemon_red",
+        controller=LowLevelPlayController(),
+        environment_variant="charmander_enthusiast",
+        max_steps=200,
+        headless=True,
+    )
     # Load the trained agent
     # NOTE: if you have loading issue, you can pass `print_system_info=True`
     # to compare the system on which the model was trained vs the current one
@@ -95,7 +140,9 @@ def evaluate(render):
     # NOTE: If you use wrappers with your environment that modify rewards,
     #       this will be reflected here. To evaluate with original rewards,
     #       wrap environment in a "Monitor" wrapper before other wrappers.
-    mean_reward, std_reward = evaluate_policy(model, model.get_env(), n_eval_episodes=50)
+    mean_reward, std_reward = evaluate_policy(
+        model, model.get_env(), n_eval_episodes=50
+    )
     print(f"Reward: {mean_reward} +/- {std_reward}")
 
     # Enjoy trained agent
@@ -107,9 +154,11 @@ def evaluate(render):
             obs, rewards, dones, info = vec_env.step(action)
             vec_env.render()
 
+
 @click.group()
 def main():
     pass
+
 
 main.add_command(train)
 main.add_command(evaluate)

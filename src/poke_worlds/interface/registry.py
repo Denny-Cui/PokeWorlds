@@ -15,6 +15,7 @@ from poke_worlds.interface.pokemon.environments import (
     PokemonEnvironment,
     PokemonRedChooseCharmanderFastEnv,
     PokemonOCREnvironment,
+    PokemonTestEnvironment,
 )
 from poke_worlds.interface.pokemon.controllers import PokemonStateWiseController
 
@@ -26,26 +27,32 @@ AVAILABLE_ENVIRONMENTS: Dict[str, Dict[str, Type[Environment]]] = {
         "default": PokemonOCREnvironment,
         "basic": PokemonEnvironment,
         "charmander_enthusiast": PokemonRedChooseCharmanderFastEnv,
+        "test": PokemonTestEnvironment,
     },
     "pokemon_brown": {
         "default": PokemonOCREnvironment,
         "basic": PokemonEnvironment,
+        "test": PokemonTestEnvironment,
     },
     "pokemon_starbeasts": {
         "default": PokemonOCREnvironment,
         "basic": PokemonEnvironment,
+        "test": PokemonTestEnvironment,
     },
     "pokemon_crystal": {
         "default": PokemonOCREnvironment,
         "basic": PokemonEnvironment,
+        "test": PokemonTestEnvironment,
     },
     "pokemon_prism": {
         "default": PokemonOCREnvironment,
         "basic": PokemonEnvironment,
+        "test": PokemonTestEnvironment,
     },
     "pokemon_fools_gold": {
         "default": PokemonOCREnvironment,
         "basic": PokemonEnvironment,
+        "test": PokemonTestEnvironment,
     },
 }
 

@@ -685,7 +685,10 @@ class PokemonRedStateParser(BasePokemonRedStateParser):
                 "picked_charmander",
                 "picked_bulbasaur",
                 "picked_squirtle",
-            ]
+            ],
+            "screen_bottom_half": [
+                "viridian_pokemon_center_entrance",
+            ],
         }
         super().__init__(
             pyboy,

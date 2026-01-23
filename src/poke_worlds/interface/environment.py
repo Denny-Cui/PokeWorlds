@@ -914,6 +914,11 @@ class TestEnvironmentMixin:
         transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None,
         action_success: Optional[int] = None,
     ) -> bool:
+        if not isinstance(self._emulator.state_tracker, TestTrackerMixin):
+            log_error(
+                "TestEnvironmentMixin requires the emulator's state tracker to be a TestTrackerMixin.",
+                self._parameters,
+            )  # we don't need to repeat this for determine_terminated since its done here.
         any_truncated = False
         for state in transition_states:
             if state["termination_truncation"]["truncated"]:

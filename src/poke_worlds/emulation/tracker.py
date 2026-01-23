@@ -463,6 +463,13 @@ class TerminationTruncationMetric(MetricGroup, ABC):
         return {"episode_end_reason": self.episode_end_reason}
 
 
+class TerminationMetric(TerminationTruncationMetric, ABC):
+    def determine_truncated(
+        self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]
+    ) -> bool:
+        return False
+
+
 class StateTracker:
     """
     Tracks and provides API access to the game state / metrics over time and across episodes.

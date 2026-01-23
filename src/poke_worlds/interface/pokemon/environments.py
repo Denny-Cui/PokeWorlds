@@ -9,7 +9,11 @@ from poke_worlds.emulation.pokemon.trackers import (
     PokemonRedStarterTracker,
     PokemonOCRTracker,
 )
-from poke_worlds.interface.environment import DummyEnvironment, Environment
+from poke_worlds.interface.environment import (
+    DummyEnvironment,
+    Environment,
+    TestEnvironmentMixin,
+)
 from poke_worlds.interface.controller import Controller
 
 import gymnasium as gym
@@ -69,6 +73,10 @@ class PokemonOCREnvironment(PokemonEnvironment):
             "state": current_state,
         }
         return observation
+
+
+class PokemonTestEnvironment(TestEnvironmentMixin, PokemonOCREnvironment):
+    pass
 
 
 class PokemonRedChooseCharmanderFastEnv(Environment):
