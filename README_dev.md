@@ -150,27 +150,48 @@ Using this process I'm able to set up all but one capture in [under 10 minutes](
 
 ### I want to add a new test task
 
-#TODO: Clean this up - Add hyperlinks to the relevant .py file (with line number) in code if possible, add hyperlinks to relevant above sections when required. Reformat to make the language more clear, precise, but still conveys all the important information and easy to read. 
+To create a new test task that automatically detects when an agent succeeds (or fails) at a specific goal, follow these steps:
 
+**1. Create an initial state**
+First, create a starting state from which your task is achievable. See the [section above](#i-want-to-create-my-own-starting-states) for detailed instructions on creating states.
 
-Steps:
-1. Explain that the first step is to create an initial state from which the task is achievable. Link to the [above section](#i-want-to-create-my-own-starting-states) and tell them to see that for more on this. 
-2. Identify a termination and trunction condition:
-  - termination: the desired goal has been achieved. This should be a reliably reproducible part of the screen that always displays when the goal is achieved (e.g. when you defeat an enemy trainer in Pokemon, you get a unique dialogue from each one. You can use that to decide whether the agent has succeeded.) In this project, termination == task success. This is because if we give failure termination signals, an agent can use that to learn / implicitly recieve feedback from the environment and do things differently on the next loop. 
-  - truncation: sometimes, you want to cut the game short when a certain state boundary is exceeded, because it is certain the player cannot achieve the task anymore (walked too far away etc.). You do *not* have to implement any logic for truncating based on max_steps, that's already handled internally. 
-  i.e. you MUST implement termination logic, but truncation logic is optional.
+**2. Define termination and truncation conditions**
+- **Termination**: The goal has been achieved. This should be a reliably reproducible screen element that always appears when the goal is reached (e.g., unique dialogue when defeating a specific trainer). In this framework, termination always equals task success - we avoid failure termination signals to prevent agents from using them as learning feedback.
+- **Truncation**: Optional. Cut the episode short when the player can no longer achieve the task (e.g., walked too far away). Maximum steps are handled automatically.
 
-  3. Set up parser to read termination/truncation information
-  This may be needed if the existing parser information doesn't cut it. This is likely the case for termination/truncation conditions that rely on a particular screen capture that is specific to that event (e.g. defeated a particular enemy trainer). In that case, you need to add the multi_target and capture it.  Link to screen capture guide above. 
+**3. Set up parser for screen capture (if needed)**
+If your termination condition relies on a specific screen capture not already available in the parser, you'll need to add it. See the [screen capture method](#state-parser-set-up) in the [section above](#i-want-to-track-fine-grained-details) for guidance on capturing named screen regions.
 
-  4. Set up metric to give a termination/truncation signal
-  If you only want to implement termination, inherit the metric from TerminationMetric, otherwise do it from TerminationTruncationMetric. If your metric exclusively uses region capture comparisons (which is likely the case), then instead inherit from (link out properly w hyperlinks) RegionMatchTerminationMetric and / or RegionMatchTruncationMetric. This class lets you just specify the name of the region and name of the capture target, and you dont need to write code for it. 
+**4. Create the termination/truncation metric**
+Inherit from the appropriate base class in [`src/poke_worlds/emulation/tracker.py`](src/poke_worlds/emulation/tracker.py):
+- For termination only: `TerminationMetric` ([line 466](src/poke_worlds/emulation/tracker.py:466))
+- For both termination and truncation: `TerminationTruncationMetric` ([line 368](src/poke_worlds/emulation/tracker.py:368))
 
-  5. Set up tracker to register the metric. Most likely you can implement a pattern that just needs you to set the TERMINATION_TRUNCATION_METRIC class parameter and nothing else. See PokemonRedCenterTestTracker in pokemon/trackers.py (need to put full path and link out propelry w hyperlink). 
+If using screen region comparisons (most common), inherit from:
+- `RegionMatchTerminationMetric` ([line 717](src/poke_worlds/emulation/tracker.py:717))
+- `RegionMatchTruncationMetric` ([line 693](src/poke_worlds/emulation/tracker.py:693))
 
-  6. Finally, add the state_tracker_class to the emulator registry (link out). 
+Example: [`PokemonCenterTerminateMetric`](src/poke_worlds/emulation/pokemon/test_metrics.py:15) inherits from both `RegionMatchTerminationMetric` and `TerminationMetric`.
 
-  7. Verify that this works: run dev/test_play.py (need to look at the scripts arguments and add those to the python command here and make it neat) and you should be able to play. If all is well, game will stop running when you reach the termination / truncation state. 
+**5. Create the test tracker**
+Most trackers can be created by simply setting the `TERMINATION_TRUNCATION_METRIC` class parameter. See [`PokemonRedCenterTestTracker`](src/poke_worlds/emulation/pokemon/trackers.py:72) for an example.
 
-  Add a dummy link for a video showing an example of this. 
+```python
+class MyTestTracker(PokemonTestTracker):
+    TERMINATION_TRUNCATION_METRIC = MyCustomTerminateMetric
+```
+
+**6. Register the tracker**
+Add your new tracker to the [`AVAILABLE_STATE_TRACKERS`](src/poke_worlds/emulation/registry.py:58) dictionary in the registry with a descriptive name.
+
+**7. Test your implementation**
+Verify it works with the test play script:
+
+```bash
+python dev/test_play.py --game <game> --state_tracker_class <your_tracker_name> --init_state <your_start_state>
+```
+
+The game should automatically stop when you reach the termination/truncation condition.
+
+*Example video: [Coming soon - placeholder for demonstration video]*
 
