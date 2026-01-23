@@ -697,6 +697,7 @@ class Emulator:
                 Current State: 
                 """
                 log_info(dev_instructions, self._parameters)
+                tracker_report.pop("ocr", None)
                 log_dict(tracker_report, parameters=self._parameters)
                 user_input = input("Dev mode input: ")
                 user_input = user_input.lower().strip()

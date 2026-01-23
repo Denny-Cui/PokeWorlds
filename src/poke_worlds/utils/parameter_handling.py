@@ -1,5 +1,6 @@
 import os
 import yaml
+import sys
 from poke_worlds.utils.fundamental import get_logger, check_optional_installs
 
 
@@ -44,14 +45,21 @@ def compute_secondary_parameters(params: dict):
     # convert all rom_data_paths to absolute paths
     for key in params:
         if key.endswith("_rom_data_path"):
+            relative_addition = params[key]
+            if os.path.isabs(relative_addition) or relative_addition.strip() == "":
+                logger.error(
+                    f"{key} should be a relative path, as it will get joined with rom_data_dir {params['rom_data_dir']}. However, the entered value {relative_addition} seems to be an absolute path."
+                )
+                sys.exit(1)
             params[key] = os.path.abspath(
-                os.path.join(params["rom_data_dir"], params[key])
+                os.path.join(params["rom_data_dir"], relative_addition)
             )
     if params["debug_skip_lm"]:
         if not params["debug_mode"]:
             logger.error(
                 "Can only set `debug_skip_lm` to True in configs if you are in debug mode. Set `debug_mode` to True in configs"
             )
+            sys.exit(1)
 
 
 def load_parameters(parameters: dict = None) -> dict:
@@ -83,7 +91,7 @@ def load_parameters(parameters: dict = None) -> dict:
 
     def error(msg):
         logger.error(msg)
-        raise ValueError(msg)
+        sys.exit(1)
 
     if "private_vars.yaml" not in config_files:
         error("Please create private_vars.yaml in the configs directory")

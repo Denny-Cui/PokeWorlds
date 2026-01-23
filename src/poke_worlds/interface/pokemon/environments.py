@@ -126,9 +126,21 @@ class PokemonRedChooseCharmanderFastEnv(Environment):
         observation = {"facing": facing, "coords": np.array(coords, dtype=np.uint16)}
         return observation
 
-    def determine_terminated(self, state):
-        starter_chosen = state["pokemon_red_starter"]["current_starter"]
-        return starter_chosen is not None
+    def determine_terminated(
+        self, start_state, action, action_kwargs, transition_states, action_success
+    ):
+        states = transition_states
+        for state in states:
+            starter_chosen = state["pokemon_red_starter"]["current_starter"]
+            if starter_chosen is not None:
+                return True
+        return super().determine_terminated(
+            start_state,
+            action,
+            action_kwargs,
+            transition_states,
+            action_success,
+        )
 
     def determine_reward(
         self, start_state, action, action_kwargs, transition_states, action_success

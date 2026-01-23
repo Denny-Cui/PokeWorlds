@@ -29,7 +29,7 @@ Easy. The only question is whether you want to save an mGBA state (perhaps you u
 
 **From mGBA state:**
 
-First, start with mGBA and **make sure** to match the player name, rival name (BLUE or SILVER) and text box frame options from the existing default states. This is vital to ensure the state parsing system works. Play till the point you want to replicate with a state and save the game (go to the start menu and save) in the state you want to restore from. This will make a `game_ROMNAME.sav` file in the same directory as the rom file. Then run:
+First, start with mGBA and **make sure** to match the text box frame options from the existing default states. This is vital to ensure the state parsing system works. Play till the point you want to replicate with a state and save the game (go to the start menu and save) in the state you want to restore from. This will make a `game_ROMNAME.sav` file in the same directory as the rom file. Then run:
 
 ```bash
 python dev/save_state.py --game <game> --state_name <name>

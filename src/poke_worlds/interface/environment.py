@@ -413,14 +413,51 @@ class Environment(gym.Env, ABC):
         """
         raise NotImplementedError
 
+    def determine_truncated(
+        self,
+        start_state: Dict[str, Dict[str, Any]],
+        *,
+        action: Optional[HighLevelAction] = None,
+        action_kwargs: Optional[dict] = None,
+        transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None,
+        action_success: Optional[int] = None,
+    ) -> bool:
+        """
+        Determines whether the episode playthrough has exceeded some maximum step count or other truncation criteria based on the transition from start_state through transition_states.
+        This method is can be overidden to implement custom truncation logic, but it must always return:
+        `super().determine_truncated() or <custom_truncation_logic_bool>`
+
+        Args:
+            start_state (Dict[str, Dict[str, Any]]): The state before the action was taken.
+            action (HighLevelAction): The HighLevelAction action taken.
+            action_kwargs (dict): The keyword arguments used for the action.
+            transition_states (List[Dict[str, Dict[str, Any]]]): A list of states observed during the action execution.
+            action_success (bool): Whether the action was successful.
+        Returns:
+            bool: Whether the episode is terminated.
+        """
+        return self._emulator.check_if_done()
+
     @abstractmethod
-    def determine_terminated(self, state: Dict[str, Dict[str, Any]]) -> bool:
+    def determine_terminated(
+        self,
+        start_state: Dict[str, Dict[str, Any]],
+        *,
+        action: Optional[HighLevelAction] = None,
+        action_kwargs: Optional[dict] = None,
+        transition_states: Optional[List[Dict[str, Dict[str, Any]]]] = None,
+        action_success: Optional[int] = None,
+    ) -> bool:
         """
         Determines whether the episode reaches the goal / terminal state based on the transition from start_state through transition_states.
         This method is NOT meant to be used to determine if the step count has exceeded the maximum.
 
         Args:
-            state (Dict[str, Dict[str, Any]]): The current state after the action was taken.
+            start_state (Dict[str, Dict[str, Any]]): The state before the action was taken.
+            action (HighLevelAction): The HighLevelAction action taken.
+            action_kwargs (dict): The keyword arguments used for the action.
+            transition_states (List[Dict[str, Dict[str, Any]]]): A list of states observed during the action execution.
+            action_success (bool): Whether the action was successful.
         Returns:
             bool: Whether the episode is terminated.
         """
@@ -509,7 +546,14 @@ class Environment(gym.Env, ABC):
         ):  # then the action was not a valid one according to the controller. Will return Nones for all
             return None, None, None, None, None
         self.after_step(start_state, action, kwargs, transition_states, action_success)
-        truncated = self._emulator.check_if_done()
+        truncated = self.determine_truncated(
+            start_state=start_state,
+            action=action,
+            action_kwargs=kwargs,
+            transition_states=transition_states,
+            action_success=action_success,
+        )
+
         observation = self.get_observation(
             action=action,
             action_kwargs=kwargs,
@@ -522,7 +566,14 @@ class Environment(gym.Env, ABC):
             transition_states=transition_states,
             action_success=action_success,
         )
-        terminated = self.determine_terminated(current_state)
+        terminated = self.determine_terminated(
+            start_state=start_state,
+            action=action,
+            action_kwargs=kwargs,
+            transition_states=transition_states,
+            action_success=action_success,
+        )
+
         reward = self.determine_reward(
             start_state=start_state,
             action=action,
@@ -793,8 +844,8 @@ class DummyEnvironment(Environment):
     def determine_reward(self, **kwargs):
         return 0.0
 
-    def determine_terminated(self, state):
-        return 0.0
+    def determine_terminated(self, **kwargs):
+        return False
 
     def render_obs(
         self,
