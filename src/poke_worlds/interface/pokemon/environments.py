@@ -2,12 +2,12 @@ from typing import Optional, Dict, Any, List, Tuple
 
 from gymnasium import spaces
 
+from poke_worlds.emulation.pokemon.base_metrics import CorePokemonMetrics
 from poke_worlds.utils import load_parameters, log_dict, log_info
 from poke_worlds.emulation.pokemon.emulators import PokemonEmulator
 from poke_worlds.emulation.pokemon.trackers import (
     PokemonRedStarterTracker,
     PokemonOCRTracker,
-    CorePokemonMetrics,
 )
 from poke_worlds.interface.environment import DummyEnvironment, Environment
 from poke_worlds.interface.controller import Controller
