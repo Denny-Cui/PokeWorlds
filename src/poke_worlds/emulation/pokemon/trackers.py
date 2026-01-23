@@ -1,5 +1,10 @@
 from poke_worlds.utils import log_info
-from poke_worlds.emulation.tracker import MetricGroup, StateTracker, OCRegionMetric
+from poke_worlds.emulation.tracker import (
+    MetricGroup,
+    StateTracker,
+    OCRegionMetric,
+    TestTrackerMixin,
+)
 from poke_worlds.emulation.pokemon.parsers import (
     PokemonStateParser,
     AgentState,

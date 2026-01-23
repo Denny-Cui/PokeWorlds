@@ -403,12 +403,45 @@ class TerminationTruncationMetric(MetricGroup, ABC):
         pass
 
     @abstractmethod
+    def determine_truncated(
+        self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]
+    ) -> bool:
+        """
+        Determines whether the environment was truncated.
+
+        :param current_frame: The current frame rendered by the emulator.
+        :type current_frame: np.ndarray
+        :param recent_frames: The stack of frames that were rendered during the last action. Shape is [n_frames, height, width, channels]. Can be None if rendering is disabled.
+        :type recent_frames: Optional[np.ndarray]
+        :return: True if the environment was truncated, False otherwise.
+        :rtype: bool
+        """
+        pass
+
+    @abstractmethod
+    def determine_terminated(
+        self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]
+    ) -> bool:
+        """
+        Determines whether the environment was terminated.
+
+        :param current_frame: The current frame rendered by the emulator.
+        :type current_frame: np.ndarray
+        :param recent_frames: The stack of frames that were rendered during the last action. Shape is [n_frames, height, width, channels]. Can be None if rendering is disabled.
+        :type recent_frames: Optional[np.ndarray]
+        :return: True if the environment was terminated, False otherwise.
+        :rtype: bool
+        """
+        pass
+
     def step(self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]):
         """
         Determines whether the environment was terminated or truncated.
-        Child classes must implement this method to set self.terminated and self.truncated appropriately.
         """
-        pass
+        if self.terminated or self.truncated:
+            return  # This should ideally not happen, because the environment should reset after termination or truncation.
+        self.truncated = self.determine_truncated(current_frame, recent_frames)
+        self.terminated = self.determine_terminated(current_frame, recent_frames)
 
     def report(self):
         """
