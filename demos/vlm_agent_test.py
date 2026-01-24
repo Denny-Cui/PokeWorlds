@@ -5,6 +5,7 @@ from poke_worlds.execution.pokemon.executors import EQAPokemonExecutor
 from poke_worlds.execution.pokemon.reports import EQAPokemonExecutionReport
 
 
+# TODO: You've broken this. Fix it.
 @click.command()
 @click.option("--model_name", default="Qwen/Qwen3-VL-8B-Instruct", type=str)
 @click.option("--init_state", default="trainer_lass", type=str)
