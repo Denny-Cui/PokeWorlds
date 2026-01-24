@@ -5,7 +5,6 @@ from poke_worlds.execution.pokemon.executors import EQAPokemonExecutor
 from poke_worlds.execution.pokemon.reports import EQAPokemonExecutionReport
 
 
-# TODO: You've broken this. Fix it.
 @click.command()
 @click.option("--model_name", default="Qwen/Qwen3-VL-8B-Instruct", type=str)
 @click.option("--init_state", default="trainer_lass", type=str)
@@ -42,7 +41,8 @@ def do(model_name, init_state, game_variant, question, visual_context, max_steps
         execution_report_class=EQAPokemonExecutionReport,
         model_name=model_name,
     )
-    vl.play(question=question, initial_visual_context=visual_context)
+    vl.setup_play(question=question, initial_visual_context=visual_context)
+    vl.play()
     environment.close()
 
 

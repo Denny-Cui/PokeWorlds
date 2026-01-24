@@ -5,7 +5,6 @@ from poke_worlds.execution.pokemon.executors import PokemonExecutor
 from poke_worlds.execution.pokemon.reports import SimplePokemonExecutionReport
 
 
-# TODO: You've broken this. Fix it.
 @click.command()
 @click.option("--model_name", default="Qwen/Qwen3-VL-8B-Instruct", type=str)
 @click.option("--init_state", default="starter", type=str)
@@ -42,7 +41,8 @@ def do(model_name, init_state, game_variant, mission, visual_context, max_steps)
         execution_report_class=SimplePokemonExecutionReport,
         model_name=model_name,
     )
-    vl.play(mission=mission, initial_visual_context=visual_context)
+    vl.setup_play(mission=mission, initial_visual_context=visual_context)
+    vl.play()
     environment.close()
 
 
