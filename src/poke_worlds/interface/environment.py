@@ -131,9 +131,9 @@ class History:
         ocr_history = []
         for obs in self.infos:
             if "ocr" in obs and "transition_ocr_regions" in obs["ocr"]:
-                ocr_history.append(obs["ocr"]["transition_ocr_regions"].copy())
+                ocr_history.append(deepcopy(obs["ocr"]["transition_ocr_regions"]))
             elif "ocr" in obs and "ocr_regions" in obs["ocr"]:
-                ocr_history.append([obs["ocr"]["ocr_regions"]])
+                ocr_history.append([deepcopy(obs["ocr"]["ocr_regions"])])
             else:
                 ocr_history.append([])
         return ocr_history
@@ -744,13 +744,20 @@ class Environment(gym.Env, ABC):
         """
         return self._controller.get_action_strings(return_all=return_all)
 
-    def human_step_play(self, max_steps: int = 50, show_info: bool = False):
+    def human_step_play(
+        self, max_steps: int = 50, show_info: bool = False
+    ) -> Tuple[List[float], bool, bool]:
         """
         Opens a render window and allow the human to play through the environment as an agent would
 
         Args:
             max_steps (int): max steps to take
             show_info (bool): whether to show the state space (as opposed to just observation space)
+
+        Returns:
+            rewards (List[float]): List of rewards obtained at each step.
+            terminated (bool): Whether the episode has ended (reached the terminal state of the MDP).
+            truncated (bool): Whether the episode was truncated (exceeded the maximum allowed emulator steps). It does not consider the max_steps parameter here.
         """
         observation, info = self.reset()
         self.render_mode = "human"
@@ -821,6 +828,7 @@ class Environment(gym.Env, ABC):
                 log_info(
                     f"Max steps {max_steps} reached. Ending episode.", self._parameters
                 )
+        return rewards, terminated, truncated
 
 
 class DummyEnvironment(Environment):
@@ -874,16 +882,21 @@ class DummyEnvironment(Environment):
                     [screens, transition_state["core"]["passed_frames"]], axis=0
                 )
         else:
-            screens = info["core"]["passed_frames"]
+            if "passed_frames" in info["core"]:
+                screens = info["core"]["passed_frames"]
+            else:
+                screens = None
         if screens is None:
             screens = [info["core"]["current_frame"]]
         for screen in screens:
             self._screen_render(screen)
-        obs = self.get_observation(
-            action=action,
-            action_kwargs=action_kwargs,
-            transition_states=transition_states,
-            action_success=action_success,
+        obs = deepcopy(
+            self.get_observation(
+                action=action,
+                action_kwargs=action_kwargs,
+                transition_states=transition_states,
+                action_success=action_success,
+            )
         )
         obs.pop("screen")
         obs["action_info"] = (action, action_kwargs, action_success, action_return)
@@ -898,11 +911,20 @@ class DummyEnvironment(Environment):
         action_success=None,
         action_return=None,
     ):
-        info = self.get_info()
+        info = deepcopy(self.get_info())
         info["core"].pop("current_frame")
         info["core"].pop("passed_frames")
+        if "ocr" in info:
+            info.pop("ocr")
+        if "transition_passed_frames" in info["core"]:
+            info["core"].pop("transition_passed_frames")
+        if "previous_action_details" in info["core"]:
+            info["core"]["previous_action_details"] = (
+                info["core"]["previous_action_details"][:2]
+                + info["core"]["previous_action_details"][3:]
+            )  # remove transition states to avoid huge logs
         log_info("State: ", self._parameters)
-        log_dict(info, self._parameters)
+        log_dict(info, parameters=self._parameters)
 
 
 class TestEnvironmentMixin:

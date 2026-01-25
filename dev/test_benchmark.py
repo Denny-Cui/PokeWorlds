@@ -26,46 +26,20 @@ def run_task(row, max_resets, controller_variant, **emulator_kwargs):
     environment = get_test_environment(
         row=row, controller_variant=controller_variant, **emulator_kwargs
     )
-    supervisor = SimpleSupervisor(
-        game=row["game"],
-        environment=environment,
-        executor_class=PokemonExecutor,
-        execution_report_class=SimplePokemonExecutionReport,
-    )
-    supervisor.setup_play(
-        mission=mission,
-        initial_visual_context="You are seeing a screenshot of the game.",
-    )
     try:
         while n_resets < max_resets + 1:
-            supervisor_report = supervisor.play()
-            if len(supervisor_report.execution_reports) > 0:
-                last_kwargs, last_execution_report = (
-                    supervisor_report.execution_reports[-1]
-                )
-                last_execution_states = last_execution_report.get_state_infos()
-                # updated n_steps
-                if len(last_execution_states) == 0:  # manually check for success
-                    state_info = environment.get_info()
-                    if "terminated_truncated" in state_info:
-                        if state_info["terminated_truncated"]["terminated"]:
-                            success = True
-                            break
-                last_state = last_execution_states[-1]
-                step_count = last_state["core"]["steps"]
-                n_steps = step_count  # this counts all steps across resets
-                # check the last execution report in the supervisor report. It is success only if exit code is 2
-                if last_execution_report.exit_code == 2:
-                    success = True
-                    break
-                else:
-                    n_steps_total += n_steps
-                    n_steps = 0
-                    n_resets += 1
+            environment.reset()
+            rewards, terminated, truncated = environment.human_step_play(
+                max_steps=emulator_kwargs.get("max_steps", 1000), show_info=True
+            )
+            if terminated:
+                success = True
+                n_steps = len(rewards)
+                break
             else:
-                n_steps_total += n_steps
-                n_steps = 0
                 n_resets += 1
+                n_steps += len(rewards)
+
     except Exception as e:
         traceback.print_exc()
         print(f"Error during execution of task '{mission}': {e}")
