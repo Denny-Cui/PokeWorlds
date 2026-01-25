@@ -107,7 +107,7 @@ class IDPathCreator:
         if session_name is None:
             session_name = "tmp_sessions"
             log_warn(
-                f"Saving a temporary session. If you run emulator.clear_tmp_sessions(), it will be deleted. To make it permanent, pass in a session_name to the emulator."
+                f"Saving a temporary session. If you run poke_worlds.clear_tmp_sessions(), it will be deleted. To make it permanent, pass in a `session_name` to the emulator constructor kwargs."
             )
         elif not isinstance(session_name, str) or session_name == "":
             log_error(

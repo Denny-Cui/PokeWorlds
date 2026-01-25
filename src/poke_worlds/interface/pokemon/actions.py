@@ -8,7 +8,7 @@ from typing import List, Tuple, Dict
 from poke_worlds.utils import show_frames
 import numpy as np
 
-from gymnasium.spaces import Box, Discrete, Text
+from gymnasium.spaces import Box, Discrete, Text, OneOf
 import matplotlib.pyplot as plt
 from PIL import Image
 
@@ -315,57 +315,38 @@ class MoveStepsAction(BaseMovementAction):
             Box: A Box space with shape (2,) and values ranging from -HARD_MAX_STEPS//2 to HARD_MAX_STEPS//2.
 
         """
-        return Box(
-            low=-HARD_MAX_STEPS // 2,
-            high=HARD_MAX_STEPS // 2,
-            shape=(2,),
-            dtype=np.int8,
-        )
+        component_actions = [
+            Discrete(HARD_MAX_STEPS) for _ in range(4)
+        ]  # up, down, left, right
+        return OneOf(component_actions)
 
     def space_to_parameters(self, space_action):
-        direction = None
-        if space_action[0] > 0:
-            if direction is not None:
-                return None  # can't move in two directions at once
-            direction = "up"
-        if space_action[0] < 0:
-            if direction is not None:
-                return None
-            direction = "down"
-        if space_action[1] > 0:
-            if direction is not None:
-                return None
-            direction = "right"
-        if space_action[1] < 0:
-            if direction is not None:
-                return None
-            direction = "left"
-        if direction is None:
+        cardinal, steps = space_action
+        if cardinal < 0 or cardinal > 3:
             return None
-        steps = abs(int(space_action.sum()))
-        return {"direction": direction, "steps": steps}
+        direction = ["up", "down", "left", "right"][cardinal]
+        return {"direction": direction, "steps": steps + 1}
 
     def parameters_to_space(self, direction: str, steps: int):
-        move_vec = np.zeros(2)  # x, y
+        cardinal = None
         if direction == "up":
-            move_vec[1] = 1
+            cardinal = 0
         elif direction == "right":
-            move_vec[0] = 1
+            cardinal = 1
         elif direction == "down":
-            move_vec[1] = -1
+            cardinal = 2
         elif direction == "left":
-            move_vec[0] = -1
+            cardinal = 3
         else:
             # log_warn(f"Unrecognized direction {direction}", self._parameters)
             return None
-        if steps <= 0:
+        if steps <= 0 or steps > HARD_MAX_STEPS:
             # log_warn(
             #    f"Bro. What you trying here. Don't step weirdly: {steps}",
             #    self._parameters,
             # )
             return None
-        move_vec *= steps
-        return move_vec
+        return cardinal, steps - 1
 
     def _execute(self, direction, steps):
         transition_states, status = self.move(direction=direction, steps=steps)

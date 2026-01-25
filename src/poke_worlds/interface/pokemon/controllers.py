@@ -22,7 +22,7 @@ class PokemonStateWiseController(Controller):
         PassDialogueAction,
         BattleMenuAction,
         PickAttackAction,
-        MoveGridAction,
+        MoveStepsAction,
     ]
 
     def string_to_high_level_action(self, input_str):
@@ -57,61 +57,28 @@ class PokemonStateWiseController(Controller):
             else:
                 return None, None
         if action_name == "move":
-            if action_args_str.count(",") > 1:
-                return None, None
-            if action_args_str.count(",") == 0:
-                # then assume its a single direction move
-                if (
-                    "right" not in action_args_str
-                    and "left" not in action_args_str
-                    and "up" not in action_args_str
-                    and "down" not in action_args_str
-                ):
+            cardinal = None
+            if "up" in action_args_str:
+                cardinal = "up"
+            if "down" in action_args_str:
+                if cardinal is not None:
                     return None, None
-                direction_steps = action_args_str.strip().split(" ")
-                if len(direction_steps) != 2:
+                cardinal = "down"
+            if "left" in action_args_str:
+                if cardinal is not None:
                     return None, None
-                direction, steps = direction_steps
-                direction = direction.strip()
-                steps = steps.strip()
-                if direction not in ["right", "left", "up", "down"]:
+                cardinal = "left"
+            if "right" in action_args_str:
+                if cardinal is not None:
                     return None, None
-                if not steps.isnumeric():
-                    return None, None
-                if direction == "right":
-                    return MoveGridAction, {"x_steps": int(steps), "y_steps": 0}
-                elif direction == "left":
-                    return MoveGridAction, {"x_steps": -int(steps), "y_steps": 0}
-                elif direction == "up":
-                    return MoveGridAction, {"x_steps": 0, "y_steps": int(steps)}
-                elif direction == "down":
-                    return MoveGridAction, {"x_steps": 0, "y_steps": -int(steps)}
-            # Now handle the two direction move
-            x_move, y_move = action_args_str.split(",")
-            x_move = x_move.strip()
-            y_move = y_move.strip()
-            x_split = x_move.split(" ")
-            y_split = y_move.split(" ")
-            if len(x_split) != 2 or len(y_split) != 2:
+                cardinal = "right"
+            if cardinal is None:
                 return None, None
-            direction, steps = x_split
-            direction = direction.strip()
-            steps = steps.strip()
-            if direction not in ["right", "left"]:
+            steps_part = action_args_str.replace(cardinal, "").strip()
+            if not steps_part.isnumeric():
                 return None, None
-            if not steps.isnumeric():
-                return None, None
-            x_arg = int(steps) if direction == "right" else -int(steps)
-            direction, steps = y_split
-            direction = direction.strip()
-            steps = steps.strip()
-            direction, steps = y_move.split(" ")
-            direction = direction.strip()
-            steps = steps.strip()
-            if direction not in ["up", "down"]:
-                return None, None
-            y_arg = int(steps) if direction == "up" else -int(steps)
-            return MoveGridAction, {"x_steps": x_arg, "y_steps": y_arg}
+            steps = int(steps_part)
+            return MoveStepsAction, {"direction": cardinal, "steps": steps}
         return None, None
 
     def get_action_strings(
@@ -121,7 +88,7 @@ class PokemonStateWiseController(Controller):
             self._emulator.get_current_frame()
         )
         free_roam_action_strings = {
-            MoveGridAction: "move(<right or left> <steps: int>,<up or down> <steps: int>): Move in grid space by the specified right/left and up/down steps.",
+            MoveStepsAction: "move(<up, down, right or left> <steps: int>): Move in a particular direction by a specified number of grid steps.",
             InteractAction: "interact(): Interact with cell directly in front of you. Only works if there is something to interact with.",
         }
         dialogue_action_strings = {
