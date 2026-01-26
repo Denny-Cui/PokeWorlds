@@ -260,20 +260,6 @@ class BaseMovementAction(HighLevelAction, ABC):
                 and not curr_uniform
             ):  # then screen isn't just black, but also hasn't changed.
                 flag = True
-                breakpoint()
-                show_frames([previous_frame, current_frame])
-                show_frames([prev_quad, curr_quad])
-                prev_uniform = (
-                    prev_quad.max()
-                    == prev_quad.min()  # screen is all black or all white
-                    or self._is_uniform_quadrant(
-                        previous_frame, quadrant
-                    )  # screen quadrant is uniform tiles
-                )
-                curr_uniform = (
-                    curr_quad.max() == curr_quad.min()
-                    or self._is_uniform_quadrant(current_frame, quadrant)
-                )
                 break
         if flag:  # then some frame stayed the same, so no movement, but maybe rotation.
             prev_player_cell = self._emulator.state_parser.capture_grid_cells(
