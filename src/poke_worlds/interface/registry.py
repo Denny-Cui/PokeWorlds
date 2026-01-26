@@ -289,7 +289,9 @@ def get_training_environments_kwargs(
     ]  # TODO: I literally ONLY have this in here to avoid the agent going to options and messing up stuff. Fix properly later.
     training_envs_kwargs = []
     for init_state in get_available_init_states(row["game"]):
-        if init_state not in disallowed_init_states:
+        if init_state not in disallowed_init_states and not init_state.startswith(
+            "test_"
+        ):
             env_kwargs = common_kwargs.copy()
             env_kwargs["init_state"] = init_state
             training_envs_kwargs.append(env_kwargs)

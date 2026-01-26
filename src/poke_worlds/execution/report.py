@@ -266,8 +266,30 @@ class ExecutionReport(ABC):
         pass
 
     @abstractmethod
-    def __deepcopy__(self, memo):
+    def _get_internal_deep_copy(self, memo):
+        """
+        Hook for creating a deep copy of any additional internal attributes in subclasses.
+        :param memo: The memo dictionary for deepcopy.
+        :return: The deep copied internal attributes.
+        :rtype: ExecutionReport
+        """
         pass
+
+    def __deepcopy__(self, memo):
+        if self in memo:
+            return memo[self]
+        fresh_report = self._get_internal_deep_copy(memo)
+        fresh_report.steps_taken = self.steps_taken
+        fresh_report._action_strings = deepcopy(self._action_strings, memo)
+        fresh_report._action_messages = deepcopy(self._action_messages, memo)
+        fresh_report.executor_actions_taken = deepcopy(
+            self.executor_actions_taken, memo
+        )
+        fresh_report._history = deepcopy(self.get_history(), memo)
+        fresh_report._history_starting_index = self._history_starting_index
+        fresh_report.exit_code = self.exit_code
+        memo[self] = fresh_report
+        return fresh_report
 
     @abstractmethod
     def state_info_to_str(self, state_info: dict) -> str:
@@ -351,9 +373,7 @@ class SimpleReport(ExecutionReport, ABC):
         """ List of plans at each step of the execution. """
         super().__init__(environment=environment, parameters=parameters)
 
-    def __deepcopy__(self, memo):
-        if self in memo:
-            return memo[self]
+    def _get_internal_deep_copy(self, memo):
         freshReport = type(self)(
             environment=None,
             high_level_goal=self.high_level_goal,
@@ -363,15 +383,9 @@ class SimpleReport(ExecutionReport, ABC):
             exit_conditions=self.exit_conditions,
             parameters=self._parameters,
         )
-        memo[self] = freshReport
-        freshReport.steps_taken = deepcopy(self.steps_taken, memo)
         freshReport.step_contexts = deepcopy(self.step_contexts, memo)
         freshReport.plans = deepcopy(self.plans, memo)
         freshReport.exit_reasoning = deepcopy(self.exit_reasoning, memo)
-        freshReport._action_strings = deepcopy(self._action_strings, memo)
-        freshReport._action_messages = deepcopy(self._action_messages, memo)
-        freshReport._history = deepcopy(self.get_history(), memo)
-        freshReport._history_starting_index = self._history_starting_index
         return freshReport
 
     def _add_step_additional(
@@ -488,9 +502,7 @@ class EQAReport(ExecutionReport):
         """ The reasoning for why the execution ended. """
         super().__init__(environment=environment, parameters=parameters)
 
-    def __deepcopy__(self, memo):
-        if self in memo:
-            return memo[self]
+    def _get_internal_deep_copy(self, memo):
         fresh_report = type(self)(
             environment=None,
             test_question=self.test_question,
@@ -499,15 +511,9 @@ class EQAReport(ExecutionReport):
             visual_context=self.initial_visual_context,
             parameters=self._parameters,
         )
-        memo[self] = fresh_report
-        fresh_report.steps_taken = deepcopy(self.steps_taken, memo)
         fresh_report.visual_contexts = deepcopy(self.visual_contexts, memo)
         fresh_report.step_summaries = deepcopy(self.step_summaries, memo)
         fresh_report.exit_reasoning = deepcopy(self.exit_reasoning, memo)
-        fresh_report._action_strings = deepcopy(self._action_strings, memo)
-        fresh_report._action_messages = deepcopy(self._action_messages, memo)
-        fresh_report._history = deepcopy(self.get_history(), memo)
-        fresh_report._history_starting_index = self._history_starting_index
         return fresh_report
 
     def _add_step_additional(self, **kwargs):
