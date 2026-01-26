@@ -147,6 +147,71 @@ class BaseMovementAction(HighLevelAction, ABC):
     REQUIRED_STATE_TRACKER = CorePokemonTracker
     REQUIRED_STATE_PARSER = PokemonStateParser
 
+    def _is_uniform_quadrant(self, frame, quadrant_name) -> bool:
+        mapper = {
+            "screen_quadrant_1": "tr",
+            "screen_quadrant_2": "tl",
+            "screen_quadrant_3": "bl",
+            "screen_quadrant_4": "br",
+        }
+        quadrant_cells = self._emulator.state_parser.capture_grid_cells(
+            frame, quadrant=mapper[quadrant_name]
+        )
+        keys = list(quadrant_cells.keys())
+        x_min = 1e9
+        y_min = 1e9
+        x_max = -1e9
+        y_max = -1e9
+        for key in keys:
+            x_coord, y_coord = key
+            if x_coord * y_coord == 0:  # pop it to avoid checking player cell
+                quadrant_cells.pop(key)
+            else:
+                x_min = min(x_min, x_coord)
+                y_min = min(y_min, y_coord)
+                x_max = max(x_max, x_coord)
+                y_max = max(y_max, y_coord)
+        x_min = int(x_min)
+        y_min = int(y_min)
+        x_max = int(x_max)
+        y_max = int(y_max)
+        keys = list(quadrant_cells.keys())
+        vertical_uniform = True
+        horizontal_uniform = True
+        # check horizontal lines
+        for y in range(y_min + 1, y_max):  # avoid edges
+            first_cell = None
+            for x in range(x_min + 1, x_max):
+                cell = quadrant_cells[(x, y)]
+                if first_cell is None:
+                    first_cell = cell
+                else:
+                    if first_cell.shape == cell.shape:
+                        if frame_changed(first_cell, cell):
+                            horizontal_uniform = False
+                            break
+            if not horizontal_uniform:
+                break
+        if horizontal_uniform:
+            return True
+        # check vertical lines
+        for x in range(x_min + 1, x_max):
+            first_cell = None
+            for y in range(y_min + 1, y_max):
+                cell = quadrant_cells[(x, y)]
+                if first_cell is None:
+                    first_cell = cell
+                else:
+                    if first_cell.shape == cell.shape:
+                        if frame_changed(first_cell, cell):
+                            vertical_uniform = False
+                            break
+            if not vertical_uniform:
+                break
+        if vertical_uniform:
+            return True
+        return False
+
     def judge_movement(
         self, previous_frame: np.ndarray, current_frame: np.ndarray
     ) -> Tuple[bool, bool]:
@@ -165,6 +230,7 @@ class BaseMovementAction(HighLevelAction, ABC):
         if not frame_changed(previous_frame, current_frame):
             return False, False
         # split the screen into quadrants and check which quadrants have changed. If any of them stayed the same, the player has not moved, but may have rotated.
+        # One caveat is if the quadrant is uniform tiles (i.e. all have the same grid texture in them). In this case, we can't say for sure that the quadrant hasn't changed, since it may just be that the uniform texture is the same. So we check for that too.
         flag = False
         for quadrant in [
             "screen_quadrant_1",
@@ -178,14 +244,36 @@ class BaseMovementAction(HighLevelAction, ABC):
             curr_quad = self._emulator.state_parser.capture_named_region(
                 current_frame, quadrant
             )
-            prev_uniform = prev_quad.max() == prev_quad.min()
-            curr_uniform = curr_quad.max() == curr_quad.min()
+            prev_uniform = (
+                prev_quad.max() == prev_quad.min()  # screen is all black or all white
+                or self._is_uniform_quadrant(
+                    previous_frame, quadrant
+                )  # screen quadrant is uniform tiles
+            )
+            curr_uniform = (
+                curr_quad.max() == curr_quad.min()
+                or self._is_uniform_quadrant(current_frame, quadrant)
+            )
             if (
                 not frame_changed(prev_quad, curr_quad)
                 and not prev_uniform
                 and not curr_uniform
             ):  # then screen isn't just black, but also hasn't changed.
                 flag = True
+                breakpoint()
+                show_frames([previous_frame, current_frame])
+                show_frames([prev_quad, curr_quad])
+                prev_uniform = (
+                    prev_quad.max()
+                    == prev_quad.min()  # screen is all black or all white
+                    or self._is_uniform_quadrant(
+                        previous_frame, quadrant
+                    )  # screen quadrant is uniform tiles
+                )
+                curr_uniform = (
+                    curr_quad.max() == curr_quad.min()
+                    or self._is_uniform_quadrant(current_frame, quadrant)
+                )
                 break
         if flag:  # then some frame stayed the same, so no movement, but maybe rotation.
             prev_player_cell = self._emulator.state_parser.capture_grid_cells(
