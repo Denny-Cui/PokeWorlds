@@ -697,6 +697,7 @@ class PokemonRedStateParser(BasePokemonRedStateParser):
                 "pick_up_pokeball_starting",  # is tied to player character name being You
                 "trainers_tips_sign",
                 "cinnabar_gym_aid_complete",
+                "talk_cinnabar_monk",
                 "defeated_brock",
                 "defeated_lass",
                 "caught_pidgey",

@@ -142,6 +142,9 @@ class BaseMovementAction(HighLevelAction, ABC):
     Action Returns:
     - `n_steps_taken` (`int`): Number of steps actually taken
     - `rotated` (`bool` or `None`): True if the player has not moved, but has rotated. If the player has moved, this will be None. If it is False, it means the player tried to walk straight into an obstacle.
+
+    Known Limitations:
+    - Struggles to handle oscillating frames when the player is next to an obstacle. So if you are surrounded by water or bouncing flowers on all quadrants (e.g. the pier in Cinnabar Island), the system will think that the agent has moved forward, even though it has not.
     """
 
     REQUIRED_STATE_TRACKER = CorePokemonTracker

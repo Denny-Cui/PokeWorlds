@@ -11,6 +11,7 @@ from poke_worlds.emulation.pokemon.test_metrics import (
     PickupPokeballTerminateMetric,
     ReadTrainersTipsSignTerminateMetric,
     SpeakToCinnabarGymAideCompleteTerminateMetric,
+    SpeakToCinnabarMonkTerminateMetric,
     DefeatedBrockTerminateMetric,
     DefeatedLassTerminateMetric,
     CaughtPidgeyTerminateMetric,
@@ -129,6 +130,14 @@ class PokemonRedSpeakToCinnabarGymAideCompleteTestTracker(PokemonTestTracker):
     """
 
     TERMINATION_TRUNCATION_METRIC = SpeakToCinnabarGymAideCompleteTerminateMetric
+
+
+class PokemonRedSpeakToCinnabarMonkTestTracker(PokemonTestTracker):
+    """
+    A TestTracker for Pokémon Red that ends an episode when the agent speaks to the Cinnabar Monk.
+    """
+
+    TERMINATION_TRUNCATION_METRIC = SpeakToCinnabarMonkTerminateMetric
 
 
 class PokemonRedDefeatedBrockTestTracker(PokemonTestTracker):

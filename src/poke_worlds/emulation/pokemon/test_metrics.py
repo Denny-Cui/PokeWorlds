@@ -61,14 +61,27 @@ class SpeakToCinnabarGymAideCompleteTerminateMetric(
     _TERMINATION_TARGET_NAME = "cinnabar_gym_aid_complete"
 
 
-class DefeatedBrockTerminateMetric(RegionMatchTerminationMetric, PokemonExitBattleTruncationMetric):
+class SpeakToCinnabarMonkTerminateMetric(
+    RegionMatchTerminationMetric, TerminationMetric
+):
+    REQUIRED_PARSER = PokemonRedStateParser
+
+    _TERMINATION_NAMED_REGION = "dialogue_box_middle"
+    _TERMINATION_TARGET_NAME = "talk_cinnabar_monk"
+
+
+class DefeatedBrockTerminateMetric(
+    RegionMatchTerminationMetric, PokemonExitBattleTruncationMetric
+):
     REQUIRED_PARSER = PokemonRedStateParser
 
     _TERMINATION_NAMED_REGION = "dialogue_box_middle"
     _TERMINATION_TARGET_NAME = "defeated_brock"
 
 
-class DefeatedLassTerminateMetric(RegionMatchTerminationMetric, PokemonExitBattleTruncationMetric):
+class DefeatedLassTerminateMetric(
+    RegionMatchTerminationMetric, PokemonExitBattleTruncationMetric
+):
     REQUIRED_PARSER = PokemonRedStateParser
 
     _TERMINATION_NAMED_REGION = "dialogue_box_middle"
