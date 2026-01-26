@@ -247,33 +247,6 @@ class VLMEngine(ABC):
         )
 
 
-class OpenAIModel(ModelInterface):
-    seconds_per_query = (60 / 20) + 0.01
-
-    def __init__(self, model_name: str):
-        self.model_name = model_name
-        self.client = OpenAI()
-        self.previous_call = perf_counter() - self.seconds_per_query
-
-    def generate(
-        self, prompt: str, max_new_tokens: int = 50, temperature: float = None
-    ) -> str:
-        time_to_wait = self.seconds_per_query - (perf_counter() - self.previous_call)
-        if time_to_wait > 0:
-            sleep(time_to_wait)
-        self.previous_call = perf_counter()
-        response = self.client.responses.create(
-            model=self.model_name,
-            input=prompt,
-            max_output_tokens=max_new_tokens,
-            temperature=temperature,
-        )
-        text = response.output_text
-        if "[STOP]" in text:
-            text = text.split("[STOP]")[0]
-        return text.strip()
-
-
 class OpenAIVLMEngine(VLMEngine):
     """OpenAI VLM engine implementation using OpenAI API."""
 
