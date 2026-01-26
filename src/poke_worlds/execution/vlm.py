@@ -159,6 +159,7 @@ class ExecutorVLM:
                     do_sample=False,
                     top_p=None,
                     temperature=None,
+                    top_k=None,
                     repetition_penalty=1.2,
                     stop_strings=["[STOP]"],
                     tokenizer=processor.tokenizer,
@@ -274,6 +275,10 @@ class ExecutorVLM:
                 outputs = model.generate(
                     **inputs,
                     max_new_tokens=max_new_tokens,
+                    do_sample=False,
+                    top_p=None,
+                    temperature=None,
+                    top_k=None,
                     repetition_penalty=1.2,
                     stop_strings=["[STOP]"],
                     tokenizer=processor.tokenizer,
