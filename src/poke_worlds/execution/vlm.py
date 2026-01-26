@@ -302,30 +302,16 @@ class OpenAIVLMEngine(VLMEngine):
         return OpenAIVLMEngine._CLIENT is not None
 
     @staticmethod
-    def do_infer(texts, images, max_new_tokens, **kwargs):
-        images = OpenAIVLMEngine.get_encoded_images(images)
-        base_input_dict = {
-            "role": "user",
-            "content": [{"type": "input_text"}, {"type": "input_image"}],
-        }
-        inputs = []
-        for text, img in zip(texts, images):
-            prompt_dict = base_input_dict.copy()
-            prompt_dict["content"][0]["text"] = text
-            prompt_dict["content"][1]["image_url"] = f"data:image/jpeg;base64,{img}"
-            inputs.append(prompt_dict)
+    def _wait():
         time_to_wait = OpenAIVLMEngine.seconds_per_query - (
             perf_counter() - OpenAIVLMEngine._previous_call
         )
         if time_to_wait > 0:
             sleep(time_to_wait)
         OpenAIVLMEngine._previous_call = perf_counter()
-        model = kwargs["model_name"]
-        response = OpenAIVLMEngine._CLIENT.responses.create(
-            model=model,
-            input=inputs,
-            max_output_tokens=max_new_tokens,
-        )
+
+    @staticmethod
+    def _get_output(response) -> List[str]:
         output = response.output
         output_texts = []
         for item in output:
@@ -338,8 +324,53 @@ class OpenAIVLMEngine(VLMEngine):
         return final_texts
 
     @staticmethod
+    def do_infer(texts, images, max_new_tokens, **kwargs):
+        images = OpenAIVLMEngine.get_encoded_images(images)
+        base_input_dict = {
+            "role": "user",
+            "content": [{"type": "input_text"}, {"type": "input_image"}],
+        }
+        inputs = []
+        for text, img in zip(texts, images):
+            prompt_dict = base_input_dict.copy()
+            prompt_dict["content"][0]["text"] = text
+            prompt_dict["content"][1]["image_url"] = f"data:image/jpeg;base64,{img}"
+            inputs.append(prompt_dict)
+
+        model = kwargs["model_name"]
+        OpenAIVLMEngine._wait()
+        response = OpenAIVLMEngine._CLIENT.responses.create(
+            model=model,
+            input=inputs,
+            max_output_tokens=max_new_tokens,
+        )
+        return OpenAIVLMEngine._get_output(response)
+
+    @staticmethod
     def do_multi_infer(texts, images, max_new_tokens, **kwargs):
-        raise NotImplementedError
+        all_images = []
+        for img_list in images:
+            all_images.append(OpenAIVLMEngine.get_encoded_images(img_list))
+        images = all_images
+        base_input_dict = {
+            "role": "user",
+            "content": [{"type": "input_text"}],
+        }
+        inputs = []
+        for text, img in zip(texts, images):
+            prompt_dict = base_input_dict.copy()
+            prompt_dict["content"][0]["text"] = text
+            prompt_dict["content"][1]["image_url"] = f"data:image/jpeg;base64,{img}"
+            inputs.append(prompt_dict)
+
+        model = kwargs["model_name"]
+        OpenAIVLMEngine._wait()
+        response = OpenAIVLMEngine._CLIENT.responses.create(
+            model=model,
+            input=inputs,
+            max_output_tokens=max_new_tokens,
+        )
+        return OpenAIVLMEngine._get_output(response)
 
 
 class HuggingFaceVLMEngine(VLMEngine):
