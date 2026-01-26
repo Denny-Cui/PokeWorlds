@@ -81,8 +81,7 @@ class Executor(ABC):
         self._execution_report = execution_report_class(
             environment=environment, **report_init_kwargs
         )
-        self._vlm = ExecutorVLM  # Should not be an instance, but the class itself.
-        self._vlm.start()
+        self._vlm = ExecutorVLM()
         self.actions: Dict[Type[ExecutorAction], ExecutorAction] = {
             action_class: action_class(parameters=self._parameters, seed=seed)
             for action_class in self.EXECUTOR_ACTIONS

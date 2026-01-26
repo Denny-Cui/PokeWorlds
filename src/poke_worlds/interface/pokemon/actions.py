@@ -913,7 +913,3 @@ class PickAttackAction(HighLevelAction):
             )  # to get through any attack animation dialogue
             state_reports.append(self._state_tracker.report())
         return state_reports, 0
-
-
-class PokemonCrystalBagActions:
-    pass

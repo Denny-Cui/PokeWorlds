@@ -1,9 +1,10 @@
 from poke_worlds.utils import load_parameters, log_warn, log_error, log_info
 from poke_worlds.utils.fundamental import check_optional_installs
-from typing import List, Union, Tuple
+from typing import List, Union, Tuple, Type, Dict
 import numpy as np
 from PIL import Image
 import torch
+from abc import ABC, abstractmethod
 
 _project_parameters = load_parameters()
 configs = check_optional_installs(warn=True)
@@ -32,63 +33,76 @@ def convert_numpy_greyscale_to_pillow(arr: np.ndarray) -> Image:
     return Image.fromarray(rgb)
 
 
-class ExecutorVLM:
+class VLMEngine(ABC):
     """
-    A class that holds the VLM for the executor
-
-    TODO: This function assumes that the model follows a Qwen3-VL style format. May need to branch based on model kind later.
+    An abstract class representing the required interface for a VLM engine.
+    Implement this class to create a custom VLM engine.
     """
-
-    _BATCH_SIZE = 8
-    _MODEL = None
-    _PROCESSOR = None
-    _MODEL_KIND = None
 
     @staticmethod
-    def _do_start(vlm_kind: str, model_name: str):
-        # this way, we can add more model kinds w different engines (e.g. OpenAI API) later
-        if vlm_kind not in ["qwen3vl"]:
-            log_error(f"Unsupported executor_vlm_kind: {vlm_kind}", _project_parameters)
-        if vlm_kind in ["qwen3vl"]:
-            model = AutoModelForImageTextToText.from_pretrained(
-                model_name, dtype=torch.bfloat16, device_map="auto"
-            )
-            processor = AutoProcessor.from_pretrained(model_name, padding_side="left")
-            return model, processor
-        else:
-            log_error(
-                f"Unsupported HuggingFace VLM kind: {vlm_kind}", _project_parameters
-            )
+    @abstractmethod
+    def start(**kwargs):
+        """
+        Starts the VLM engine and saves it to the class variables.
+        After start runs successfully, is_loaded() should return True, unless `debug_skip_lm` is set in project parameters.
+
+        :param kwargs: Additional keyword arguments for specific engine implementations
+        """
+        pass
 
     @staticmethod
-    def start():
-        if ExecutorVLM._MODEL is not None:
-            return
-        if _project_parameters["debug_skip_lm"]:
-            if not _project_parameters["warned_debug_llm"]:
-                log_warn(
-                    f"Skipping VLM initialization as per debug_skip_lm=True",
-                    _project_parameters,
-                )
-                _project_parameters["warned_debug_llm"] = True
-            return
-        elif not _project_parameters["transformers_importable"]:
-            if not _project_parameters["warned_debug_llm"]:
-                log_warn(
-                    f"Tried to instantiate a VLM, but the required packages are not installed. Running in dev mode, so all LM calls will return a placeholder string.",
-                    _project_parameters,
-                )
-                _project_parameters["warned_debug_llm"] = True
-            return
-        else:
-            log_info(
-                f"Loading Backbone Executor VLM model: {_project_parameters['executor_vlm_model']}",
-                _project_parameters,
-            )
-            ExecutorVLM._MODEL_KIND = _project_parameters["executor_vlm_kind"]
-            ExecutorVLM._MODEL, ExecutorVLM._PROCESSOR = ExecutorVLM._do_start(
-                ExecutorVLM._MODEL_KIND, _project_parameters["executor_vlm_model"]
-            )
+    @abstractmethod
+    def is_loaded(**kwargs) -> bool:
+        """
+        Returns whether the VLM engine is loaded.
+
+        :param kwargs: Additional keyword arguments for specific engine implementations
+        :return: True if the engine is loaded, False otherwise
+        :rtype: bool
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def do_infer(
+        texts: List[str], images: List[np.ndarray], max_new_tokens: int, **kwargs
+    ) -> List[str]:
+        """
+        Handles internal logic for performing inference with the given texts and images.
+
+        :param texts: List of text prompts
+        :type texts: List[str]
+        :param images: List of images in numpy array format (H x W x C)
+        :type images: List[np.ndarray]
+        :param max_new_tokens: Maximum number of new tokens to generate
+        :type max_new_tokens: int
+        :param kwargs: Additional keyword arguments for specific engine implementations
+        :return: List of generated text outputs
+        :rtype: List[str]
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def do_multi_infer(
+        texts: List[str],
+        images: List[List[Union[np.ndarray, Image.Image]]],
+        max_new_tokens,
+        **kwargs,
+    ) -> List[str]:
+        """
+        Handles internal logic for performing inference with the a single text and multiple images
+
+        :param texts: List of text prompts
+        :type texts: List[str]
+        :param images: List of lists of images in numpy array format (H x W x C) or Pillow Image format
+        :type images: List[List[Union[np.ndarray, Image.Image]]]
+        :param max_new_tokens: Maximum number of new tokens to generate
+        :param kwargs: Additional keyword arguments for specific engine implementations
+        :return: List of generated text outputs
+        :rtype: List[str]
+        """
+        pass
 
     @staticmethod
     def _prepare_infer_inputs(
@@ -121,26 +135,214 @@ class ExecutorVLM:
         return texts, images
 
     @staticmethod
-    def do_infer(
-        vlm_kind: str,
-        model,
-        processor,
-        texts: List[str],
-        images: List[np.ndarray],
+    def _prepare_multi_infer_inputs(
+        texts: Union[List[str], str],
+        images: Union[
+            List[List[Union[np.ndarray, Image.Image]]],
+            List[Union[np.ndarray, Image.Image]],
+        ],
+    ) -> Tuple[List[str], List[List[Union[np.ndarray, Image.Image]]]]:
+        if isinstance(texts, str):
+            texts = [texts]
+            # then images must be a single list of images in numpy array or Pillow Image format
+            if not isinstance(images, list) or len(images) == 0:
+                log_error(
+                    f"When passing a single text string, images must be a nonempty list of images. Got type {type(images)}.",
+                    _project_parameters,
+                )
+            if isinstance(images[0], list):
+                log_error(
+                    f"When passing a single text string, images must be a single list of images, not a list of lists. Got list of lists with length {len(images)}.",
+                    _project_parameters,
+                )
+            images = [images]  # wrap in another list to make it a list of lists
+
+        return texts, images
+
+    @staticmethod
+    def engine_infer(
+        engine: Type["VLMEngine"],
+        texts: Union[List[str], str],
+        images: Union[np.ndarray, List[np.ndarray]],
         max_new_tokens: int,
-        batch_size: int,
+        **kwargs,
     ) -> List[str]:
         """
         Performs inference with the given texts and images.
+
+        :param engine: The VLM engine class to use for inference
+        :type engine: Type[VLMEngine]
+        :param texts: List of text prompts or a single text prompt
+        :type texts: Union[List[str], str]
+        :param images: List of images in numpy array format (H x W x C) or a single image in numpy array format
+        :type images: Union[np.ndarray, List[np.ndarray]]
+        :param max_new_tokens: Maximum number of new tokens to generate
+        :type max_new_tokens: int
+        :param kwargs: Additional keyword arguments for specific engine implementations
+        :return: List of generated text outputs
+        :rtype: List[str]
         """
+        if not engine.is_loaded(**kwargs):
+            engine.start(
+                **kwargs,
+            )
+        if not engine.is_loaded(**kwargs):  # it is only still False in debug mode
+            return ["LM Output" for text in texts]
+        texts, images = engine._prepare_infer_inputs(texts, images)
+        return engine.do_infer(
+            texts=texts,
+            images=images,
+            max_new_tokens=max_new_tokens,
+            **kwargs,
+        )
+
+    @staticmethod
+    def multi_infer(
+        engine: Type["VLMEngine"],
+        texts: Union[List[str], str],
+        images: Union[
+            List[List[Union[np.ndarray, Image.Image]]],
+            List[Union[np.ndarray, Image.Image]],
+        ],
+        max_new_tokens: int,
+        **kwargs,
+    ) -> List[str]:
+        """
+        Performs inference with the a single text and multiple images
+
+        :param engine: The VLM engine class to use for inference
+        :type engine: Type[VLMEngine]
+        :param texts: List of text prompts or a single text prompt
+        :type texts: Union[List[str], str]
+        :param images: List of lists of images in numpy array format (H x W x C) or a single list of images in numpy array or Pillow Image format
+        :type images: Union[List[List[Union[np.ndarray, Image.Image]]], List[Union[np.ndarray, Image.Image]]]
+        :param max_new_tokens: Maximum number of new tokens to generate
+        :type max_new_tokens: int
+        :param kwargs: Additional keyword arguments for specific engine implementations
+        :return: List of generated text outputs
+        :rtype: List[str]
+        """
+        texts, images = VLMEngine._prepare_multi_infer_inputs(texts, images)
+        if len(texts) != len(images):
+            log_error(
+                f"Texts and images must have the same length. Got {len(texts)} texts and {len(images)} image lists.",
+                _project_parameters,
+            )
+        if not engine.is_loaded(**kwargs):
+            engine.start(**kwargs)
+        if not engine.is_loaded(**kwargs):  # it is only still False in debug mode
+            return ["LM Output" for _ in images]
+        if max_new_tokens is None:
+            log_error(f"Can't set max_new_tokens to None", _project_parameters)
+        return engine.do_multi_infer(
+            texts,
+            images,
+            max_new_tokens,
+            **kwargs,
+        )
+
+
+class HuggingFaceVLMEngine(VLMEngine):
+    """
+    A VLM engine implementation using HuggingFace transformers.
+    Currently only supports Qwen3-VL models.
+    """
+
+    MODEL_REGISTRY: Dict[
+        str, Tuple[AutoModelForImageTextToText, AutoProcessor, str]
+    ] = {}
+    """ Model registry to cache loaded models. Keyed by model name. Value is a tuple of (model, processor, vlm_kind). """
+    _WARNED_DEBUG_LLM = False
+    _DEFAULT_BATCH_SIZE = 8
+
+    @staticmethod
+    def _do_start(
+        vlm_kind: str, model_name: str
+    ) -> Tuple[AutoModelForImageTextToText, AutoProcessor]:
+        """
+        Starts the VLM engine and returns the model and processor.
+        Currently only supports Qwen3-VL models. Add more model kinds as needed.
+
+        :param vlm_kind: The kind of VLM model to load
+        :param model_name: The name of the model to load
+        :return: A tuple of (model, processor)
+        :rtype: Tuple[AutoModelForImageTextToText, AutoProcessor]
+        """
+        # this way, we can add more model kinds w different engines (e.g. OpenAI API) later
+        if vlm_kind not in ["qwen3vl"]:
+            log_error(f"Unsupported executor_vlm_kind: {vlm_kind}", _project_parameters)
+        if vlm_kind in ["qwen3vl"]:
+            model = AutoModelForImageTextToText.from_pretrained(
+                model_name, dtype=torch.bfloat16, device_map="auto"
+            )
+            processor = AutoProcessor.from_pretrained(model_name, padding_side="left")
+            return model, processor
+        else:
+            log_error(
+                f"Unsupported HuggingFace VLM kind: {vlm_kind}", _project_parameters
+            )
+
+    @staticmethod
+    def _get_kwargs(**kwargs):
+        required_keys = ["model_name", "vlm_kind"]
+        for key in required_keys:
+            if key not in kwargs:
+                log_error(
+                    f"Missing required argument '{key}' for HuggingFaceVLMEngine.start()",
+                    _project_parameters,
+                )
+        model_name = kwargs["model_name"]
+        vlm_kind = kwargs["vlm_kind"]
+        return model_name, vlm_kind
+
+    @staticmethod
+    def start(**kwargs):
+        if _project_parameters["debug_skip_lm"]:
+            if not HuggingFaceVLMEngine._WARNED_DEBUG_LLM:
+                log_warn(
+                    f"Skipping VLM initialization as per debug_skip_lm=True",
+                    _project_parameters,
+                )
+                HuggingFaceVLMEngine._WARNED_DEBUG_LLM = True
+            return
+        model_name, vlm_kind = HuggingFaceVLMEngine._get_kwargs(**kwargs)
+        if model_name in HuggingFaceVLMEngine.MODEL_REGISTRY:
+            model, processor, _loaded_vlm_kind = HuggingFaceVLMEngine.MODEL_REGISTRY[
+                model_name
+            ]
+            if _loaded_vlm_kind != vlm_kind:
+                log_error(
+                    f"Model '{model_name}' is already loaded with vlm_kind '{_loaded_vlm_kind}', but tried to load with different vlm_kind '{vlm_kind}'",
+                    _project_parameters,
+                )
+            else:
+                return
+        else:
+            log_info(
+                f"Loading HuggingFace VLM model: {model_name}", _project_parameters
+            )
+            model, processor = HuggingFaceVLMEngine._do_start(vlm_kind, model_name)
+            HuggingFaceVLMEngine.MODEL_REGISTRY[model_name] = (
+                model,
+                processor,
+                vlm_kind,
+            )
+            return
+
+    @staticmethod
+    def do_infer(texts, images, max_new_tokens, **kwargs):
+        model_name, _ = HuggingFaceVLMEngine._get_kwargs(**kwargs)
+        if "batch_size" in kwargs:
+            batch_size = kwargs["batch_size"]
+        else:
+            batch_size = HuggingFaceVLMEngine._DEFAULT_BATCH_SIZE
+        model, processor, vlm_kind = HuggingFaceVLMEngine.MODEL_REGISTRY[model_name]
         if vlm_kind == "qwen3vl":
             all_images = [convert_numpy_greyscale_to_pillow(img) for img in images]
             all_texts = [
                 f"<|im_start|>user\n<|vision_start|><|image_pad|><|vision_end|>\n{text}\n<|im_end|><|im_start|>assistant\n"
                 for text in texts
             ]
-            if batch_size is None:
-                batch_size = ExecutorVLM._BATCH_SIZE
             all_outputs = []
             for i in range(0, len(all_images), batch_size):
                 images = all_images[i : i + batch_size]
@@ -172,77 +374,18 @@ class ExecutorVLM:
             return all_outputs
         else:
             log_error(
-                f"Unsupported HuggingFace VLM kind: {ExecutorVLM._MODEL_KIND}",
+                f"Unsupported HuggingFace VLM kind: {vlm_kind}",
                 _project_parameters,
             )
 
     @staticmethod
-    def infer(
-        texts: Union[List[str], str],
-        images: Union[np.ndarray, List[np.ndarray]],
-        max_new_tokens: int,
-        batch_size: int = None,
-    ) -> List[str]:
-        """
-        Performs inference with the given texts and images
-
-        :param texts: List of text prompts or a single text prompt
-        :type texts: Union[List[str], str]
-        :param images: List of images in numpy array format (H x W x C) or a single image in numpy array format
-        :type images: Union[np.ndarray, List[np.ndarray]]
-        :param max_new_tokens: Maximum number of new tokens to generate
-        :type max_new_tokens: int
-        :param batch_size: Batch size for inference
-        :type batch_size: int, optional
-        :return: List of generated text outputs
-        :rtype: List[str]
-        """
-        if ExecutorVLM._MODEL is None:
-            ExecutorVLM.start()
-        if ExecutorVLM._MODEL is None:  # it is only still None in debug mode
-            return ["LM Output" for text in texts]
-        if max_new_tokens is None:
-            log_error(f"Can't set max_new_tokens to None", _project_parameters)
-        texts, images = ExecutorVLM._prepare_infer_inputs(texts, images)
-        return ExecutorVLM.do_infer(
-            ExecutorVLM._MODEL_KIND,
-            ExecutorVLM._MODEL,
-            ExecutorVLM._PROCESSOR,
-            texts,
-            images,
-            max_new_tokens,
-            batch_size,
-        )
-
-    @staticmethod
-    def _prepare_multi_infer_inputs(
-        texts: Union[List[str], str],
-        images: Union[
-            List[List[Union[np.ndarray, Image.Image]]],
-            List[Union[np.ndarray, Image.Image]],
-        ],
-    ) -> Tuple[List[str], List[List[Union[np.ndarray, Image.Image]]]]:
-        if isinstance(texts, str):
-            texts = [texts]
-            # then images must be a single list of images in numpy array or Pillow Image format
-            if not isinstance(images, list) or len(images) == 0:
-                log_error(
-                    f"When passing a single text string, images must be a nonempty list of images. Got type {type(images)}.",
-                    _project_parameters,
-                )
-            if isinstance(images[0], list):
-                log_error(
-                    f"When passing a single text string, images must be a single list of images, not a list of lists. Got list of lists with length {len(images)}.",
-                    _project_parameters,
-                )
-            images = [images]  # wrap in another list to make it a list of lists
-
-        return texts, images
-
-    @staticmethod
-    def do_multi_infer(
-        vlm_kind: str, model, processor, texts, images, max_new_tokens, batch_size
-    ):
+    def do_multi_infer(texts, images, max_new_tokens, **kwargs):
+        model_name, _ = HuggingFaceVLMEngine._get_kwargs(**kwargs)
+        if "batch_size" in kwargs:
+            batch_size = kwargs["batch_size"]
+        else:
+            batch_size = HuggingFaceVLMEngine._DEFAULT_BATCH_SIZE
+        model, processor, vlm_kind = HuggingFaceVLMEngine.MODEL_REGISTRY[model_name]
         if vlm_kind == "qwen3vl":
             all_outputs = []
             all_texts = []
@@ -291,19 +434,80 @@ class ExecutorVLM:
             return all_outputs
         else:
             log_error(
-                f"Unsupported HuggingFace VLM kind: {ExecutorVLM._MODEL_KIND}",
+                f"Unsupported HuggingFace VLM kind: {vlm_kind}",
                 _project_parameters,
             )
 
     @staticmethod
+    def is_loaded(**kwargs):
+        model_name, _ = HuggingFaceVLMEngine._get_kwargs(**kwargs)
+        return model_name in HuggingFaceVLMEngine.MODEL_REGISTRY
+
+
+class VLM:
+    def __init__(self, model_name, vlm_kind, engine=None):
+        """
+        Initializes the VLM with the specified model and engine.
+
+        :param model_name: The name of the model to use
+        :param vlm_kind: The kind of VLM model
+        :param engine: The VLM engine class to use (subclass of VLMEngine). If None, defaults based on vlm_kind.
+        """
+        self._model_name = model_name
+        self._vlm_kind = vlm_kind
+        self._standard_kwargs = {
+            "model_name": self._model_name,
+            "vlm_kind": self._vlm_kind,
+        }
+        self._ENGINE = None
+        if engine is not None and not issubclass(engine, VLMEngine):
+            log_error(
+                f"engine must be a subclass of VLMEngine. Got {engine}",
+                _project_parameters,
+            )
+        if engine is not None:
+            self._ENGINE = engine
+        else:
+            if self._vlm_kind == "openai":
+                self._ENGINE = None  # OpenAIVLMEngine not yet implemented
+            else:
+                self._ENGINE = HuggingFaceVLMEngine
+        self._ENGINE.start(**self._standard_kwargs)
+
+    def infer(
+        self,
+        texts: Union[List[str], str],
+        images: Union[np.ndarray, List[np.ndarray]],
+        max_new_tokens: int,
+    ) -> List[str]:
+        """
+        Performs inference with the given texts and images
+
+        :param texts: List of text prompts or a single text prompt
+        :type texts: Union[List[str], str]
+        :param images: List of images in numpy array format (H x W x C) or a single image in numpy array format
+        :type images: Union[np.ndarray, List[np.ndarray]]
+        :param max_new_tokens: Maximum number of new tokens to generate
+        :type max_new_tokens: int
+        :return: List of generated text outputs
+        :rtype: List[str]
+        """
+        return self._ENGINE.engine_infer(
+            self._ENGINE,
+            texts,
+            images,
+            max_new_tokens,
+            **self._standard_kwargs,
+        )
+
     def multi_infer(
+        self,
         texts: Union[List[str], str],
         images: Union[
             List[List[Union[np.ndarray, Image.Image]]],
             List[Union[np.ndarray, Image.Image]],
         ],
         max_new_tokens: int,
-        batch_size: int = None,
     ) -> List[str]:
         """
         Performs inference with the a single text and multiple images
@@ -314,107 +518,27 @@ class ExecutorVLM:
         :type images: Union[List[List[Union[np.ndarray, Image.Image]]], List[Union[np.ndarray, Image.Image]]]
         :param max_new_tokens: Maximum number of new tokens to generate
         :type max_new_tokens: int
-        :param batch_size: Batch size for inference
-        :type batch_size: int, optional
         :return: List of generated text outputs
         :rtype: List[str]
         """
-        texts, images = ExecutorVLM._prepare_multi_infer_inputs(texts, images)
-        if len(texts) != len(images):
-            log_error(
-                f"Texts and images must have the same length. Got {len(texts)} texts and {len(images)} image lists.",
-                _project_parameters,
-            )
-        if ExecutorVLM._MODEL is None:
-            ExecutorVLM.start()
-        if ExecutorVLM._MODEL is None:  # it is only still None in debug mode
-            return ["LM Output" for _ in images]
-        if max_new_tokens is None:
-            log_error(f"Can't set max_new_tokens to None", _project_parameters)
-        if batch_size is None:
-            batch_size = ExecutorVLM._BATCH_SIZE
-        return ExecutorVLM.do_multi_infer(
-            ExecutorVLM._MODEL_KIND,
-            ExecutorVLM._MODEL,
-            ExecutorVLM._PROCESSOR,
+        return self._ENGINE.multi_infer(
+            self._ENGINE,
             texts,
             images,
             max_new_tokens,
-            batch_size,
+            **self._standard_kwargs,
         )
 
 
-class SupervisorVLM:
+class ExecutorVLM(VLM):
     """
-    Basically the same as ExecutorVLM, except we instantiate it. Allows for sharing of the model if they are the same.
+    A class that holds the VLM for the executor
     """
 
-    def __init__(self, model_name=None, vlm_kind=None):
-        executor_vlm_name = _project_parameters["executor_vlm_model"]
-        if model_name is None:
-            log_warn(
-                f"No model_name specified for SupervisorVLM, defaulting to ExecutorVLM model: {executor_vlm_name}",
-                _project_parameters,
-            )
-            model_name = executor_vlm_name
-            vlm_kind = ExecutorVLM._MODEL_KIND
-        if model_name != executor_vlm_name and vlm_kind is None:
-            log_error(
-                f"When specifying a different model name for the SupervisorVLM than the ExecutorVLM, you must also specify the vlm_kind.",
-                _project_parameters,
-            )
-        if model_name == executor_vlm_name:
-            ExecutorVLM.start()
-            self._MODEL = ExecutorVLM._MODEL
-            self._PROCESSOR = ExecutorVLM._PROCESSOR
-        else:
-            self._MODEL, self._PROCESSOR = ExecutorVLM._do_start(vlm_kind, model_name)
-        self._MODEL_KIND = vlm_kind if vlm_kind is not None else ExecutorVLM._MODEL_KIND
-
-    def infer(
-        self,
-        texts: Union[List[str], str],
-        images: Union[np.ndarray, List[np.ndarray]],
-        max_new_tokens: int,
-        batch_size: int = None,
-    ) -> List[str]:
-        """
-        See ExecutorVLM.infer for docstring.
-        """
-        texts, images = ExecutorVLM._prepare_infer_inputs(texts, images)
-        return ExecutorVLM.do_infer(
-            self._MODEL_KIND,
-            self._MODEL,
-            self._PROCESSOR,
-            texts,
-            images,
-            max_new_tokens,
-            batch_size,
-        )
-
-    def multi_infer(
-        self,
-        texts: Union[List[str], str],
-        images: Union[
-            List[List[Union[np.ndarray, Image.Image]]],
-            List[Union[np.ndarray, Image.Image]],
-        ],
-        max_new_tokens: int,
-        batch_size: int = None,
-    ) -> List[str]:
-        """
-        See ExecutorVLM.multi_infer for docstring.
-        """
-        texts, images = ExecutorVLM._prepare_multi_infer_inputs(texts, images)
-        return ExecutorVLM.do_multi_infer(
-            self._MODEL_KIND,
-            self._MODEL,
-            self._PROCESSOR,
-            texts,
-            images,
-            max_new_tokens,
-            batch_size,
-        )
+    def __init__(self):
+        self._model_name = _project_parameters["executor_vlm_model"]
+        self._vlm_kind = _project_parameters["executor_vlm_kind"]
+        self._VLM = VLM(model_name=self._model_name, vlm_kind=self._vlm_kind)
 
 
 def merge_ocr_strings(strings, min_overlap=3):
@@ -489,37 +613,19 @@ def merge_ocr_strings(strings, min_overlap=3):
     return merged_list
 
 
-def _ocr_merge(texts: List[str]) -> List[str]:
-    """
-    Merges OCR texts by removing duplicates, subsets and combining them into a single string.
-    Args:
-        texts: List of OCR text strings.
-    Returns:
-        List containing merged text strings.
-    """
-    final_strings = []
-    for text in texts:
-        if len(final_strings) == 0:
-            final_strings.append(text)
-        else:
-            reference = final_strings[-1]
-            if text in reference:
-                continue
-            elif reference in text:
-                final_strings[-1] = text
-            else:
-                final_strings.append(text)
-    return final_strings
-
-
 def ocr(
-    images: List[np.ndarray], *, text_prompt=None, do_merge: bool = True
+    images: List[np.ndarray],
+    *,
+    vlm: VLM = None,
+    text_prompt=None,
+    do_merge: bool = True,
 ) -> List[str]:
     """
     Performs OCR on the given images using the VLM.
 
     Args:
         images: List of images in numpy array format (H x W x C)
+        vlm: The VLM instance to use. If None, uses the default ExecutorVLM.
         text_prompt: The prompt to use for the OCR model.
         do_merge: Whether to merge similar OCR results. Use this if images are sequential frames from a game.
     Returns:
@@ -531,7 +637,9 @@ def ocr(
     batch_size = parameters["ocr_batch_size"]
     max_new_tokens = parameters["ocr_max_new_tokens"]
     texts = [text_prompt] * len(images)
-    ocred = ExecutorVLM.infer(
+    if vlm is None:
+        vlm = ExecutorVLM()
+    ocred = vlm.infer(
         texts=texts, images=images, max_new_tokens=max_new_tokens, batch_size=batch_size
     )
     for i, res in enumerate(ocred):

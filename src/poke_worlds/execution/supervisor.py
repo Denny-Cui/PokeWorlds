@@ -6,7 +6,7 @@ from poke_worlds.utils import (
     log_warn,
 )
 from poke_worlds.interface import Environment
-from poke_worlds.execution.vlm import SupervisorVLM
+from poke_worlds.execution.vlm import VLM
 from poke_worlds.execution.report import (
     ExecutionReport,
     SupervisorReport,
@@ -48,7 +48,7 @@ class Supervisor(ABC):
         self._environment = environment
         self._EXECUTOR_CLASS = executor_class
         self._EXECUTION_REPORT_CLASS = execution_report_class
-        self._vlm = SupervisorVLM(model_name=model_name, vlm_kind=vlm_kind)
+        self._vlm = VLM(model_name=model_name, vlm_kind=vlm_kind)
         self._game = game
         if executor_max_steps is None:
             self.executor_max_steps = self._parameters["executor_max_steps"]
