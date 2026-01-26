@@ -56,8 +56,8 @@ def run_task(row, max_resets, controller_variant, **emulator_kwargs):
                 if last_execution_report.exit_code == 2:
                     success = True
                     break
-                if "terminated_truncated" in last_state:
-                    if last_state["terminated_truncated"]["terminated"]:
+                if "termination_truncation" in last_state:
+                    if last_state["termination_truncation"]["terminated"]:
                         success = True
                         break
             n_steps = 0
