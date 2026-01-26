@@ -1,4 +1,4 @@
-from poke_worlds.execution.vlm import _ocr_merge
+from poke_worlds.execution.vlm import merge_ocr_strings
 from poke_worlds.execution.report import ExecutionReport, SimpleReport, EQAReport
 from poke_worlds.emulation.pokemon.trackers import PokemonOCRTracker
 from typing import Dict, Any
@@ -18,7 +18,7 @@ class SimplePokemonExecutionReport(SimpleReport):
                         all_ocrs[key] = []
                     all_ocrs[key].append(ocr_text_dict[key])
             for key in all_ocrs:
-                all_ocrs[key] = _ocr_merge(all_ocrs[key])
+                all_ocrs[key] = merge_ocr_strings(all_ocrs[key])
             return "OCR Results: " + "\n".join(
                 [f"{k}: {v}" for k, v in all_ocrs.items()]
             )
