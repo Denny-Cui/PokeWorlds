@@ -455,10 +455,13 @@ class Emulator:
                     self._parameters,
                 )
         if self.step_count >= self.max_steps:
-            log_error(
+            log_warn(
                 "Step called after max_steps reached. Please reset the environment.",
                 self._parameters,
             )
+            # This does not exit because some HighLevelActions may call step() multiple times in their execution.
+            # It is not the best practice to allow this to happen, but it is easier to not error out here than check in every HighLevelAction, and this won't advantage the agent too much.
+            # One consequence, however, is that max_steps then becomes a soft limit rather than a hard limit.
 
         if self.save_video and self.step_count == 0:
             self.start_video()
