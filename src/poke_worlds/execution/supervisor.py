@@ -48,6 +48,9 @@ class Supervisor(ABC):
         self._environment = environment
         self._EXECUTOR_CLASS = executor_class
         self._EXECUTION_REPORT_CLASS = execution_report_class
+        if model_name is None:
+            model_name = self._parameters["executor_vlm_model"]
+            vlm_kind = self._parameters["executor_vlm_kind"]
         self._vlm = VLM(model_name=model_name, vlm_kind=vlm_kind)
         self._game = game
         if executor_max_steps is None:
