@@ -538,7 +538,7 @@ class ExecutorVLM(VLM):
     def __init__(self):
         self._model_name = _project_parameters["executor_vlm_model"]
         self._vlm_kind = _project_parameters["executor_vlm_kind"]
-        self._VLM = VLM(model_name=self._model_name, vlm_kind=self._vlm_kind)
+        super().__init__(model_name=self._model_name, vlm_kind=self._vlm_kind)
 
 
 def merge_ocr_strings(strings, min_overlap=3):
