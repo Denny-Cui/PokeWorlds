@@ -1766,7 +1766,7 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-transformers = [
+vlm = [
     { name = "accelerate" },
     { name = "einops" },
     { name = "protobuf" },
@@ -1778,10 +1778,10 @@ transformers = [
 
 [package.metadata]
 requires-dist = [
-    { name = "accelerate", marker = "extra == 'transformers'", specifier = ">=1.12.0" },
+    { name = "accelerate", marker = "extra == 'vlm'", specifier = ">=1.12.0" },
     { name = "bidict", specifier = ">=0.23.1" },
     { name = "click", specifier = ">=8.3.0" },
-    { name = "einops", marker = "extra == 'transformers'", specifier = ">=0.8.1" },
+    { name = "einops", marker = "extra == 'vlm'", specifier = ">=0.8.1" },
     { name = "gymnasium", specifier = ">=1.2.3" },
     { name = "huggingface-hub", specifier = ">=0.36.0" },
     { name = "matplotlib", specifier = ">=3.10.7" },
@@ -1789,19 +1789,19 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.11.0.86" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "pdoc", specifier = ">=16.0.0" },
-    { name = "protobuf", marker = "extra == 'transformers'", specifier = ">=6.33.2" },
+    { name = "protobuf", marker = "extra == 'vlm'", specifier = ">=6.33.2" },
     { name = "pyboy", specifier = "==2.4.0" },
     { name = "pygame", specifier = ">=2.6.1" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "scikit-image", specifier = ">=0.25.2" },
-    { name = "sentencepiece", marker = "extra == 'transformers'", specifier = ">=0.2.1" },
-    { name = "torch", marker = "extra == 'transformers'", specifier = ">=2.9.1" },
-    { name = "torchvision", marker = "extra == 'transformers'", specifier = ">=0.24.1" },
+    { name = "sentencepiece", marker = "extra == 'vlm'", specifier = ">=0.2.1" },
+    { name = "torch", marker = "extra == 'vlm'", specifier = ">=2.9.1" },
+    { name = "torchvision", marker = "extra == 'vlm'", specifier = ">=0.24.1" },
     { name = "tqdm", specifier = ">=4.67.1" },
-    { name = "transformers", marker = "extra == 'transformers'", specifier = ">=4.57.3" },
+    { name = "transformers", marker = "extra == 'vlm'", specifier = ">=4.57.3" },
     { name = "wheel", specifier = ">=0.45.1" },
 ]
-provides-extras = ["transformers"]
+provides-extras = ["vlm"]
 
 [[package]]
 name = "prometheus-client"

@@ -75,11 +75,11 @@ Then, clone the <img src="assets/logo.png" width="70"> repo and install it as a 
 ```
 git clone https://github.com/DhananjayAshok/PokeWorlds
 cd PokeWorlds
-uv pip install -e ".[transformers]"
+uv pip install -e ".[vlm]"
 ```
 
 You can also do a minimal installation with `uv pip install -e .` 
-This doesn't install the packages needed for Vision Language Model inference (`torch`, `transformers`, etc.), but you can still do a [lot](https://www.youtube.com/watch?v=DcYLT37ImBY&t=1s) with a setup of this nature. 
+This doesn't install the packages needed for Vision Language Model inference (`openai`, `torch`, `transformers`, etc.), but you can still do a [lot](https://www.youtube.com/watch?v=DcYLT37ImBY&t=1s) with a setup of this nature. 
 
 If you are in a headless environment, running with this configuration may fail. In that case try:
 ```
