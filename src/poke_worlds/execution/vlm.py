@@ -21,6 +21,7 @@ if _project_parameters["vlm_importable"]:
     import torch
     from transformers import AutoModelForImageTextToText, AutoProcessor
     from openai import OpenAI
+    import anthropic
 else:
     pass
 
@@ -264,7 +265,7 @@ class OpenAIVLMEngine(VLMEngine):
         Returns:
             str: The path to the temporary directory used for OpenAI cache.
         """
-        tmp_dir = _project_parameters["tmp_dir"] + "/openai_cache"
+        tmp_dir = _project_parameters["tmp_dir"] + "/api_cache"
         if os.path.exists(tmp_dir):
             shutil.rmtree(tmp_dir)
         os.makedirs(tmp_dir, exist_ok=True)
@@ -303,13 +304,13 @@ class OpenAIVLMEngine(VLMEngine):
         return OpenAIVLMEngine._CLIENT is not None
 
     @staticmethod
-    def _wait():
-        time_to_wait = OpenAIVLMEngine.seconds_per_query - (
-            perf_counter() - OpenAIVLMEngine._previous_call
+    def _wait(engine: Union[Type["OpenAIVLMEngine"], Type["AnthropicVLMEngine"]]):
+        time_to_wait = engine.seconds_per_query - (
+            perf_counter() - engine._previous_call
         )
         if time_to_wait > 0:
             sleep(time_to_wait)
-        OpenAIVLMEngine._previous_call = perf_counter()
+        engine._previous_call = perf_counter()
 
     @staticmethod
     def _get_output(response) -> List[str]:
@@ -339,7 +340,7 @@ class OpenAIVLMEngine(VLMEngine):
             inputs.append(prompt_dict)
 
         model = kwargs["model_name"]
-        OpenAIVLMEngine._wait()
+        OpenAIVLMEngine._wait(OpenAIVLMEngine)
         response = OpenAIVLMEngine._CLIENT.responses.create(
             model=model,
             input=inputs,
@@ -371,13 +372,100 @@ class OpenAIVLMEngine(VLMEngine):
             inputs.append(prompt_dict)
 
         model = kwargs["model_name"]
-        OpenAIVLMEngine._wait()
+        OpenAIVLMEngine._wait(OpenAIVLMEngine)
         response = OpenAIVLMEngine._CLIENT.responses.create(
             model=model,
             input=inputs,
             max_output_tokens=max_new_tokens,
         )
         return OpenAIVLMEngine._get_output(response)
+
+
+class AnthropicVLMEngine(VLMEngine):
+    """Anthropic VLM engine implementation using Anthropic API."""
+
+    seconds_per_query = (60 / 20) + 0.01
+    """ Seconds to wait between queries to avoid rate limiting. Adjust as needed."""
+
+    _CLIENT = None
+    _previous_call = 0.0
+
+    @staticmethod
+    def start(**kwargs):
+        AnthropicVLMEngine._CLIENT = anthropic.Anthropic()
+
+    @staticmethod
+    def is_loaded(**kwargs):
+        return AnthropicVLMEngine._CLIENT is not None
+
+    @staticmethod
+    def _get_output(response) -> List[str]:
+        breakpoint()
+
+    @staticmethod
+    def do_infer(texts, images, max_new_tokens, **kwargs):
+        images = OpenAIVLMEngine.get_encoded_images(images)  # same encoding method
+        base_input_dict = {
+            "role": "user",
+            "content": [
+                {"type": "text"},
+                {
+                    "type": "image",
+                    "source": {"type": "base64", "media_type": "image/jpeg"},
+                },
+            ],
+        }
+        inputs = []
+        for text, img in zip(texts, images):
+            prompt_dict = base_input_dict.copy()
+            prompt_dict["content"][0]["text"] = text
+            prompt_dict["content"][1]["source"]["data"] = img
+            inputs.append(prompt_dict)
+
+        model = kwargs["model_name"]
+        OpenAIVLMEngine._wait(AnthropicVLMEngine)
+        response = AnthropicVLMEngine._CLIENT.messages.create(
+            model=model,
+            messages=inputs,
+            max_tokens=max_new_tokens,
+        )
+        return AnthropicVLMEngine._get_output(response)
+
+    @staticmethod
+    def do_multi_infer(texts, images, max_new_tokens, **kwargs):
+        all_images = []
+        for img_list in images:
+            all_images.append(OpenAIVLMEngine.get_encoded_images(img_list))
+        images = all_images
+        base_input_dict = {
+            "role": "user",
+            "content": [{"type": "text"}],
+        }
+        inputs = []
+        for text, img_list in zip(texts, images):
+            prompt_dict = base_input_dict.copy()
+            prompt_dict["content"][0]["text"] = text
+            for img in img_list:
+                prompt_dict["content"].append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": img,
+                        },
+                    }
+                )
+            inputs.append(prompt_dict)
+
+        model = kwargs["model_name"]
+        OpenAIVLMEngine._wait(AnthropicVLMEngine)
+        response = AnthropicVLMEngine._CLIENT.messages.create(
+            model=model,
+            messages=inputs,
+            max_tokens=max_new_tokens,
+        )
+        return AnthropicVLMEngine._get_output(response)
 
 
 class HuggingFaceVLMEngine(VLMEngine):
@@ -608,6 +696,8 @@ class VLM:
         else:
             if self._vlm_kind == "openai":
                 self._ENGINE = OpenAIVLMEngine
+            elif self._vlm_kind == "anthropic":
+                self._ENGINE = AnthropicVLMEngine
             else:
                 self._ENGINE = HuggingFaceVLMEngine
         self._ENGINE.start(**self._standard_kwargs)
