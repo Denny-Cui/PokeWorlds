@@ -402,32 +402,39 @@ class MoveStepsAction(BaseMovementAction):
         return OneOf(component_actions)
 
     def space_to_parameters(self, space_action):
-        cardinal, steps = space_action
-        if cardinal < 0 or cardinal > 3:
+        direction = None
+        steps = None
+        if space_action < 0 or space_action >= 4 * HARD_MAX_STEPS:
+            # log_warn(f"Invalid space action {space_action}", self._parameters)
             return None
-        direction = ["up", "down", "left", "right"][cardinal]
+        if space_action < HARD_MAX_STEPS:
+            direction = "up"
+            steps = space_action
+        elif space_action < 2 * HARD_MAX_STEPS:
+            direction = "down"
+            steps = space_action - HARD_MAX_STEPS
+        elif space_action < 3 * HARD_MAX_STEPS:
+            direction = "left"
+            steps = space_action - 2 * HARD_MAX_STEPS
+        else:
+            direction = "right"
+            steps = space_action - 3 * HARD_MAX_STEPS
         return {"direction": direction, "steps": steps + 1}
 
     def parameters_to_space(self, direction: str, steps: int):
-        cardinal = None
+        if steps <= 0 or steps > HARD_MAX_STEPS:
+            return None
         if direction == "up":
-            cardinal = 0
-        elif direction == "right":
-            cardinal = 1
+            return steps - 1
         elif direction == "down":
-            cardinal = 2
+            return HARD_MAX_STEPS + steps - 1
         elif direction == "left":
-            cardinal = 3
+            return 2 * HARD_MAX_STEPS + steps - 1
+        elif direction == "right":
+            return 3 * HARD_MAX_STEPS + steps - 1
         else:
             # log_warn(f"Unrecognized direction {direction}", self._parameters)
             return None
-        if steps <= 0 or steps > HARD_MAX_STEPS:
-            # log_warn(
-            #    f"Bro. What you trying here. Don't step weirdly: {steps}",
-            #    self._parameters,
-            # )
-            return None
-        return cardinal, steps - 1
 
     def _execute(self, direction, steps):
         transition_states, status = self.move(direction=direction, steps=steps)
@@ -552,6 +559,8 @@ class MenuAction(HighLevelAction):
         # "open": LowLevelActions.PRESS_BUTTON_START,  # In general, we won't be using this action, but prefer OpenMenuAction instead.
     }
 
+    _MENU_ACTION_KEYS = list(_MENU_ACTION_MAP.keys())
+
     def is_valid(self, **kwargs):
         """
         Checks if the menu action is valid in the current state.
@@ -561,18 +570,12 @@ class MenuAction(HighLevelAction):
         Returns:
             bool: True if the action is valid, False otherwise.
         """
-        menu_action = kwargs.get("menu_action")
+        menu_action = kwargs.get("menu_action", None)
         if menu_action is not None:
-            if menu_action not in self._MENU_ACTION_MAP.keys():
+            if menu_action not in self._MENU_ACTION_KEYS:
                 return False
         state = self._state_tracker.get_episode_metric(("pokemon_core", "agent_state"))
-        if menu_action is None:
-            return state != AgentState.IN_DIALOGUE
-            # return (state != AgentState.IN_BATTLE) and (state != AgentState.IN_DIALOGUE)
-        if menu_action == "open":
-            return state == AgentState.FREE_ROAM
-        else:
-            return state == AgentState.IN_MENU
+        return state in [AgentState.IN_MENU, AgentState.IN_BATTLE] # works in battle screens and menu state
 
     def get_action_space(self):
         """
@@ -583,24 +586,15 @@ class MenuAction(HighLevelAction):
         return Discrete(len(self._MENU_ACTION_MAP))
 
     def parameters_to_space(self, menu_action):
-        if menu_action not in self._MENU_ACTION_MAP.keys():
-            # log_warn(f"Invalid menu action {menu_action}", self._parameters)
+        if menu_action not in self._MENU_ACTION_KEYS:
             return None
+        return self._MENU_ACTION_KEYS.index(menu_action)
 
     def space_to_parameters(self, space_action):
         menu_action = None
-        if space_action == 0:
-            menu_action = "up"
-        elif space_action == 1:
-            menu_action = "down"
-        elif space_action == 2:
-            menu_action = "confirm"
-        elif space_action == 3:
-            menu_action = "back"
-        elif space_action == 4:
-            menu_action = "open"
-        else:
-            log_error(f"Invalid space action {space_action}")
+        if space_action < 0 or space_action >= len(self._MENU_ACTION_MAP):
+            return None
+        menu_action = self._MENU_ACTION_KEYS[space_action]
         return {"menu_action": menu_action}
 
     def _execute(self, menu_action):
