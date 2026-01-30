@@ -13,6 +13,7 @@ from poke_worlds.utils import log_error, load_parameters, log_warn
 import os
 from typing import Optional, Union, Type, Dict
 from poke_worlds.emulation.parser import StateParser, DummyParser
+
 from poke_worlds.emulation.pokemon.parsers import (
     MemoryBasedPokemonRedStateParser,
     PokemonBrownStateParser,
@@ -21,7 +22,15 @@ from poke_worlds.emulation.pokemon.parsers import (
     PokemonPrismStateParser,
     PokemonFoolsGoldStateParser,
 )
+
+from poke_worlds.emulation.deja_vu.parsers import (
+    MemoryBasedDejaVuStateParser,
+    DejaVuStateParser,
+    DejaVu1And2StateParser,
+)
+
 from poke_worlds.emulation.tracker import StateTracker
+
 from poke_worlds.emulation.pokemon.trackers import (
     PokemonOCRTracker,
     PokemonRedStarterTracker,
@@ -42,8 +51,19 @@ from poke_worlds.emulation.pokemon.trackers import (
     PokemonRedUsedPotionOnCharmanderTestTracker,
     PokemonRedOpenMapTestTracker,
 )
+
+from poke_worlds.emulation.deja_vu.trackers import (
+    DejaVuOCRTracker,
+    DejaVuEnterCastleTestTracker,
+    DejaVuSolveFirstCaseTestTracker,
+    DejaVuFindFirstClueTestTracker,
+    DejaVuTalkToCharacterTestTracker,
+    DejaVuVisitLocationTestTracker,
+)
+
 from poke_worlds.emulation.emulator import Emulator
 from poke_worlds.emulation.pokemon.emulators import PokemonEmulator
+from poke_worlds.emulation.deja_vu.emulators import DejaVuEmulator
 
 _project_parameters = load_parameters()
 GAME_TO_GB_NAME = {
@@ -53,6 +73,7 @@ GAME_TO_GB_NAME = {
     "pokemon_crystal": "PokemonCrystal.gbc",
     "pokemon_fools_gold": "PokemonFoolsGold.gbc",
     "pokemon_prism": "PokemonPrism.gbc",
+    "deja_vu": "DejaVu.gbc",
     # "zelda_links_awakening": "ZeldaLinksAwakening.gb",
 }
 """ Expected save name for each game. Save the file to <storage_dir_from_config_file>/<game_name>_rom_data/<gb_name>"""
@@ -64,6 +85,8 @@ _STRONGEST_PARSERS: Dict[str, Type[StateParser]] = {
     "pokemon_starbeasts": PokemonStarBeastsStateParser,
     "pokemon_fools_gold": PokemonFoolsGoldStateParser,
     "pokemon_prism": PokemonPrismStateParser,
+    # "deja_vu": DejaVuStateParser,
+    "deja_vu": DejaVu1And2StateParser,
 }
 """ Mapping of game names to their corresponding strongest StateParser classes. 
 Unless you have a very good reason, you should always use the STRONGEST possible parser for a given game. 
@@ -105,6 +128,14 @@ AVAILABLE_STATE_TRACKERS: Dict[str, Dict[str, Type[StateTracker]]] = {
     "pokemon_prism": {
         "default": PokemonOCRTracker,
     },
+    "deja_vu": {
+        "default": DejaVuOCRTracker,
+        "enter_castle_test": DejaVuEnterCastleTestTracker,
+        "solve_first_case_test": DejaVuSolveFirstCaseTestTracker,
+        "find_first_clue_test": DejaVuFindFirstClueTestTracker,
+        "talk_to_character_test": DejaVuTalkToCharacterTestTracker,
+        "visit_location_test": DejaVuVisitLocationTestTracker,
+    },
 }
 """ Mapping of game names to their available StateTracker classes with string identifiers. """
 
@@ -126,6 +157,9 @@ AVAILABLE_EMULATORS: Dict[str, Dict[str, Type[Emulator]]] = {
     },
     "pokemon_prism": {
         "default": PokemonEmulator,
+    },
+    "deja_vu": {
+        "default": DejaVuEmulator,
     },
 }
 """ Mapping of game names to their available Emulator classes with string identifiers. """

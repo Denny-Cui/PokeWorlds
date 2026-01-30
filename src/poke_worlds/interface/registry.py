@@ -21,6 +21,7 @@ from poke_worlds.emulation.registry import (
 )
 from poke_worlds.interface.controller import Controller, _ALWAYS_VALID_CONTROLLERS
 from poke_worlds.interface.environment import Environment, DummyEnvironment
+
 from poke_worlds.interface.pokemon.environments import (
     PokemonEnvironment,
     PokemonRedChooseCharmanderEnvironment,
@@ -29,6 +30,14 @@ from poke_worlds.interface.pokemon.environments import (
     PokemonTestEnvironment,
 )
 from poke_worlds.interface.pokemon.controllers import PokemonStateWiseController
+
+from poke_worlds.interface.deja_vu.environments import (
+    DejaVuEnvironment,
+    DejaVuEnterCastleEnv,
+    DejaVuOCREnvironment,
+    DejaVuTestEnvironment,
+)
+from poke_worlds.interface.deja_vu.controllers import DejaVuStateWiseController
 
 import pandas as pd
 
@@ -68,6 +77,13 @@ AVAILABLE_ENVIRONMENTS: Dict[str, Dict[str, Type[Environment]]] = {
         "basic": PokemonEnvironment,
         "test": PokemonTestEnvironment,
     },
+    "deja_vu": {
+        "dummy": DummyEnvironment,
+        "default": DejaVuOCREnvironment,
+        "basic": DejaVuEnvironment,
+        "enter_castle": DejaVuEnterCastleEnv,
+        "test": DejaVuTestEnvironment,
+    },
 }
 
 AVAILABLE_CONTROLLERS: Dict[str, Dict[str, Type[Controller]]] = {
@@ -88,6 +104,9 @@ AVAILABLE_CONTROLLERS: Dict[str, Dict[str, Type[Controller]]] = {
     },
     "pokemon_fools_gold": {
         "state_wise": PokemonStateWiseController,
+    },
+    "deja_vu": {
+        "state_wise": DejaVuStateWiseController,
     },
 }
 
