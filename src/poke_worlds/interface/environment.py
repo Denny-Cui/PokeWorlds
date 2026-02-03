@@ -558,12 +558,14 @@ class Environment(gym.Env, ABC):
         transition_states, action_success = self._controller.execute(action, **kwargs)
         if (
             transition_states is None
-        ):  # then the action was not a valid one according to the controller. 
+        ):  # then the action was not a valid one according to the controller.
             observation = self.get_observation()
             current_state = self.get_info()
             terminated = self.determine_terminated(start_state=start_state)
             truncated = self.determine_truncated(start_state=start_state)
-            reward = self.determine_reward(start_state=start_state) - abs(self._parameters["invalid_action_penalty"])
+            reward = self.determine_reward(start_state=start_state) - abs(
+                self._parameters["invalid_action_penalty"]
+            )
             return observation, reward, terminated, truncated, current_state
         self.after_step(start_state, action, kwargs, transition_states, action_success)
         truncated = self.determine_truncated(
@@ -818,6 +820,8 @@ class Environment(gym.Env, ABC):
                     possible_info,
                 )
                 rewards.append(reward)
+                if reward != 0:
+                    log_info(f"Reward obtained: {reward}", self._parameters)
                 (
                     action,
                     action_kwargs,
