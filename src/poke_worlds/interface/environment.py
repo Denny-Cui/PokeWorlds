@@ -212,6 +212,7 @@ class Environment(gym.Env, ABC):
         emulator: Emulator,
         controller: Controller,
         parameters: Optional[dict] = None,
+        environment_override_video_text: bool = True,
     ):
         """
         Ensures that the environment has the required attributes.
@@ -219,6 +220,8 @@ class Environment(gym.Env, ABC):
 
         If you are implementing a subclass, ensure that the following attributes are set:
             - observation_space: gym space defining observation space structure
+
+        If environment_override_video_text is True, the environment will augment the emulator save video functionality to include a string indicating the current high level action being executed.
         """
         self._parameters = load_parameters(parameters)
         self._emulator = emulator
@@ -264,6 +267,8 @@ class Environment(gym.Env, ABC):
         """ The pygame clock for rendering in 'human' mode. Initialized on first render call. """
         self._history: History = None
         """ The Environment History, storing all observations, state_information reports, actions and rewards over the episode. Is cleared with reset(). Access through get_history()"""
+        self._environment_override_video_text = environment_override_video_text
+        """ Whether to augment the emulator video saving with high level action strings. """
         self.reset()
 
     def get_history(self) -> History:
@@ -541,6 +546,15 @@ class Environment(gym.Env, ABC):
             )  # TODO: This triggered once during demos/benchmark runs, need to investigate why.
         start_state = self.get_info()
         self.before_step(action, kwargs)
+        if self._environment_override_video_text:
+            action_name_text = f"{action.__name__}".lower().replace("action", "")
+            kwargs_text = ""
+            for key, value in kwargs.items():
+                kwargs_text += f"{key}={value}, "
+            if len(kwargs_text) > 0:
+                kwargs_text = kwargs_text[:-2]  # remove last comma and space
+            action_text = f"{kwargs_text}"
+            self._emulator._video_text = action_text
         transition_states, action_success = self._controller.execute(action, **kwargs)
         if (
             transition_states is None
