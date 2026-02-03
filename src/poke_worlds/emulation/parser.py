@@ -329,7 +329,8 @@ class StateParser(ABC):
                         self._parameters,
                     )
 
-    def bit_count(self, bits: int) -> int:
+    @staticmethod
+    def bit_count(bits: int) -> int:
         """
         Counts the number of set bits (1s) in the given integer.
         Args:
