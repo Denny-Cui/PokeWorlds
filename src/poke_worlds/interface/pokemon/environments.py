@@ -162,6 +162,13 @@ class PokemonRedExploreStartingSceneEnvironment(PokemonRedStarterChoiceEnvironme
         screen = self._emulator.get_current_frame()  # avoids the grid
         similarity_scores = self._visual_index.add_compare(screen)
         if similarity_scores is None:
-            return 1.0  # first frame
+            return 0.0  # first frame
         novelty_score = 1.0 - float((similarity_scores.max()).item())
         return novelty_score
+    
+    def reset(
+            self, *, seed: Optional[int] = None, options: Optional[dict] = None
+        ) -> Tuple[Any, Dict]:
+        from poke_worlds.execution.retrieval import Index
+        self._visual_index = Index(modality="image")
+        return super().reset(seed=seed, options=options)
