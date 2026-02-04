@@ -38,7 +38,7 @@ class RandomPatchProjection:
         start = 16 * 16
         end = self.cell_reduction_dimension
         midway = (start + end) // 2
-        my_local_rng = torch.Generator()
+        my_local_rng = torch.Generator(device="cuda" if torch.cuda.is_available() else "cpu")
         my_local_rng.manual_seed(_project_parameters["random_seed"])
         step1 = nn.Linear(
             start,
@@ -115,7 +115,7 @@ class HuggingFaceEmbeddingEngine(ABC):
         :return: A tuple of (model, processor)
         :rtype: Tuple[AutoModel, AutoProcessor]
         """
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def start(
@@ -185,15 +185,18 @@ class HuggingFaceEmbeddingEngine(ABC):
         :return: Tensor containing the embeddings
         :rtype: torch.Tensor
         """
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def embed(
+        engine_class: Type["HuggingFaceEmbeddingEngine"],
         model_kind: str, model_name: str, items: List[_EmbeddingInput]
     ) -> torch.Tensor:
         """
         Generate embeddings for a list of items using the specified model.
 
+        :param engine_class: The embedding engine class to use
+        :type engine_class: Type[HuggingFaceEmbeddingEngine]
         :param model_kind: The kind of model to use
         :type model_kind: str
         :param model_name: The name of the model to use
@@ -204,13 +207,13 @@ class HuggingFaceEmbeddingEngine(ABC):
         :rtype: torch.Tensor
         """
         if not HuggingFaceEmbeddingEngine.is_loaded(model_name=model_name):
-            HuggingFaceEmbeddingEngine.start(
+            HuggingFaceEmbeddingEngine.start(engine_class=engine_class,
                 model_kind=model_kind, model_name=model_name
             )
         if _project_parameters["debug_skip_lm"]:
             return torch.randn(len(items), HuggingFaceEmbeddingEngine.random_embed_size)
         else:
-            return HuggingFaceEmbeddingEngine._do_embed(
+            return engine_class._do_embed(
                 model_kind=model_kind, model_name=model_name, items=items
             )
 
@@ -287,7 +290,7 @@ class HuggingFaceTextEmbeddingEngine(HuggingFaceEmbeddingEngine):
                 texts=items,
                 task="retrieval",
             )
-            return passage_embeddings.detach().cpu()
+            return torch.stack(passage_embeddings).cpu()
         else:
             log_error(
                 f"Text embedding model kind {model_kind} not implemented.",
@@ -362,7 +365,7 @@ class HuggingFaceImageEmbeddingEngine(HuggingFaceEmbeddingEngine):
                 )
         if model_kind in ["jina"]:
             embeddings = model.encode_image(images=images, task="retrieval")
-            return embeddings.detach().cpu()
+            return torch.stack(embeddings).cpu()
         else:
             log_error(
                 f"Text embedding model kind {model_kind} not implemented.",
@@ -413,7 +416,7 @@ class EmbeddingModel(ABC):
         :return: Tensor containing the embeddings
         :rtype: torch.Tensor
         """
-        return self._ENGINE.embed(
+        return self._ENGINE.embed(engine_class=self._ENGINE,
             model_kind=self._model_kind,
             model_name=self._model_name,
             items=items,

@@ -118,7 +118,7 @@ class PokemonRedChooseCharmanderEnvironment(PokemonRedStarterChoiceEnvironment):
         starter_chosen = current_state["pokemon_red_starter"]["current_starter"]
         n_steps = current_state["core"]["steps"]
         if starter_chosen is None:
-            if action == LowLevelAction:
+            if action == LowLevelAction and False:
                 if "low_level_action" in action_kwargs:
                     # reward for pressing A, penalty for pressing anything else
                     low_level_action = action_kwargs["low_level_action"]
@@ -127,7 +127,7 @@ class PokemonRedChooseCharmanderEnvironment(PokemonRedStarterChoiceEnvironment):
                     else:
                         return -0.1
             if n_steps >= self._emulator.max_steps - 2:  # some safety
-                return -0.0  # Penalty for not choosing a starter within max steps
+                return -1.0  # Penalty for not choosing a starter within max steps
             else:
                 return 0.0
         step_bonus = 100 / (n_steps + 1)
