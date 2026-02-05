@@ -249,6 +249,8 @@ class Emulator:
             save_video = self._parameters["gameboy_default_save_video"]
         self.save_video = save_video
         """ Whether to save video of the episodes. """
+        self._video_text = None
+        """ Text to place in the bottom left corner of the video, if any. Can be overriden by an environment. """
         id_path_creator = IDPathCreator(self._parameters)
         self.session_path = id_path_creator.get_session_path(
             session_name=session_name,
@@ -393,6 +395,7 @@ class Emulator:
         self.step_count = 0
         self.state_tracker.reset()
         self.close_video()
+        self._video_text = None
         return
 
     def get_current_frame(self) -> np.ndarray:
@@ -597,9 +600,61 @@ class Emulator:
         self.video_running = True
         log_info(f"\nStarted recording video to: {video_path}\n", self._parameters)
 
+    def check_text_bounds(self, image, text, org, font_face, font_scale, thickness):
+        img_h, img_w = image.shape[:2]
+        x, y = org
+
+        # Get the width and height of the text box
+        # retval is (width, height), baseLine is the y-offset from the bottom
+        (text_w, text_h), baseline = cv2.getTextSize(
+            text, font_face, font_scale, thickness
+        )
+
+        # Check right and top/bottom bounds
+        # Note: org (x,y) is the bottom-left corner of the text
+        is_within_x = (x + text_w) <= img_w and x >= 0
+        is_within_y = (y - text_h) >= 0 and y <= img_h
+        return is_within_x and is_within_y, (text_w, text_h)
+
+    def _add_video_text(self, frame: np.ndarray) -> np.ndarray:
+        if self._video_text is None:
+            return frame
+        if self._video_text.strip() == "":
+            return frame
+        frame = frame.copy()
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        bottom_left_corner_of_text = (5, frame.shape[0] - 10)
+        # check if that section of the frame is too bright, and if so, use black text instead of white
+        region = frame[frame.shape[0] - 20 : frame.shape[0], 0:100]
+        if np.mean(region) > 200:
+            font_color = (0, 0, 0)  # Black color for bright backgrounds
+        else:
+            font_color = (255, 255, 255)  # White color for dark backgrounds
+        scale = 0.5
+        fits = self.check_text_bounds(
+            frame, self._video_text, bottom_left_corner_of_text, font, scale, 1
+        )[0]
+        while not fits and scale > 0.05:
+            scale -= 0.1
+            fits = self.check_text_bounds(
+                frame, self._video_text, bottom_left_corner_of_text, font, scale, 1
+            )[0]
+        line_type = 1
+        cv2.putText(
+            frame,
+            self._video_text,
+            bottom_left_corner_of_text,
+            font,
+            scale,
+            font_color,
+            line_type,
+        )
+        return frame
+
     def add_video_frames(self, frames: np.ndarray):
         """
         Adds a list of frame from the emulator to the video being recorded.
+        If video_text is set, it will be added to the bottom left corner of each frame.
 
         Args:
             frames (np.ndarray): A stack of frames to add to the video. Shape is [n_frames, height, width, channels].
@@ -610,6 +665,7 @@ class Emulator:
         for frame in frames:
             if self._reduce_video_resolution:
                 frame = self.reduce_resolution(frame)
+            frame = self._add_video_text(frame)
             self.frame_writer.write(frame)
         return
 
@@ -823,6 +879,9 @@ class Emulator:
                             continue
                         self.set_init_state(state_path)
                 elif first_char == "b":
+                    grid_cells = self.state_parser.capture_grid_cells(
+                        current_frame=self.get_current_frame(), y_offset=0
+                    )
                     breakpoint()
                 else:
                     current_frame = self.get_current_frame()
