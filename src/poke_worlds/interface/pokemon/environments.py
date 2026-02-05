@@ -37,16 +37,6 @@ class PokemonOCREnvironment(PokemonEnvironment):
     REQUIRED_STATE_TRACKER = PokemonOCRTracker
     REQUIRED_EMULATOR = PokemonEmulator
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        screen_shape = self._emulator.screen_shape
-        screen_space = spaces.Box(
-            low=0, high=255, shape=(screen_shape[1], screen_shape[0], 1), dtype=np.uint8
-        )
-
-        self.observation_space = screen_space
-        """ The observation space is the raw pixel values of the emulator's screen only. """
-
     @staticmethod
     def override_emulator_kwargs(emulator_kwargs: dict) -> dict:
         Environment.override_state_tracker_class(
@@ -54,21 +44,6 @@ class PokemonOCREnvironment(PokemonEnvironment):
         )
         return emulator_kwargs
 
-    def get_observation(
-        self,
-        *,
-        action=None,
-        action_kwargs=None,
-        transition_states=None,
-        action_success=None,
-    ):
-        if transition_states is None:
-            current_state = self.get_info()
-            screen = current_state["core"]["current_frame"]
-        else:
-            screen = transition_states[-1]["core"]["current_frame"]
-        current_state = self._emulator.state_parser.get_agent_state(screen)
-        return screen
 
 
 class PokemonTestEnvironment(TestEnvironmentMixin, PokemonOCREnvironment):
@@ -89,11 +64,17 @@ class PokemonRedStarterChoiceEnvironment(PokemonOCREnvironment):
         Environment.override_state_tracker_class(
             emulator_kwargs, PokemonRedStarterTracker
         )
-        emulator_kwargs["init_state"] = "starter"
+        emulator_kwargs["init_state"] = "test_starter_easy"
         return emulator_kwargs
 
     def determine_terminated(
-        self, start_state, *, action=None, action_kwargs=None, transition_states=None, action_success=None
+        self,
+        start_state,
+        *,
+        action=None,
+        action_kwargs=None,
+        transition_states=None,
+        action_success=None,
     ) -> bool:
         super_terminated = super().determine_terminated(
             start_state=start_state,
@@ -118,19 +99,35 @@ class PokemonRedChooseCharmanderEnvironment(PokemonRedStarterChoiceEnvironment):
     """
 
     def determine_reward(
-        self, start_state, *, action=None, action_kwargs=None, transition_states=None, action_success=None
+        self,
+        start_state,
+        *,
+        action=None,
+        action_kwargs=None,
+        transition_states=None,
+        action_success=None,
     ) -> float:
         """
         Reward the agent for choosing Charmander as quickly as possible.
         """
+        from poke_worlds.interface.action import LowLevelAction, LowLevelActions
+
         if transition_states is None:
             return 0.0
         current_state = transition_states[-1]
         starter_chosen = current_state["pokemon_red_starter"]["current_starter"]
         n_steps = current_state["core"]["steps"]
         if starter_chosen is None:
+            if action == LowLevelAction and False:
+                if "low_level_action" in action_kwargs:
+                    # reward for pressing A, penalty for pressing anything else
+                    low_level_action = action_kwargs["low_level_action"]
+                    if low_level_action == LowLevelActions.PRESS_BUTTON_A:
+                        return 0.5
+                    else:
+                        return -0.1
             if n_steps >= self._emulator.max_steps - 2:  # some safety
-                return -5.0  # Penalty for not choosing a starter within max steps
+                return -1.0  # Penalty for not choosing a starter within max steps
             else:
                 return 0.0
         step_bonus = 100 / (n_steps + 1)
@@ -150,7 +147,13 @@ class PokemonRedExploreStartingSceneEnvironment(PokemonRedStarterChoiceEnvironme
         self._visual_index = Index(modality="image")
 
     def determine_reward(
-        self, start_state, *, action=None, action_kwargs=None, transition_states=None, action_success=None
+        self,
+        start_state,
+        *,
+        action=None,
+        action_kwargs=None,
+        transition_states=None,
+        action_success=None,
     ) -> float:
         """
         Reward the agent for seeing a screen it has not seen before.
@@ -159,6 +162,13 @@ class PokemonRedExploreStartingSceneEnvironment(PokemonRedStarterChoiceEnvironme
         screen = self._emulator.get_current_frame()  # avoids the grid
         similarity_scores = self._visual_index.add_compare(screen)
         if similarity_scores is None:
-            return 1.0  # first frame
+            return 0.0  # first frame
         novelty_score = 1.0 - float((similarity_scores.max()).item())
         return novelty_score
+    
+    def reset(
+            self, *, seed: Optional[int] = None, options: Optional[dict] = None
+        ) -> Tuple[Any, Dict]:
+        from poke_worlds.execution.retrieval import Index
+        self._visual_index = Index(modality="image")
+        return super().reset(seed=seed, options=options)
