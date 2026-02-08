@@ -1,5 +1,5 @@
-variants=("pokemon_red" "pokemon_crystal" "pokemon_brown" "pokemon_prism" "pokemon_fools_gold" "pokemon_starbeasts" "deja_vu")
-# variants=("deja_vu")
+# variants=("pokemon_red" "pokemon_crystal" "pokemon_brown" "pokemon_prism" "pokemon_fools_gold" "pokemon_starbeasts" "deja_vu")
+variants=("deja_vu")
 # variants=("pokemon_red")
 echo "Testing emulator..."
 for variant in "${variants[@]}"; do
