@@ -17,7 +17,7 @@ class LegendOfZeldaParser(StateParser):
             parameters: Project parameters loaded from configs.
         """
         verify_parameters(parameters)
-        variant = "legend_of_zelda"
+        variant = "legend_of_zelda_links_awakening"
         if f"{variant}_rom_data_path" not in parameters:
             log_error(
                 f"ROM data path not found for variant: {variant}. Add {variant}_rom_data_path to the config files.",

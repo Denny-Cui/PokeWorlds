@@ -13,93 +13,127 @@ from poke_worlds.utils import log_error, load_parameters, log_warn, get_benchmar
 import os
 from typing import Optional, Union, Type, Dict
 from poke_worlds.emulation.parser import StateParser, DummyParser
+from poke_worlds.emulation.pokemon.parsers import (
+    MemoryBasedPokemonRedStateParser,
+    PokemonBrownStateParser,
+    PokemonStarBeastsStateParser,
+    PokemonCrystalStateParser,
+    PokemonPrismStateParser,
+    PokemonFoolsGoldStateParser,
+)
 from poke_worlds.emulation.tracker import StateTracker
+from poke_worlds.emulation.pokemon.trackers import (
+    PokemonOCRTracker,
+    PokemonRedStarterTracker,
+    PokemonRedCenterTestTracker,
+    PokemonRedMtMoonTestTracker,
+    PokemonRedSpeakToBillTestTracker,
+    PokemonRedPickupPokeballTestTracker,
+    PokemonRedSpeakToBillTestTracker,
+    PokemonRedPickupPokeballTestTracker,
+    PokemonRedReadTrainersTipsSignTestTracker,
+    PokemonRedSpeakToCinnabarGymAideCompleteTestTracker,
+    PokemonRedSpeakToCinnabarMonkTestTracker,
+    PokemonRedDefeatedBrockTestTracker,
+    PokemonRedDefeatedLassTestTracker,
+    PokemonRedCaughtPidgeyTestTracker,
+    PokemonRedCaughtPikachuTestTracker,
+    PokemonRedBoughtPotionAtPewterPokemartTestTracker,
+    PokemonRedUsedPotionOnCharmanderTestTracker,
+    PokemonRedOpenMapTestTracker,
+)
 from poke_worlds.emulation.emulator import Emulator
-
-from poke_worlds.emulation.pokemon import registry as pokemon_registry
-from poke_worlds.emulation.legend_of_zelda import registry as legend_of_zelda_registry
-from poke_worlds.emulation.sword_of_hope import registry as sword_of_hope_registry
-from poke_worlds.emulation.deja_vu import registry as deja_vu_registry
-from poke_worlds.emulation.harvest_moon import registry as harvest_moon_registry
-
-
-_game_registries = [
-    pokemon_registry,
-    legend_of_zelda_registry,
-    sword_of_hope_registry,
-    deja_vu_registry,
-    harvest_moon_registry,
-]
+from poke_worlds.emulation.pokemon.emulators import PokemonEmulator
+from poke_worlds.emulation.legend_of_zelda.parsers import LegendOfZeldaParser
 
 _project_parameters = load_parameters()
-
-
-def _merge_into_dict(destination: dict, incoming: dict):
-    """
-    Merges incoming into destination, throwing an error if there are any overlapping keys.
-
-    Args:
-        destination (dict): The destination dictionary.
-        incoming (dict): The incoming dictionary.
-
-    Returns:
-        dict: The merged dictionary.
-    """
-    for key in incoming:
-        if key in destination:
-            log_error(
-                f"Duplicate key '{key}' found when merging dictionaries. This likely means there is a duplicate entry for '{key}' in the registry. Please check the registry for duplicates and remove them.\nDictionaries being merged:\nDestination: {destination}\nIncoming: {incoming}",
-                _project_parameters,
-            )
-    destination.update(incoming)
-
-
-GAME_TO_GB_NAME: Dict[str, str] = {}
+GAME_TO_GB_NAME = {
+    "pokemon_red": "PokemonRed.gb",
+    "pokemon_brown": "PokemonBrown.gb",
+    "pokemon_starbeasts": "PokemonStarBeasts.gb",
+    "pokemon_crystal": "PokemonCrystal.gbc",
+    "pokemon_fools_gold": "PokemonFoolsGold.gbc",
+    "pokemon_prism": "PokemonPrism.gbc",
+    "legend_of_zelda_links_awakening": "LegendOfZeldaLinksAwakening.gbc",
+    # "zelda_links_awakening": "ZeldaLinksAwakening.gb",
+}
 """ Expected save name for each game. Save the file to <storage_dir_from_config_file>/<game_name>_rom_data/<gb_name>"""
 
-_STRONGEST_PARSERS: Dict[str, Type[StateParser]] = {}
+_STRONGEST_PARSERS: Dict[str, Type[StateParser]] = {
+    "pokemon_red": MemoryBasedPokemonRedStateParser,
+    "pokemon_brown": PokemonBrownStateParser,
+    "pokemon_crystal": PokemonCrystalStateParser,
+    "pokemon_starbeasts": PokemonStarBeastsStateParser,
+    "pokemon_fools_gold": PokemonFoolsGoldStateParser,
+    "pokemon_prism": PokemonPrismStateParser,
+    "legend_of_zelda_links_awakening": LegendOfZeldaParser,
+}
 """ Mapping of game names to their corresponding strongest StateParser classes. 
 Unless you have a very good reason, you should always use the STRONGEST possible parser for a given game. 
 The parser itself does not affect performance, as for it to perform a read / screen comparison operation , it must be called upon by the state tracker.
 This means there is never a reason to use a weaker parser. 
 """
 
-AVAILABLE_STATE_TRACKERS: Dict[str, Dict[str, Type[StateTracker]]] = {}
+AVAILABLE_STATE_TRACKERS: Dict[str, Dict[str, Type[StateTracker]]] = {
+    "pokemon_red": {
+        "default": PokemonOCRTracker,
+        "starter_example": PokemonRedStarterTracker,
+        "viridian_center_test": PokemonRedCenterTestTracker,
+        "mt_moon_test": PokemonRedMtMoonTestTracker,
+        "speak_to_bill_test": PokemonRedSpeakToBillTestTracker,
+        "pickup_pokeball_test": PokemonRedPickupPokeballTestTracker,
+        "read_trainers_tips_sign_test": PokemonRedReadTrainersTipsSignTestTracker,
+        "speak_to_cinnabar_gym_aide_complete_test": PokemonRedSpeakToCinnabarGymAideCompleteTestTracker,
+        "speak_to_cinnabar_monk_test": PokemonRedSpeakToCinnabarMonkTestTracker,
+        "defeated_brock_test": PokemonRedDefeatedBrockTestTracker,
+        "defeated_lass_test": PokemonRedDefeatedLassTestTracker,
+        "caught_pidgey_test": PokemonRedCaughtPidgeyTestTracker,
+        "caught_pikachu_test": PokemonRedCaughtPikachuTestTracker,
+        "bought_potion_at_pewter_pokemart_test": PokemonRedBoughtPotionAtPewterPokemartTestTracker,
+        "used_potion_on_charmander_test": PokemonRedUsedPotionOnCharmanderTestTracker,
+        "open_map_test": PokemonRedOpenMapTestTracker,
+    },
+    "pokemon_brown": {
+        "default": PokemonOCRTracker,
+    },
+    "pokemon_crystal": {
+        "default": PokemonOCRTracker,
+    },
+    "pokemon_starbeasts": {
+        "default": PokemonOCRTracker,
+    },
+    "pokemon_fools_gold": {
+        "default": PokemonOCRTracker,
+    },
+    "pokemon_prism": {
+        "default": PokemonOCRTracker,
+    },
+    "legend_of_zelda_links_awakening": {"default": StateTracker},
+}
 """ Mapping of game names to their available StateTracker classes with string identifiers. """
 
-AVAILABLE_EMULATORS: Dict[str, Dict[str, Type[Emulator]]] = {}
+AVAILABLE_EMULATORS: Dict[str, Dict[str, Type[Emulator]]] = {
+    "pokemon_red": {
+        "default": PokemonEmulator,
+    },
+    "pokemon_brown": {
+        "default": PokemonEmulator,
+    },
+    "pokemon_crystal": {
+        "default": PokemonEmulator,
+    },
+    "pokemon_starbeasts": {
+        "default": PokemonEmulator,
+    },
+    "pokemon_fools_gold": {
+        "default": PokemonEmulator,
+    },
+    "pokemon_prism": {
+        "default": PokemonEmulator,
+    },
+    "legend_of_zelda_links_awakening": {"default": Emulator},
+}
 """ Mapping of game names to their available Emulator classes with string identifiers. """
-
-for module in _game_registries:
-    if hasattr(module, "GAME_TO_GB_NAME"):
-        _merge_into_dict(GAME_TO_GB_NAME, module.GAME_TO_GB_NAME)
-    else:
-        log_error(
-            f"Module '{module.__name__}' is missing the GAME_TO_GB_NAME mapping. ",
-            _project_parameters,
-        )
-    if hasattr(module, "STRONGEST_PARSERS"):
-        _merge_into_dict(_STRONGEST_PARSERS, module.STRONGEST_PARSERS)
-    else:
-        log_error(
-            f"Module '{module.__name__}' is missing the STRONGEST_PARSERS mapping. This mapping is required for the registry to function properly.",
-            _project_parameters,
-        )
-    if hasattr(module, "AVAILABLE_STATE_TRACKERS"):
-        _merge_into_dict(AVAILABLE_STATE_TRACKERS, module.AVAILABLE_STATE_TRACKERS)
-    else:
-        log_error(
-            f"Module '{module.__name__}' is missing the AVAILABLE_STATE_TRACKERS mapping. This mapping is required for the registry to function properly.",
-            _project_parameters,
-        )
-    if hasattr(module, "AVAILABLE_EMULATORS"):
-        _merge_into_dict(AVAILABLE_EMULATORS, module.AVAILABLE_EMULATORS)
-    else:
-        log_error(
-            f"Module '{module.__name__}' is missing the AVAILABLE_EMULATORS mapping. This mapping is required for the registry to function properly.",
-            _project_parameters,
-        )
-
 
 for game in AVAILABLE_STATE_TRACKERS:
     if "default" not in AVAILABLE_STATE_TRACKERS[game]:
