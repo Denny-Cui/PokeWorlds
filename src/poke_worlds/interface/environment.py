@@ -526,6 +526,7 @@ class Environment(gym.Env, ABC):
     ) -> Tuple[gym.spaces.Space, float, bool, bool, Dict[str, Dict[str, Any]]]:
         """
         Executes the given High Level action in the environment via the controller.
+        If the action is invalid according to the controller, will not perform any action and will simply return the current observation, a reward of 0, and terminated and truncated as False. The info will also include a field "invalid_action"=True to indicate that the action was invalid.
 
         :param action: The high level action class to execute.
         :type action: Type[HighLevelAction]
@@ -570,6 +571,7 @@ class Environment(gym.Env, ABC):
             reward = self.determine_reward(start_state=start_state) - abs(
                 self._parameters["invalid_action_penalty"]
             )
+            current_state["invalid_action"] = True
             return observation, reward, terminated, truncated, current_state
         self.after_step(start_state, action, kwargs, transition_states, action_success)
         truncated = self.determine_truncated(
