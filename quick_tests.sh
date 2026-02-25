@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# variants=("pokemon_red" "pokemon_crystal" "pokemon_brown" "pokemon_prism" "pokemon_fools_gold" "pokemon_starbeasts" "sword_of_hope_1" "sword_of_hope_2")
-variants=("pokemon_red" "sword_of_hope_1" "sword_of_hope_2")
+variants=("pokemon_red" "pokemon_crystal" "pokemon_brown" "pokemon_prism" "pokemon_fools_gold" "pokemon_starbeasts" "sword_of_hope_1" "sword_of_hope_2")
+
 
 echo "Testing emulator..."
 for variant in "${variants[@]}"; do
