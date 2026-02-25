@@ -1,29 +1,46 @@
-name: Quick tests
+name: Quick Tests
 
 on:
   push:
     branches:
-      - "**"
-  # Optional: lets you run it manually from the Actions tab
-  workflow_dispatch:
+      - '*'
+    # Alternative: only build for tags.
+    # tags:
+    #   - '*'
+
+# security: restrict permissions for CI jobs.
+permissions:
+  contents: read
 
 jobs:
-  quick_tests:
+  # Build the documentation and upload the static HTML files as an artifact.
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v6
         with:
           python-version: '3.14'
-          
+
+      # ADJUST THIS: install all dependencies (including pdoc)
       - run: pip install uv
       - run: uv sync --extra vlm
       - run: |
           . .venv/bin/activate
-          echo "VIRTUAL_ENV=$VIRTUAL_ENV" >> $GITHUB_ENV
           echo PATH=$PATH >> $GITHUB_ENV
+      - run: which python && pip list
+      - run: uv pip install pdoc
       - run: uv pip install -e ".[vlm]"
-      - run: chmod +x ./quick_tests.sh
-      - run: which pip ; pip list
-      - name: Run quick tests
-        run: ./quick_tests.sh
+      - run: uv pip install vptq
+      # ADJUST THIS: build your documentation into docs/.
+      # We use a custom build script for pdoc itself, ideally you just run `pdoc -o docs/ ...` here.
+      - run: |
+          bash quick_tests.sh
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/
+
+      - id: deployment
+        uses: actions/deploy-pages@
