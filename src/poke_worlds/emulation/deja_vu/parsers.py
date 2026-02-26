@@ -96,11 +96,11 @@ class DejaVuStateParser(StateParser, ABC):
     - menu_bottom_line: A line that appears at the bottom of the screen when any menu is open, can be used to prevent agent interaction with the UI frame of the emulator.
     """
 
-    COMMON_MULTI_TARGET_REGIONS = []
-    """ List of common multi-target named screen regions for Deja Vu games."""
+    # COMMON_MULTI_TARGET_REGIONS = []
+    # """ List of common multi-target named screen regions for Deja Vu games."""
 
-    COMMON_MULTI_TARGETS = {}
-    """ Common multi-targets for Deja Vu game regions."""
+    # COMMON_MULTI_TARGETS = {}
+    # """ Common multi-targets for Deja Vu game regions."""
 
     def __init__(
         self,
@@ -123,16 +123,17 @@ class DejaVuStateParser(StateParser, ABC):
                 By default, will add "menu_box_strip" with target "cursor_on_options". This is important because we don't want agents messing with the frame of the emulator (it will wreck our state parsing).
         """
         verify_parameters(parameters)
-        regions = _get_proper_regions(
-            override_regions=additional_named_screen_region_details,
-            base_regions=self.COMMON_REGIONS,
-        )
-        self.variant = variant
+        # regions = _get_proper_regions(
+        #     override_regions=additional_named_screen_region_details,
+        #     base_regions=self.COMMON_REGIONS,
+        # )
+        regions = self.COMMON_REGIONS
         if f"{variant}_rom_data_path" not in parameters:
             log_error(
                 f"ROM data path not found for variant: {variant}. Add {variant}_rom_data_path to the config files. See configs/deja_vu_vars.yaml for an example",
                 parameters,
             )
+        self.variant = variant
         self.rom_data_path = parameters[f"{variant}_rom_data_path"]
         """ Path to the ROM data directory for the specific Deja Vu variant."""
         captures_dir = self.rom_data_path + "/captures/"
@@ -148,44 +149,44 @@ class DejaVuStateParser(StateParser, ABC):
                 target_path=os.path.join(captures_dir, region_name),
             )
             named_screen_regions.append(region)
-        multi_target_regions = _get_proper_regions(
-            override_regions=additional_multi_target_named_screen_region_details,
-            base_regions=self.COMMON_MULTI_TARGET_REGIONS,
-        )
-        multi_target_region_names = [region[0] for region in multi_target_regions]
-        multi_targets = self.COMMON_MULTI_TARGETS.copy()
-        for key in override_multi_targets:
-            if key in multi_targets:
-                multi_targets[key].extend(override_multi_targets[key])
-            else:
-                multi_targets[key] = override_multi_targets[key]
-        multi_target_provided_region_names = list(multi_targets.keys())
-        if not set(multi_target_provided_region_names).issubset(
-            set(multi_target_region_names)
-        ):
-            log_error(
-                f"Multi-target regions provided in multi_targets do not match the defined multi-target regions. Provided: {multi_target_provided_region_names}, Defined: {multi_target_region_names}",
-                parameters,
-            )
-        for region_name, x, y, w, h in multi_target_regions:
-            region_target_paths = {}
-            subdir = captures_dir + f"/{region_name}/"
-            for target_name in multi_targets.get(region_name, []):
-                region_target_paths[target_name] = os.path.join(subdir, target_name)
-            region = NamedScreenRegion(
-                region_name,
-                x,
-                y,
-                w,
-                h,
-                parameters=parameters,
-                multi_target_paths=region_target_paths,
-            )
-            named_screen_regions.append(region)
+        # multi_target_regions = _get_proper_regions(
+        #     override_regions=additional_multi_target_named_screen_region_details,
+        #     base_regions=self.COMMON_MULTI_TARGET_REGIONS,
+        # )
+        # multi_target_region_names = [region[0] for region in multi_target_regions]
+        # multi_targets = self.COMMON_MULTI_TARGETS.copy()
+        # for key in override_multi_targets:
+        #     if key in multi_targets:
+        #         multi_targets[key].extend(override_multi_targets[key])
+        #     else:
+        #         multi_targets[key] = override_multi_targets[key]
+        # multi_target_provided_region_names = list(multi_targets.keys())
+        # if not set(multi_target_provided_region_names).issubset(
+        #     set(multi_target_region_names)
+        # ):
+        #     log_error(
+        #         f"Multi-target regions provided in multi_targets do not match the defined multi-target regions. Provided: {multi_target_provided_region_names}, Defined: {multi_target_region_names}",
+        #         parameters,
+        #     )
+        # for region_name, x, y, w, h in multi_target_regions:
+        #     region_target_paths = {}
+        #     subdir = captures_dir + f"/{region_name}/"
+        #     for target_name in multi_targets.get(region_name, []):
+        #         region_target_paths[target_name] = os.path.join(subdir, target_name)
+        #     region = NamedScreenRegion(
+        #         region_name,
+        #         x,
+        #         y,
+        #         w,
+        #         h,
+        #         parameters=parameters,
+        #         multi_target_paths=region_target_paths,
+        #     )
+        #     named_screen_regions.append(region)
         super().__init__(pyboy, parameters, named_screen_regions)
 
     def is_in_menu(
-        self, current_screen: np.ndarray, trust_previous: bool = False
+        self, current_screen: np.ndarray
     ) -> bool:
         """
         Determines if any form of menu is currently open (Case Notes, Evidence, Location, etc).
@@ -197,12 +198,10 @@ class DejaVuStateParser(StateParser, ABC):
         Returns:
             bool: True if a menu is open, False otherwise.
         """
-        if self.named_region_matches_target(current_screen, 'menu_bottom_line'):
-            return True
-        return False
+        return self.named_region_matches_target(current_screen, 'menu_bottom_line')
 
     def is_in_dialogue(
-        self, current_screen: np.ndarray, trust_previous: bool = False
+        self, current_screen: np.ndarray
     ) -> bool:
         """
         Determines if the player is currently in a dialogue state.
@@ -217,10 +216,7 @@ class DejaVuStateParser(StateParser, ABC):
         """
         if self.is_in_menu(current_screen):
             return False
-        if trust_previous:
-            return self.named_region_matches_target(
-                current_screen, "dialogue_top_left_hook"
-            )
+        return self.named_region_matches_target(current_screen, "dialogue_top_left_hook")
 
     def get_agent_state(self, current_screen: np.ndarray) -> AgentState:
         """
@@ -234,9 +230,9 @@ class DejaVuStateParser(StateParser, ABC):
         Returns:
             AgentState: The current agent state (FREE_ROAM, IN_DIALOGUE, or IN_MENU).
         """
-        if self.is_in_menu(current_screen, trust_previous=True):
+        if self.is_in_menu(current_screen):
             return AgentState.IN_MENU
-        elif self.is_in_dialogue(current_screen, trust_previous=True):
+        elif self.is_in_dialogue(current_screen):
             return AgentState.IN_DIALOGUE
         else:
             return AgentState.FREE_ROAM
@@ -294,7 +290,7 @@ class BaseDejaVu1StateParser(DejaVuStateParser, ABC):
 
 class DejaVu1StateParser(BaseDejaVu1StateParser):
     """
-    Game state parser for Deja Vu I & II: The Casebooks of Ace Harding.
+    Game state parser for Deja Vu I: The Casebooks of Ace Harding.
     
     Implements multi-target recognition for specific game events:
     - Case progression (clues acquired, verdicts reached)

@@ -3,7 +3,7 @@ from poke_worlds.emulation.tracker import MetricGroup, StateTracker, OCRegionMet
 from poke_worlds.emulation.deja_vu.parsers import (
     DejaVuStateParser,
     AgentState,
-    BaseDejaVu1StateParser,
+    # BaseDejaVu1StateParser,
     # MemoryBasedDejaVuStateParser,
 )
 from poke_worlds.emulation.deja_vu.base_metrics import (
@@ -30,23 +30,16 @@ class DejaVuOCRMetric(OCRegionMetric):
 
     def start(self):
         self.kinds = {
-            "dialogue": "dialogue_box_full",
+            "dialogue": "dialogue_top_left_hook",
         }
         super().start()
 
     def can_read_kind(self, current_frame: np.ndarray, kind: str) -> bool:
         self.state_parser: DejaVuStateParser
         if kind == "dialogue":
-            in_dialogue = self.state_parser.is_in_dialogue(
-                current_screen=current_frame
-            )
-            in_menu = self.state_parser.is_in_menu(
-                current_screen=current_frame
-            )
-            return (
-                in_dialogue
-                and not in_menu
-            )
+            in_dialogue = self.state_parser.is_in_dialogue(current_screen=current_frame)
+            in_menu = self.state_parser.is_in_menu(current_screen=current_frame)
+            return (in_dialogue and not in_menu)
         return False
 
 
