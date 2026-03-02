@@ -9,6 +9,7 @@ from poke_worlds.emulation.deja_vu.parsers import (
 from poke_worlds.emulation.deja_vu.base_metrics import (
     DejaVuTestMetric,
     CoreDejaVuMetrics,
+    DejaVuOCRMetric,
 )
 from poke_worlds.emulation.deja_vu.test_metrics import (
     DejaVuEnterCastleTerminateMetric,
@@ -19,29 +20,6 @@ from poke_worlds.emulation.deja_vu.test_metrics import (
 )
 from typing import Optional, Type
 import numpy as np
-
-
-class DejaVuOCRMetric(OCRegionMetric):
-    REQUIRED_PARSER = DejaVuStateParser
-
-    def reset(self, first=False):
-        super().reset(first)
-        self.prev_was_in_dialogue = False
-
-    def start(self):
-        self.kinds = {
-            "dialogue": "dialogue_top_left_hook",
-        }
-        super().start()
-
-    def can_read_kind(self, current_frame: np.ndarray, kind: str) -> bool:
-        self.state_parser: DejaVuStateParser
-        if kind == "dialogue":
-            in_dialogue = self.state_parser.is_in_dialogue(current_screen=current_frame)
-            in_menu = self.state_parser.is_in_menu(current_screen=current_frame)
-            return (in_dialogue and not in_menu)
-        return False
-
 
 class CoreDejaVuTracker(StateTracker):
     """

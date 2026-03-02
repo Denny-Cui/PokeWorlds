@@ -4,12 +4,12 @@ from poke_worlds.emulation.deja_vu.parsers import (
     AgentState,
     # MemoryBasedDejaVuStateParser,
     DejaVuStateParser,
-    DejaVuStateParser,
+    DejaVu1StateParser,
 )
 from poke_worlds.emulation.tracker import (
     MetricGroup,
     OCRegionMetric,
-    TerminationTruncationMetric,
+    # TerminationTruncationMetric,
 )
 
 
@@ -25,8 +25,6 @@ class CoreDejaVuMetrics(MetricGroup):
 
     Final Reports:
     - None
-
-
     """
 
     NAME = "dejavu_core"
@@ -71,6 +69,31 @@ class CoreDejaVuMetrics(MetricGroup):
         """
         return {}
 
+
+class DejaVuOCRMetric(OCRegionMetric):
+    REQUIRED_PARSER = DejaVuStateParser
+
+    def reset(self, first=False):
+        super().reset(first)
+        self.prev_was_in_dialogue = False
+
+    def start(self):
+        self.kinds = {
+            "dialogue": "dialogue_top_left_hook",
+            "menu": "menu_bottom_line",
+        }
+        super().start()
+
+    def can_read_kind(self, current_frame: np.ndarray, kind: str) -> bool:
+        self.state_parser: DejaVuStateParser
+        if kind == "dialogue":
+            in_dialogue = self.state_parser.is_in_dialogue(current_screen=current_frame)
+            in_menu = self.state_parser.is_in_menu(current_screen=current_frame)
+            return (in_dialogue and not in_menu)
+        if kind == "menu":
+            in_menu = self.state_parser.is_in_menu(current_screen=current_frame)
+            return in_menu
+        return False
 
 class DejaVuTestMetric(MetricGroup):
     """
