@@ -167,11 +167,6 @@ print(environment.get_final_info())
 
 This agent seems to open the menus a lot. We can avoid this by abstracting away the action space to a higher level. To do this, simply switch the `controller_variant` to `low_level_play`.
 
-This is a really simple abstraction though, for a demo of the most powerful high level actions available, run:
-```bash
-python demos/vlm_agent.py
-```
-
 
 # Development
 For a detailed guide on implementing new features and development with <img src="assets/logo.png" width="70">, see the [developer guide](README_dev.md).
