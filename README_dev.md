@@ -12,10 +12,9 @@
     <a href="https://dhananjayashok.github.io/PokeWorlds/" target="_blank" rel="noopener noreferrer"><img alt="GitHub" src="https://img.shields.io/badge/documentation-pdoc-red"></a>
 </div>
 
-<img src="assets/logo.png" width="70px"> is organized into 3 primary modules:
+<img src="assets/logo.png" width="70px"> is organized into 2 primary modules:
 * `emulation`: Handles GameBoy emulation, parsing and state tracking
 * `interface`: Implements high level actions, and Gym-compliant environments
-* `execution`: Implements executors, which can use high level actions to achieve simple, natural language tasks in the game world. 
 
 See the [API documentation](https://dhananjayashok.github.io/PokeWorlds/) to understand the code base, the rest of this document goes into details on how you would implement new features or test tasks in <img src="assets/logo.png" width="70">. 
 
