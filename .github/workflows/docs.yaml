@@ -40,7 +40,7 @@ jobs:
           mkdir -p docs/assets
           cp assets/logo_tilt.png docs/assets/
           cp assets/gameboy.png docs/assets/
-          pdoc src/poke_worlds -o docs -d google -n --logo "https://dhananjayashok.github.io/PokeWorlds/assets/logo_tilt.png" --favicon "https://dhananjayashok.github.io/PokeWorlds/assets/gameboy.png"
+          pdoc src/poke_worlds -o docs -d google -n --title "GameBoyWorlds API" --logo "https://dhananjayashok.github.io/PokeWorlds/assets/logo_tilt.png" --favicon "https://dhananjayashok.github.io/PokeWorlds/assets/gameboy.png"
       - uses: actions/upload-pages-artifact@v4
         with:
           path: docs/
