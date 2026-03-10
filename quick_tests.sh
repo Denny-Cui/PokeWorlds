@@ -14,4 +14,3 @@ for variant in "${variants[@]}"; do
     echo "  Variant: $variant"
     python demos/environment.py --play_mode random --game $variant
 done
-#python demos/environment.py --play_mode random
