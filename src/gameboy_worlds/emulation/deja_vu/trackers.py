@@ -1,23 +1,18 @@
 from gameboy_worlds.utils import log_info
 from gameboy_worlds.emulation.tracker import (
-    MetricGroup,
+    DummySubGoalMetric,
     StateTracker,
-    OCRegionMetric,
     TestTrackerMixin,
 )
-from gameboy_worlds.emulation.deja_vu.parsers import (
-    DejaVuStateParser,
-    AgentState,
-    # BaseDejaVu1StateParser,
-    # MemoryBasedDejaVuStateParser,
-)
+from gameboy_worlds.emulation.deja_vu.parsers import AgentState
 from gameboy_worlds.emulation.deja_vu.base_metrics import (
     DejaVuTestMetric,
     CoreDejaVuMetrics,
     DejaVuOCRMetric,
 )
-from typing import Optional, Type
-import numpy as np
+from gameboy_worlds.emulation.deja_vu.test_metrics import (
+    DejaVuCoatTerminationMetric,
+)
 
 
 class CoreDejaVuTracker(StateTracker):
@@ -61,4 +56,14 @@ class DejaVuTestTracker(TestTrackerMixin, DejaVuOCRTracker):
     Inherit this class and set TERMINATION_TRUNCATION_METRIC to create a TestTracker for Deja Vu games.
     """
 
-    TERMINATION_TRUNCATION_METRIC = None  # Must be set by subclass
+    TERMINATION_TRUNCATION_METRIC = DejaVuCoatTerminationMetric
+    SUBGOAL_METRIC = DummySubGoalMetric
+
+
+class DejaVuCoatTestTracker(DejaVuTestTracker):
+    """
+    A TestTracker for Deja Vu games that terminates when the agent takes the coat.
+    """
+
+    TERMINATION_TRUNCATION_METRIC = DejaVuCoatTerminationMetric
+    SUBGOAL_METRIC = DummySubGoalMetric

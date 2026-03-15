@@ -8,6 +8,7 @@ from gameboy_worlds.emulation.deja_vu.parsers import (
     DejaVu2StateParser,
 )
 from gameboy_worlds.emulation.deja_vu.trackers import (
+    DejaVuCoatTestTracker,
     DejaVuOCRTracker,
 )
 from gameboy_worlds.emulation.deja_vu.emulators import DejaVuEmulator
@@ -30,7 +31,10 @@ This means there is never a reason to use a weaker parser.
 
 
 AVAILABLE_STATE_TRACKERS: Dict[str, Dict[str, Type[StateTracker]]] = {
-    "deja_vu_1": {"default": DejaVuOCRTracker},
+    "deja_vu_1": {
+        "default": DejaVuOCRTracker,
+        "take_coat_test": DejaVuCoatTestTracker,
+    },
     "deja_vu_2": {"default": DejaVuOCRTracker},
 }
 """ Mapping of game names to their available StateTracker classes with string identifiers. """

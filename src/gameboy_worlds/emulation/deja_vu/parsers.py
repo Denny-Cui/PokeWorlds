@@ -75,20 +75,8 @@ class DejaVuStateParser(StateParser, ABC):
     """
 
     COMMON_REGIONS = [
-        (
-            "dialogue_top_left_hook",
-            0,
-            73,
-            10,
-            6,
-        ),  # Top left hook that appears after certain events. Can be used to determine if certain game mechanics are available.
-        (
-            "menu_bottom_line",
-            0,
-            143,
-            160,
-            1,
-        ),  # Bottom line that appears when any menu is open, can be used to prevent agent interaction with the UI frame of the emulator.
+        ("dialogue_top_left_hook", 0, 73, 10, 6),  # Top left hook that appears after certain events. Can be used to determine if certain game mechanics are available.
+        ("menu_bottom_line", 0, 143, 160, 1),  # Bottom line that appears when any menu is open, can be used to prevent agent interaction with the UI frame of the emulator.
     ]
     """ 
     List of common named screen regions for Deja Vu game.
@@ -98,42 +86,61 @@ class DejaVuStateParser(StateParser, ABC):
     - menu_bottom_line: A line that appears at the bottom of the screen when any menu is open, can be used to prevent agent interaction with the UI frame of the emulator.
     """
 
-    COMMON_MULTI_TARGET_REGIONS = []
-    """ List of common multi-target named screen regions for Deja Vu games."""
+    COMMON_MULTI_TARGET_REGIONS = [
+        ("dialogue_box_area", 0, 74, 160, 55),
+        ("menu_box_area", 0, 70, 160, 70),
+    ]
+    """
+    List of common multi-target named screen regions for Deja Vu games.
 
-    COMMON_MULTI_TARGETS = {}
-    """ Common multi-targets for Deja Vu game regions."""
+    Deja Vu has certain regions that can contain multiple important visual cues.
+    - dialogue_box_area: The area where dialogue text appears. Can contain multiple targets such as clues
+    - menu_box_area: The area where menu options appear. Can contain multiple targets such as items or actions.
+    """
+
+    COMMON_MULTI_TARGETS = {
+        "dialogue_box_area": [
+            "nothing_usual",
+        ],
+    }
+    """
+    Common multi-targets for Deja Vu game regions.
+    - dialogue_box_area:
+        - nothing_usual: Point at useless area.
+    """
 
     def __init__(
         self,
         variant: str,
         pyboy: PyBoy,
         parameters: dict,
-        override_regions: List[Tuple[str, int, int, int, int]] = [],
-        # override_multi_targets: Dict[str, List[Tuple[int, int]]] = {},
+        additional_named_screen_region_details: List[Tuple[str, int, int, int, int]] = [],
+        additional_multi_target_named_screen_region_details: List[Tuple[str, int, int, int, int]] = [],
+        override_multi_targets: Dict[str, List[str]] = {},
     ):
         """
-        Initializes the DejaVuStateParser.
+        Initializes the PokemonStateParser.
         Args:
-            variant (str): The variant of the Deja Vu game.
+            variant (str): The variant of the Pokemon game.
             pyboy (PyBoy): The PyBoy emulator instance.
             parameters (dict): Configuration parameters for the emulator.
-            override_regions (List[Tuple[str, int, int, int, int]]): Parameters associated with additional named screen regions to include.
+            additional_named_screen_region_details (List[Tuple[str, int, int, int, int]]): Parameters associated with additional named screen regions to include.
+            additional_multi_target_named_screen_region_details (List[Tuple[str, int, int, int, int]]): Parameters associated with additional multi-target named screen regions to include.
+            override_multi_targets (Dict[str, List[str]]): Dictionary mapping region names to lists of target names for multi-target regions.
         """
         verify_parameters(parameters)
         regions = _get_proper_regions(
-            override_regions=override_regions,
+            override_regions=additional_named_screen_region_details,
             base_regions=self.COMMON_REGIONS,
         )
-        # regions = self.COMMON_REGIONS
+        self.variant = variant
         if f"{variant}_rom_data_path" not in parameters:
             log_error(
-                f"ROM data path not found for variant: {variant}. Add {variant}_rom_data_path to the config files. See configs/deja_vu_vars.yaml for an example",
+                f"ROM data path not found for variant: {variant}. Add {variant}_rom_data_path to the config files. See configs/pokemon_red_vars.yaml for an example",
                 parameters,
             )
-        self.variant = variant
         self.rom_data_path = parameters[f"{variant}_rom_data_path"]
-        """ Path to the ROM data directory for the specific Deja Vu variant."""
+        """ Path to the ROM data directory for the specific Pokemon variant."""
         captures_dir = self.rom_data_path + "/captures/"
         named_screen_regions = []
         for region_name, x, y, w, h in regions:
@@ -145,6 +152,40 @@ class DejaVuStateParser(StateParser, ABC):
                 h,
                 parameters=parameters,
                 target_path=os.path.join(captures_dir, region_name),
+            )
+            named_screen_regions.append(region)
+        multi_target_regions = _get_proper_regions(
+            override_regions=additional_multi_target_named_screen_region_details,
+            base_regions=self.COMMON_MULTI_TARGET_REGIONS,
+        )
+        multi_target_region_names = [region[0] for region in multi_target_regions]
+        multi_targets = self.COMMON_MULTI_TARGETS.copy()
+        for key in override_multi_targets:
+            if key in multi_targets:
+                multi_targets[key].extend(override_multi_targets[key])
+            else:
+                multi_targets[key] = override_multi_targets[key]
+        multi_target_provided_region_names = list(multi_targets.keys())
+        if not set(multi_target_provided_region_names).issubset(
+            set(multi_target_region_names)
+        ):
+            log_error(
+                f"Multi-target regions provided in multi_targets do not match the defined multi-target regions. Provided: {multi_target_provided_region_names}, Defined: {multi_target_region_names}",
+                parameters,
+            )
+        for region_name, x, y, w, h in multi_target_regions:
+            region_target_paths = {}
+            subdir = captures_dir + f"/{region_name}/"
+            for target_name in multi_targets.get(region_name, []):
+                region_target_paths[target_name] = os.path.join(subdir, target_name)
+            region = NamedScreenRegion(
+                region_name,
+                x,
+                y,
+                w,
+                h,
+                parameters=parameters,
+                multi_target_paths=region_target_paths,
             )
             named_screen_regions.append(region)
         super().__init__(pyboy, parameters, named_screen_regions)
@@ -203,30 +244,22 @@ class DejaVuStateParser(StateParser, ABC):
 class DejaVu1StateParser(DejaVuStateParser):
     """Game state parser for Deja Vu I: The Casebooks of Ace Harding."""
 
-    REGIONS = []
-    """ Additional named screen regions specific to Deja Vu games."""
-
-    # MULTI_TARGET_REGIONS = []
-    """ Additional multi-target named screen regions specific to Deja Vu games."""
-
     def __init__(self, pyboy, parameters):
         override_regions = []
-        # override_multi_target_regions = []
-
-        self.REGIONS = _get_proper_regions(
-            override_regions=override_regions, base_regions=self.REGIONS
-        )
-        # self.MULTI_TARGET_REGIONS = _get_proper_regions(
-        #     override_regions=override_multi_target_regions,
-        #     base_regions=self.MULTI_TARGET_REGIONS,
-        # )
+        override_multi_target_regions = []
+        override_multi_targets = {
+            "dialogue_box_area": [
+                "took_coat",
+            ],
+        }
 
         super().__init__(
             variant="deja_vu_1",
             pyboy=pyboy,
             parameters=parameters,
-            override_regions=self.REGIONS,
-            # override_multi_targets=self.MULTI_TARGET_REGIONS,
+            additional_named_screen_region_details=override_regions,
+            additional_multi_target_named_screen_region_details=override_multi_target_regions,
+            override_multi_targets=override_multi_targets,
         )
 
     def __repr__(self):
@@ -236,30 +269,18 @@ class DejaVu1StateParser(DejaVuStateParser):
 class DejaVu2StateParser(DejaVuStateParser):
     """Game state parser for Deja Vu II: The Casebooks of Ace Harding."""
 
-    REGIONS = []
-    """ Additional named screen regions specific to Deja Vu games."""
-
-    # MULTI_TARGET_REGIONS = []
-    """ Additional multi-target named screen regions specific to Deja Vu games."""
-
     def __init__(self, pyboy, parameters):
         override_regions = []
-        # override_multi_target_regions = []
-
-        self.REGIONS = _get_proper_regions(
-            override_regions=override_regions, base_regions=self.REGIONS
-        )
-        # self.MULTI_TARGET_REGIONS = _get_proper_regions(
-        #     override_regions=override_multi_target_regions,
-        #     base_regions=self.MULTI_TARGET_REGIONS,
-        # )
+        override_multi_target_regions = []
+        override_multi_targets = {}
 
         super().__init__(
             variant="deja_vu_2",
             pyboy=pyboy,
             parameters=parameters,
-            override_regions=self.REGIONS,
-            # override_multi_targets=self.MULTI_TARGET_REGIONS,
+            additional_named_screen_region_details=override_regions,
+            additional_multi_target_named_screen_region_details=override_multi_target_regions,
+            override_multi_targets=override_multi_targets,
         )
 
     def __repr__(self):
