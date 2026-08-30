@@ -20,6 +20,15 @@ from gameboy_worlds.emulation.pokemon.test_metrics import (
     BoughtPotionAtPewterPokemartTerminateMetric,
     UsedPotionOnCharmanderTerminateMetric,
     OpenMapTerminateMetric,
+    PokemonRedBoulderBadgeSubGoal,
+    PokemonRedCascadeBadgeSubGoal,
+    PokemonRedChampionshipTerminateMetric,
+    PokemonRedEarthBadgeSubGoal,
+    PokemonRedMarshBadgeSubGoal,
+    PokemonRedRainbowBadgeSubGoal,
+    PokemonRedSoulBadgeSubGoal,
+    PokemonRedThunderBadgeSubGoal,
+    PokemonRedVolcanoBadgeSubGoal,
     PokemonBrownChampionshipTerminateMetric,
     PokemonBrownEquityBadgeSubGoal,
     PokemonBrownFistBadgeSubGoal,
@@ -29,6 +38,15 @@ from gameboy_worlds.emulation.pokemon.test_metrics import (
     PokemonBrownSparkyBadgeSubGoal,
     PokemonBrownSproutBadgeSubGoal,
     PokemonBrownStarBadgeSubGoal,
+    PokemonCrystalChampionshipTerminateMetric,
+    PokemonCrystalFogBadgeSubGoal,
+    PokemonCrystalGlacierBadgeSubGoal,
+    PokemonCrystalHiveBadgeSubGoal,
+    PokemonCrystalMineralBadgeSubGoal,
+    PokemonCrystalPlainBadgeSubGoal,
+    PokemonCrystalRisingBadgeSubGoal,
+    PokemonCrystalStormBadgeSubGoal,
+    PokemonCrystalZephyrBadgeSubGoal,
     PokemonPrismChampionshipTerminateMetric,
     PokemonPrismCharmBadgeSubGoal,
     PokemonPrismHazeBadgeSubGoal,
@@ -1076,6 +1094,27 @@ class PokemonCrystalDefeatedKogaTestTracker(PokemonTestTracker):
     SUBGOAL_METRIC = DummySubGoalMetric
 
 
+class PokemonRedChampionshipTestTracker(PokemonTestTracker):
+    """
+    A TestTracker for Pokemon Red that tracks all eight badges and ends an
+    episode when the player defeats the Champion Rival.
+    """
+
+    TERMINATION_TRUNCATION_METRIC = PokemonRedChampionshipTerminateMetric
+    SUBGOAL_METRIC = make_subgoal_metric_class(
+        [
+            PokemonRedBoulderBadgeSubGoal,
+            PokemonRedCascadeBadgeSubGoal,
+            PokemonRedThunderBadgeSubGoal,
+            PokemonRedRainbowBadgeSubGoal,
+            PokemonRedSoulBadgeSubGoal,
+            PokemonRedMarshBadgeSubGoal,
+            PokemonRedVolcanoBadgeSubGoal,
+            PokemonRedEarthBadgeSubGoal,
+        ]
+    )
+
+
 class PokemonBrownChampionshipTestTracker(PokemonTestTracker):
     """
     A TestTracker for Pokemon Brown that tracks all eight badges and ends an episode
@@ -1093,6 +1132,27 @@ class PokemonBrownChampionshipTestTracker(PokemonTestTracker):
             PokemonBrownEquityBadgeSubGoal,
             PokemonBrownStarBadgeSubGoal,
             PokemonBrownPsiBadgeSubGoal,
+        ]
+    )
+
+
+class PokemonCrystalChampionshipTestTracker(PokemonTestTracker):
+    """
+    A TestTracker for Pokemon Crystal that tracks all eight Johto badges and
+    ends an episode when the player enters the Hall of Fame.
+    """
+
+    TERMINATION_TRUNCATION_METRIC = PokemonCrystalChampionshipTerminateMetric
+    SUBGOAL_METRIC = make_subgoal_metric_class(
+        [
+            PokemonCrystalZephyrBadgeSubGoal,
+            PokemonCrystalHiveBadgeSubGoal,
+            PokemonCrystalPlainBadgeSubGoal,
+            PokemonCrystalFogBadgeSubGoal,
+            PokemonCrystalStormBadgeSubGoal,
+            PokemonCrystalMineralBadgeSubGoal,
+            PokemonCrystalGlacierBadgeSubGoal,
+            PokemonCrystalRisingBadgeSubGoal,
         ]
     )
 

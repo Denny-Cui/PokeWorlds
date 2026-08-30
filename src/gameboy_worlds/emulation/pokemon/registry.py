@@ -4,6 +4,7 @@ from gameboy_worlds.emulation.tracker import StateTracker
 from gameboy_worlds.emulation.emulator import Emulator
 
 from gameboy_worlds.emulation.pokemon.parsers import (
+    MemoryBasedPokemonCrystalStateParser,
     MemoryBasedPokemonRedStateParser,
     PokemonBrownStateParser,
     PokemonStarBeastsStateParser,
@@ -32,7 +33,9 @@ from gameboy_worlds.emulation.pokemon.trackers import (
     PokemonRedUsedPotionOnCharmanderTestTracker,
     PokemonRedOpenMapTestTracker,
     PokemonRedUsedNotVeryEffectiveAttackOnSeakingTestTracker,
+    PokemonRedChampionshipTestTracker,
     PokemonBrownChampionshipTestTracker,
+    PokemonCrystalChampionshipTestTracker,
     PokemonPrismChampionshipTestTracker,
     PokemonRedTriedBuyBikeTestTracker,
     PokemonRedClickVolcanobadgeTestTracker,
@@ -135,7 +138,7 @@ GAME_TO_GB_NAME = {
 STRONGEST_PARSERS: Dict[str, Type[StateParser]] = {
     "pokemon_red": MemoryBasedPokemonRedStateParser,
     "pokemon_brown": PokemonBrownStateParser,
-    "pokemon_crystal": PokemonCrystalStateParser,
+    "pokemon_crystal": MemoryBasedPokemonCrystalStateParser,
     "pokemon_starbeasts": PokemonStarBeastsStateParser,
     "pokemon_starbeasts_comet": PokemonStarBeastsCometStateParser,
     "pokemon_fools_gold": PokemonFoolsGoldStateParser,
@@ -167,6 +170,7 @@ AVAILABLE_STATE_TRACKERS: Dict[str, Dict[str, Type[StateTracker]]] = {
         "used_potion_on_charmander_test": PokemonRedUsedPotionOnCharmanderTestTracker,
         "open_map_test": PokemonRedOpenMapTestTracker,
         "used_not_very_effective_attack": PokemonRedUsedNotVeryEffectiveAttackOnSeakingTestTracker,
+        "collect_championship_test": PokemonRedChampionshipTestTracker,
         "tried_buy_bike": PokemonRedTriedBuyBikeTestTracker,
         "click_volcanobadge": PokemonRedClickVolcanobadgeTestTracker,
         "opened_cerulean_house_map": PokemonRedOpenedCeruleanHouseMapTestTracker,
@@ -207,6 +211,7 @@ AVAILABLE_STATE_TRACKERS: Dict[str, Dict[str, Type[StateTracker]]] = {
     },
     "pokemon_crystal": {
         "default": PokemonOCRTracker,
+        "collect_championship_test": PokemonCrystalChampionshipTestTracker,
         "entered_cherrygrove_centre": PokemonCrystalEnteredCherrygroveCentreTestTracker,
         "watched_tv": PokemonCrystalWatchedTvTestTracker,
         "saw_mirror": PokemonCrystalSawMirrorTestTracker,

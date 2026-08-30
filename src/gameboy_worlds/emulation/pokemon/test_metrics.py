@@ -1,6 +1,8 @@
 from typing import Optional
 
 from gameboy_worlds.emulation.pokemon.parsers import (
+    MemoryBasedPokemonCrystalStateParser,
+    MemoryBasedPokemonRedStateParser,
     PokemonBrownStateParser,
     PokemonCrystalStateParser,
     PokemonPrismStateParser,
@@ -11,6 +13,7 @@ from gameboy_worlds.emulation.tracker import (
     TerminationMetric,
     RegionMatchTerminationMetric,
     RegionMatchSubGoal,
+    SubGoal,
     AnyRegionMatchSubGoal,
 )
 from gameboy_worlds.emulation.pokemon.base_metrics import (
@@ -757,6 +760,67 @@ class DefeatedKogaTerminateMetric(
 
 
 # ---------------------------------------------------------------------------
+# Pokemon Red full-game metrics
+# ---------------------------------------------------------------------------
+
+
+class _MemoryBadgeSubGoal(SubGoal):
+    BADGE_NAME = None
+
+    def _check_completed(self, frame: np.ndarray, parser) -> bool:
+        return parser.has_badge(self.BADGE_NAME)
+
+
+class PokemonRedBoulderBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_boulder_badge"
+    BADGE_NAME = "boulder"
+
+
+class PokemonRedCascadeBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_cascade_badge"
+    BADGE_NAME = "cascade"
+
+
+class PokemonRedThunderBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_thunder_badge"
+    BADGE_NAME = "thunder"
+
+
+class PokemonRedRainbowBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_rainbow_badge"
+    BADGE_NAME = "rainbow"
+
+
+class PokemonRedSoulBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_soul_badge"
+    BADGE_NAME = "soul"
+
+
+class PokemonRedMarshBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_marsh_badge"
+    BADGE_NAME = "marsh"
+
+
+class PokemonRedVolcanoBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_volcano_badge"
+    BADGE_NAME = "volcano"
+
+
+class PokemonRedEarthBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_earth_badge"
+    BADGE_NAME = "earth"
+
+
+class PokemonRedChampionshipTerminateMetric(TerminationMetric):
+    REQUIRED_PARSER = MemoryBasedPokemonRedStateParser
+
+    def determine_terminated(
+        self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]
+    ) -> bool:
+        return self.state_parser.has_completed_championship()
+
+
+# ---------------------------------------------------------------------------
 # Pokemon Brown metrics
 # ---------------------------------------------------------------------------
 
@@ -813,6 +877,60 @@ class PokemonBrownChampionshipTerminateMetric(RegionMatchTerminationOnlyMetric):
     REQUIRED_PARSER = PokemonBrownStateParser
     _TERMINATION_NAMED_REGION = "dialogue_box_middle"
     _TERMINATION_TARGET_NAME = "collect_championship"
+
+
+# ---------------------------------------------------------------------------
+# Pokemon Crystal full-game metrics
+# ---------------------------------------------------------------------------
+
+
+class PokemonCrystalZephyrBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_zephyr_badge"
+    BADGE_NAME = "zephyr"
+
+
+class PokemonCrystalHiveBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_hive_badge"
+    BADGE_NAME = "hive"
+
+
+class PokemonCrystalPlainBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_plain_badge"
+    BADGE_NAME = "plain"
+
+
+class PokemonCrystalFogBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_fog_badge"
+    BADGE_NAME = "fog"
+
+
+class PokemonCrystalMineralBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_mineral_badge"
+    BADGE_NAME = "mineral"
+
+
+class PokemonCrystalStormBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_storm_badge"
+    BADGE_NAME = "storm"
+
+
+class PokemonCrystalGlacierBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_glacier_badge"
+    BADGE_NAME = "glacier"
+
+
+class PokemonCrystalRisingBadgeSubGoal(_MemoryBadgeSubGoal):
+    NAME = "collect_rising_badge"
+    BADGE_NAME = "rising"
+
+
+class PokemonCrystalChampionshipTerminateMetric(TerminationMetric):
+    REQUIRED_PARSER = MemoryBasedPokemonCrystalStateParser
+
+    def determine_terminated(
+        self, current_frame: np.ndarray, recent_frames: Optional[np.ndarray]
+    ) -> bool:
+        return self.state_parser.has_completed_championship()
 
 
 # ---------------------------------------------------------------------------
