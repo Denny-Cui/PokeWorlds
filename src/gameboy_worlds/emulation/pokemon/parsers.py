@@ -3,7 +3,7 @@ Pokemon specific game state parser implementations for both PokemonRed and Pokem
 While this code base started from: https://github.com/PWhiddy/PokemonRedExperiments/ (v2) and was initially read from memory states https://github.com/thatguy11325/pokemonred_puffer/blob/main/pokemonred_puffer/global_map.py, this is no longer the case as we have moved to visual based state parsing.
 This decision was primarily made to facilitate easier extension to other games and rom hacks in the future, as well as to avoid reliance on specific memory addresses which may vary between different versions of the game.
 
-However, the code base supports reading from memory addresses to extract game state information, which can be useful for incorporating domain knowledge into reward structures or other aspects of the environment. See the MemoryBasedPokemonRedStateParser class for examples of how to read game state information from memory addresses.
+However, the code base supports reading from memory addresses to extract game state information, which can be useful for incorporating domain knowledge into reward structures or other aspects of the environment. See the MemoryBasedPokemonRedStateParser and MemoryBasedPokemonCrystalStateParser classes for examples of how to read game state information from memory addresses.
 
 WARNING: The screen capture mechanisms of the parsers rely on a SPECIFIC FRAME being used in the game. This is not a concern with Gen I games, but Gen II games have options for frames. All states and captures in this repo assume a particular choice of frame, and often it is NOT the default Frame 1.
 Ensure that your agents DO NOT change the frame settings in the game, or the state parsing will fail.
@@ -910,6 +910,20 @@ class MemoryBasedPokemonRedStateParser(PokemonRedStateParser):
     _MAP_ROW_OFFSET = _PAD
     _MAP_COL_OFFSET = _PAD
 
+    BADGE_ADDRESS = 0xD356
+    BADGE_BITS = {
+        "boulder": 0,
+        "cascade": 1,
+        "thunder": 2,
+        "rainbow": 3,
+        "soul": 4,
+        "marsh": 5,
+        "volcano": 6,
+        "earth": 7,
+    }
+    BADGE_ORDER = tuple(BADGE_BITS)
+    CHAMPION_OPPONENT = "Champion Rival"
+
     def __init__(self, pyboy, parameters):
         """
         Initializes the Pokemon Red game state parser.
@@ -1117,7 +1131,119 @@ class MemoryBasedPokemonRedStateParser(PokemonRedStateParser):
         Returns:
             np.array: Array of 8 binary values representing whether the player has obtained each of the badges.
         """
-        # or  self.bit_count(self.read_m(0xD356))
+        # Keep the existing MSB-first array contract; use has_badge for named reads.
         return np.array(
-            [int(bit) for bit in f"{self.read_m(0xD356):08b}"], dtype=np.int8
+            [int(bit) for bit in f"{self.read_m(self.BADGE_ADDRESS):08b}"],
+            dtype=np.int8,
         )
+
+    def has_badge(self, badge_name: str) -> bool:
+        """
+        Determines whether the player has the named Kanto badge.
+        """
+        normalized_name = badge_name.lower()
+        if normalized_name not in self.BADGE_BITS:
+            log_error(
+                f"Unknown Pokemon Red badge '{badge_name}'. Available badges: {list(self.BADGE_BITS)}",
+                self._parameters,
+            )
+        return self.read_bit(self.BADGE_ADDRESS, self.BADGE_BITS[normalized_name])
+
+    def has_completed_championship(self) -> bool:
+        """
+        Determines whether the player has defeated the Champion Rival.
+        """
+        return self.read_m_bit(
+            self.defeated_opponent_events[self.CHAMPION_OPPONENT]
+        )
+
+
+class MemoryBasedPokemonCrystalStateParser(PokemonCrystalStateParser):
+    """
+    Game state parser for Pokemon Crystal v1.1. Uses WRAM to track the
+    eight Johto badges and Hall of Fame completion.
+    """
+
+    JOHTO_BADGE_ADDRESS = 0xD857
+    STATUS_FLAGS_ADDRESS = 0xD84C
+    HALL_OF_FAME_COUNT_ADDRESS = 0xD95E
+    HALL_OF_FAME_STATUS_BIT = 6
+    BADGE_BITS = {
+        "zephyr": 0,
+        "hive": 1,
+        "plain": 2,
+        "fog": 3,
+        "mineral": 4,
+        "storm": 5,
+        "glacier": 6,
+        "rising": 7,
+    }
+    BADGE_ORDER = (
+        "zephyr",
+        "hive",
+        "plain",
+        "fog",
+        "storm",
+        "mineral",
+        "glacier",
+        "rising",
+    )
+
+    def get_johto_badges(self) -> np.array:
+        """
+        Gets the player's Johto badges in game progression order.
+        Returns:
+            np.array: Zephyr, Hive, Plain, Fog, Storm, Mineral, Glacier,
+                and Rising badge status.
+        """
+        return np.array(
+            [
+                int(
+                    self.read_bit(
+                        self.JOHTO_BADGE_ADDRESS, self.BADGE_BITS[badge]
+                    )
+                )
+                for badge in self.BADGE_ORDER
+            ],
+            dtype=np.int8,
+        )
+
+    def get_badges(self) -> np.array:
+        """
+        Gets the player's Johto badges in game progression order.
+        """
+        return self.get_johto_badges()
+
+    def has_badge(self, badge_name: str) -> bool:
+        """
+        Determines whether the player has the named Johto badge.
+        """
+        normalized_name = badge_name.lower()
+        if normalized_name not in self.BADGE_BITS:
+            log_error(
+                f"Unknown Pokemon Crystal badge '{badge_name}'. Available badges: {list(self.BADGE_BITS)}",
+                self._parameters,
+            )
+        return self.read_bit(
+            self.JOHTO_BADGE_ADDRESS, self.BADGE_BITS[normalized_name]
+        )
+
+    def has_hall_of_fame_status(self) -> bool:
+        """
+        Determines whether Pokemon Crystal's Hall of Fame status flag is set.
+        """
+        return self.read_bit(
+            self.STATUS_FLAGS_ADDRESS, self.HALL_OF_FAME_STATUS_BIT
+        )
+
+    def get_hall_of_fame_count(self) -> int:
+        """
+        Gets the number of Hall of Fame entries recorded by Pokemon Crystal.
+        """
+        return self.read_m(self.HALL_OF_FAME_COUNT_ADDRESS)
+
+    def has_completed_championship(self) -> bool:
+        """
+        Determines whether the player has entered the Hall of Fame.
+        """
+        return self.has_hall_of_fame_status() or self.get_hall_of_fame_count() > 0
