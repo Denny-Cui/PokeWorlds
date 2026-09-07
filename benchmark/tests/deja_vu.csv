@@ -67,7 +67,7 @@ deja_vu_2,Interact,open the door from map,all_set_in_hotel_room,open_door_from_m
 deja_vu_2,Interact,close the door from map,opened_door_in_hotel_room,close_door_from_map_test,deja_vu_1,FALSE
 deja_vu_2,Navigation,enter the hallway,opened_door_in_hotel_room,enter_hallway_test,deja_vu_1,FALSE
 deja_vu_2,Interact,buy 2 chips,in_cashier,buy_2_chips_test,deja_vu_1,FALSE
-deja_vu_2,Navigation,return to  cashier,win_blackjack,returned_cashier_test,deja_vu_1,FALSE
+deja_vu_2,Navigation,return to  cashier,win_blackjack,return_cashier_test,deja_vu_1,FALSE
 deja_vu_2,Interact,cash out,returned_cashier,cash_out_test,deja_vu_1,FALSE
 deja_vu_2,Interact,open the door of lobby,in_lobby,open_lobby_door_test,deja_vu_1,FALSE
 deja_vu_2,Navigation,exit the casino,opened_lobby_door,exit_casino_test,deja_vu_1,FALSE
